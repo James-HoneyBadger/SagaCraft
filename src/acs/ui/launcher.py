@@ -14,7 +14,9 @@ class AdventureLauncher:
     """Main launcher for adventures"""
 
     def __init__(self):
-        self.base_dir = Path(__file__).parent
+        # Use project root directory for adventures
+        # Path: src/acs/ui -> src/acs -> src -> project_root
+        self.base_dir = Path(__file__).parent.parent.parent.parent
         self.adventures_dir = self.base_dir / "adventures"
         self.adventures = []
 
