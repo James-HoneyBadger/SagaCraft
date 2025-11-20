@@ -343,7 +343,6 @@ HB_Adventure_Games/
 │   │   └── engine_enhanced.py # Enhanced features
 │   ├── ui/
 │   │   ├── ide.py            # Graphical IDE
-│   │   └── launcher.py       # Game launcher
 │   ├── systems/
 │   │   ├── puzzles.py
 │   │   ├── dialogue.py

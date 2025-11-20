@@ -115,17 +115,12 @@ All adventures have been tested and confirmed working. Each game loads correctly
 
 ## 🎮 How to Play
 
-### Option 1: Command Line
+### Using the IDE (Graphical Interface)
 ```bash
-./scripts/acs-play
+python3 -m src.acs.ui.ide
 ```
 
-### Option 2: IDE (Graphical Interface)
-```bash
-./scripts/acs-ide
-```
-
-### Option 3: Direct Python
+### Direct Python
 ```bash
 python3 acs_engine_enhanced.py
 ```

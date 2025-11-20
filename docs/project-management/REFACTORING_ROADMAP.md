@@ -150,8 +150,8 @@ Create a wrapper that makes the new engine compatible with the old `acs_engine_e
    - Translates old method calls to events
 
 2. **Update Entry Points** (1 hour)
-   - `./scripts/acs-play` - Use new engine
-   - `./scripts/acs-ide` - Use new engine or wrapper
+   - `python3 -m src.acs.ui.ide` - Use new engine
+   - `python3 -m src.acs.ui.ide` - Use new engine or wrapper
    - `play_adventure.sh` - Update imports
 
 3. **Test Backward Compatibility** (1 hour)
@@ -191,7 +191,7 @@ class LegacyEngine:
 
 ### Goal
 
-Refactor `./scripts/acs-ide` (1450 lines) into MVC pattern with reusable components.
+Refactor `python3 -m src.acs.ui.ide` (1450 lines) into MVC pattern with reusable components.
 
 ### Structure
 

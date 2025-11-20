@@ -30,7 +30,7 @@ The Adventure Construction Set (ACS) follows a modular, event-driven architectur
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                     User Interface                       │
-│                    (scripts/acs-ide)                         │
+│                    (python3 -m src.acs.ui.ide)                         │
 └────────────────────┬────────────────────────────────────┘
                      │
 ┌────────────────────▼────────────────────────────────────┐
@@ -105,10 +105,10 @@ HB_Adventure_Games/
 ├── docs/                    # Documentation
 ├── bin/                     # Shell scripts
 │
-├── scripts/acs-ide              # IDE launcher
+├── python3 -m src.acs.ui.ide              # IDE launcher
 ├── acs_engine_enhanced.py           # Engine launcher
 ├── acs_parser.py           # Parser module
-├── scripts/acs-play         # Game launcher
+├── python3 -m src.acs.ui.ide         # Game launcher
 ├── requirements.txt        # Dependencies
 ├── LICENSE                 # MIT License
 └── README.md               # Project overview

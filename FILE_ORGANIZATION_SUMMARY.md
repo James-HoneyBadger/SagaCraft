@@ -23,7 +23,6 @@ HB_Adventure_Games/
 ├── examples/            # Example code and tutorials
 ├── plugins/             # Extension modules
 ├── saves/               # Player save games
-├── scripts/             # Executable launchers
 ├── src/                 # Source code (modular)
 ├── tests/               # Test suites
 └── [key files]          # README, START_HERE, etc.

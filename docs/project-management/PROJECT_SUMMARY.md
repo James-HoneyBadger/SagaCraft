@@ -54,17 +54,16 @@ HB_Adventure_Games/
 
 ## How to Use
 
-### Play Games
+### Play and Create Adventures
 ```bash
 ./quickstart.sh              # Quick start menu
-python3 -m src.acs.ui.launcher  # Adventure launcher
+python3 -m src.acs.ui.ide    # Launch IDE
 ```
 
-### Create Adventures
-1. Use the graphical IDE
-2. Create rooms, items, monsters
-3. Test your adventure
-4. Share with others!
+### Using the IDE
+1. Create rooms, items, monsters
+2. Test your adventure in the IDE
+3. Save and share your adventures
 
 ## Next Steps (Optional Enhancements)
 

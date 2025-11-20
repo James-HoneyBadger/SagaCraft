@@ -66,14 +66,14 @@ pip install -r requirements.txt
 ./bin/verify_installation.sh
 
 # Launch the IDE
-./scripts/acs-ide
+python3 -m src.acs.ui.ide
 ```
 
 ### Manual Setup
 
 1. **Download** the HB_Adventure_Games directory
 2. **Navigate** to the directory in terminal
-3. **Run** `./scripts/acs-ide`
+3. **Run** `python3 -m src.acs.ui.ide`
 
 That's it! No complex installation needed.
 
@@ -85,7 +85,7 @@ That's it! No complex installation needed.
 
 1. **Launch the IDE**:
    ```bash
-   ./scripts/acs-ide
+   python3 -m src.acs.ui.ide
    ```
 
 2. **Load a Sample Adventure**:
@@ -104,7 +104,7 @@ The system includes a built-in tutorial:
 
 ```bash
 # Run the tutorial adventure
-./scripts/acs-play
+python3 -m src.acs.ui.ide
 # Select "Tutorial Quest" from the menu
 ```
 
@@ -570,9 +570,9 @@ Configure in Room properties:
 2. Go to **Play** tab
 3. Click **Start/Resume Adventure**
 
-**From Launcher**:
+**From IDE**:
 ```bash
-./scripts/acs-play
+python3 -m src.acs.ui.ide
 # Select adventure from menu
 ```
 
@@ -742,12 +742,12 @@ Add custom features via plugins:
 
 #### IDE Won't Launch
 
-**Problem**: `./scripts/acs-ide` fails
+**Problem**: `python3 -m src.acs.ui.ide` fails
 
 **Solutions**:
 1. Check Python version: `python3 --version` (need 3.6+)
 2. Install Tkinter: `sudo apt-get install python3-tk` (Linux)
-3. Try: `./scripts/acs-ide` (without '3')
+3. Try: `python3 -m src.acs.ui.ide` (without '3')
 
 #### Adventure Won't Load
 

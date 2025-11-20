@@ -12,7 +12,7 @@ License: MIT
 ```bash
 # Requirements: Python 3.6+
 cd HB_Adventure_Games
-./scripts/acs-ide
+python3 -m src.acs.ui.ide
 ```
 
 That's it! No dependencies to install.
@@ -23,7 +23,7 @@ That's it! No dependencies to install.
 
 ### Step 1: Launch IDE
 ```bash
-./scripts/acs-ide
+python3 -m src.acs.ui.ide
 ```
 
 ### Step 2: Create New Adventure
@@ -101,7 +101,7 @@ That's it! No dependencies to install.
 
 ### Play Sample Adventures
 ```bash
-./scripts/acs-play
+python3 -m src.acs.ui.ide
 # Select from menu
 ```
 
@@ -135,7 +135,7 @@ See [User Manual](USER_MANUAL.md) for everything
 python3 --version
 
 # Try without '3'
-./scripts/acs-ide
+python3 -m src.acs.ui.ide
 ```
 
 **Command not recognized?**

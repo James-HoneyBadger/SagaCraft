@@ -91,9 +91,9 @@ class MyPlugin(BasePlugin):
 
 ### Run the Original Engine (Still Works)
 ```bash
-./scripts/acs-play
+python3 -m src.acs.ui.ide
 # Or use the graphical IDE
-./scripts/acs-ide
+python3 -m src.acs.ui.ide
 ```
 
 ## 📊 Status Overview

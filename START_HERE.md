@@ -9,7 +9,7 @@ Copyright © 2025 Honey Badger Universe | MIT License
 ## ⚡ Quick Start (30 seconds)
 
 ```bash
-./scripts/acs-ide
+python3 -m src.acs.ui.ide
 ```
 
 That's it! The graphical IDE will launch.
@@ -52,11 +52,8 @@ See **[docs/README.md](docs/README.md)** for all organized documentation.
 ## 🎮 Try It Now!
 
 ```bash
-# Launch IDE and create your first adventure
-./scripts/acs-ide
-
-# Or play an existing adventure
-./scripts/acs-play
+# Launch IDE to create or play adventures
+python3 -m src.acs.ui.ide
 ```
 
 ---

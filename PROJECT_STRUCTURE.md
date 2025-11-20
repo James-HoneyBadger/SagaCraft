@@ -24,11 +24,6 @@ HB_Adventure_Games/
 ├── examples/            # Example code and tutorials
 ├── plugins/             # Plugin modules
 ├── saves/               # Player save games
-├── scripts/             # Executable scripts
-│   ├── acs-convert      # DSK to JSON converter
-│   ├── acs-ide          # Graphical IDE launcher
-│   ├── acs-play         # Game launcher
-│   └── legacy/          # Old script versions
 ├── src/                 # Source code
 │   └── acs/             # Main package
 │       ├── core/        # Core engine functionality
@@ -162,17 +157,14 @@ User interface modules:
 
 ---
 
-## 🚀 Scripts
+## 🚀 Quick Start
 
-Executable scripts in `scripts/` directory:
+Launch the IDE:
+```bash
+python3 -m src.acs.ui.ide
+```
 
-| Script | Purpose | Usage |
-|--------|---------|-------|
-| `acs-play` | Launch game player | `./scripts/acs-play [adventure]` |
-| `acs-ide` | Launch graphical IDE | `./scripts/acs-ide` |
-| `acs-convert` | Convert DSK to JSON | `./scripts/acs-convert input.dsk` |
-
-All scripts are executable (`chmod +x`) and use `#!/usr/bin/env python3`.
+All scripts are Python modules using `python3 -m` syntax.
 
 ---
 
@@ -233,18 +225,17 @@ Historical code and old game files:
 
 ### For Players:
 ```bash
-./scripts/acs-play        # Play adventures
+python3 -m src.acs.ui.ide  # Play or create in IDE
 ```
 
 ### For Creators:
 ```bash
-./scripts/acs-ide         # Create adventures in GUI
+python3 -m src.acs.ui.ide  # Create adventures in GUI
 ```
 
 ### For Developers:
 ```bash
 python3 acs_engine_enhanced.py  # Run engine directly
-./scripts/acs-convert           # Convert DSK files
 ```
 
 ---

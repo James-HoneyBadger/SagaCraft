@@ -13,8 +13,7 @@ This document summarizes the comprehensive documentation review and updates perf
 **Problem**: Documentation referenced non-existent Python files in the root directory.
 
 **Fixed References**:
-- ❌ `python3 acs_ide.py` → ✅ `./scripts/acs-ide`
-- ❌ `python3 acs_launcher.py` → ✅ `./scripts/acs-play`  
+- ❌ `python3 acs_ide.py` → ✅ `python3 -m src.acs.ui.ide`
 - ❌ `acs_engine.py` → ✅ `acs_engine_enhanced.py`
 
 **Files Updated**:
@@ -56,9 +55,9 @@ All documented directories exist and match the actual filesystem:
 All documented scripts exist and are executable:
 
 ```
-✓ scripts/acs-ide      # Launch IDE
-✓ scripts/acs-play     # Play adventures
-✓ scripts/acs-convert  # Convert DSK files
+✓ python3 -m src.acs.ui.ide      # Launch IDE
+✓ python3 -m src.acs.ui.ide     # Play adventures
+✓ scripts/# Converter removed  # Convert DSK files
 ```
 
 ### Root Files ✅
@@ -78,17 +77,17 @@ All documented root files exist:
 
 ### Launching the IDE
 ```bash
-./scripts/acs-ide
+python3 -m src.acs.ui.ide
 ```
 
 ### Playing Adventures
 ```bash
-./scripts/acs-play
+python3 -m src.acs.ui.ide
 ```
 
 ### Converting DSK Files
 ```bash
-./scripts/acs-convert <file.dsk>
+./scripts/# Converter removed <file.dsk>
 ```
 
 ### Quick Start Menu

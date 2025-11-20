@@ -103,7 +103,7 @@ pip install -r requirements.txt
 python3 -m pytest tests/
 
 # Launch IDE
-./scripts/acs-ide
+python3 -m src.acs.ui.ide
 ```
 
 ### Development Tools

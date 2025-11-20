@@ -32,7 +32,6 @@ HB_Adventure_Games/
 │   ├── ui/              # User interfaces
 │   │   ├── __init__.py
 │   │   ├── ide.py              # Graphical IDE
-│   │   ├── launcher.py         # Game launcher
 │   │   └── accessibility.py    # Accessibility features
 │   │
 │   ├── tools/           # Utility tools
@@ -46,12 +45,6 @@ HB_Adventure_Games/
 │       ├── config_service.py   # Configuration
 │       ├── data_service.py     # Data loading/saving
 │       └── io_service.py       # I/O operations
-│
-├── scripts/             # Executable launcher scripts
-│   ├── acs-ide                 # Launch IDE
-│   ├── acs-play                # Play adventures
-│   ├── acs-convert             # Convert DSK files
-│   └── legacy/                 # Old bin/ scripts (deprecated)
 │
 ├── adventures/          # Adventure JSON files
 ├── config/              # Configuration files
@@ -90,9 +83,9 @@ from acs.core.parser import NaturalLanguageParser
 ### Using Scripts (Recommended)
 ```bash
 ./quickstart.sh           # Interactive menu
-./scripts/acs-ide         # Launch IDE
-./scripts/acs-play        # Play adventures
-./scripts/acs-convert     # Convert DSK files
+python3 -m src.acs.ui.ide         # Launch IDE
+python3 -m src.acs.ui.ide        # Play adventures
+./scripts/# Converter removed     # Convert DSK files
 ```
 
 ### Using Python Directly
@@ -125,20 +118,9 @@ To make this an installable package, create `setup.py`:
 ```python
 from setuptools import setup, find_packages
 
-setup(
-    name="adventure-construction-set",
-    version="2.0.0",
-    packages=find_packages(where="src"),
-    package_dir={"": "src"},
-    install_requires=[],
-    entry_points={
-        "console_scripts": [
-            "acs-ide=acs.ui.ide:main",
-            "acs-play=acs.ui.launcher:main",
-            "acs-convert=acs.tools.dsk_converter:main",
-        ],
-    },
-)
-```
+## Direct Installation (Optional)
 
-Then install with: `pip install -e .`
+The project can be run directly without installation using:
+```bash
+python3 -m src.acs.ui.ide
+```

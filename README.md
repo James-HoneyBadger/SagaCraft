@@ -28,10 +28,8 @@ cd HB_Adventure_Games
 # Run the quick start menu
 ./quickstart.sh
 
-# Or launch directly:
-./scripts/acs-ide        # Open IDE
-./scripts/acs-play       # Play adventures
-./scripts/acs-play      # Play adventures
+# Or launch IDE directly:
+python3 -m src.acs.ui.ide
 ```
 
 That's it! No installation needed (Python 3.6+ required).
@@ -94,10 +92,6 @@ HB_Adventure_Games/
 │   ├── ui/              # User interfaces (IDE, launcher)
 │   ├── tools/           # Utilities (DSK converter, modding)
 │   └── data/            # Data services (config, I/O)
-├── scripts/              # Executable scripts
-│   ├── acs-ide          # Launch IDE
-│   ├── acs-play         # Play adventures
-│   └── acs-convert      # Convert DSK files
 ├── adventures/           # Adventure files (.json)
 ├── docs/                 # Documentation
 ├── tests/                # Test suite
@@ -332,7 +326,7 @@ The guard strikes you for 5 damage.
 **Start your adventure today!**
 
 ```bash
-./scripts/acs-ide
+python3 -m src.acs.ui.ide
 ```
 
 *Adventure awaits...*

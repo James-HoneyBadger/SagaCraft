@@ -26,7 +26,7 @@ Learn how to create your own text adventures from scratch using the ACS toolset.
 ### Method 1: Using the Graphical IDE (Recommended)
 
 ```bash
-./scripts/acs-ide
+python3 -m src.acs.ui.ide
 ```
 
 The IDE provides a visual interface for creating adventures without writing JSON manually.
@@ -35,7 +35,7 @@ The IDE provides a visual interface for creating adventures without writing JSON
 
 1. Copy an existing adventure as a template
 2. Edit the JSON file in your favorite text editor
-3. Test your adventure with `./scripts/acs-play`
+3. Test your adventure with `python3 -m src.acs.ui.ide`
 
 ---
 
@@ -771,7 +771,7 @@ Every adventure is a single JSON file with this structure:
 **1. Test All Rooms:**
 ```bash
 # Play through and visit every room
-./scripts/acs-play
+python3 -m src.acs.ui.ide
 ```
 
 - [ ] All rooms are accessible

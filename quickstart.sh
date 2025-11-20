@@ -11,29 +11,24 @@ cat << 'EOF'
 
 What would you like to do?
 
-1. Launch IDE (create/edit adventures)
-2. Play an adventure
-3. Run tests
-4. View documentation
+1. Launch IDE (create/edit/play adventures)
+2. Run tests
+3. View documentation
 
 EOF
 
-read -p "Enter choice (1-4): " choice
+read -p "Enter choice (1-3): " choice
 
 case $choice in
     1)
         echo "Launching IDE..."
-        python3 scripts/acs-ide
+        python3 -m src.acs.ui.ide
         ;;
     2)
-        echo "Launching adventure player..."
-        python3 scripts/acs-play
-        ;;
-    3)
         echo "Running tests..."
         python3 -m pytest tests/ -v
         ;;
-    4)
+    3)
         echo "Documentation is in docs/"
         echo "Start with: docs/QUICKSTART.md"
         ;;

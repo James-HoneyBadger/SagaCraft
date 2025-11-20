@@ -75,14 +75,10 @@
 
 ### I want to...
 
-#### Play an existing adventure
+#### Create or play adventures
 1. Read: [Quick Start](user-guides/QUICKSTART.md)
-2. Run: `./scripts/acs-play`
-
-#### Create a new adventure
-1. Read: [IDE Guide](user-guides/IDE_GUIDE.md)
-2. Run: `./scripts/acs-ide`
-3. Follow: [User Manual](user-guides/USER_MANUAL.md)
+2. Run: `python3 -m src.acs.ui.ide`
+3. Follow: [IDE Guide](user-guides/IDE_GUIDE.md) and [User Manual](user-guides/USER_MANUAL.md)
 
 #### Develop a plugin
 1. Read: [Plugin Guide](developer-guides/PLUGIN_GUIDE.md)
