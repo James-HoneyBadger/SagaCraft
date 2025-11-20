@@ -1,0 +1,72 @@
+{
+  "title": "Colossal Cave Adventure",
+  "author": "Inspired by Crowther & Woods' Original",
+  "intro": "You are standing at the end of a road before a small brick building.\nAround you is a forest. A small stream flows out of the building and\ndown a gully.\n\nThis is Colossal Cave - the original text adventure, created in 1976.\nThe cave is filled with treasures, magic, and danger. Your goal: explore\nthe cave, collect treasures, and find the path to adventure glory!\n\nA voice booms: 'WELCOME TO ADVENTURE!! WOULD YOU LIKE INSTRUCTIONS?'\n\n(The answer is yes. Always yes.)",
+  "start_room": 1,
+  "settings": {
+    "allow_save": true,
+    "magic_enabled": true
+  },
+  "rooms": [
+    {"id": 1, "name": "End of Road", "description": "You are standing at the end of a road before a small brick building.\nAround you is a forest. A small stream flows out of the building.", "exits": {"north": 2, "south": 3, "east": 4, "west": 5, "building": 6, "downstream": 7}},
+    {"id": 2, "name": "Hill in Road", "description": "You have walked up a hill, still in the forest. The road slopes back\ndown the other side of the hill. There is a building in the distance.", "exits": {"south": 1, "north": 8}},
+    {"id": 3, "name": "End of Road", "description": "The road ends here at the edge of a great forest.", "exits": {"north": 1, "forest": 4}},
+    {"id": 4, "name": "Forest", "description": "You are in open forest near both a valley and a road.", "exits": {"west": 1, "valley": 7, "forest": 4}},
+    {"id": 5, "name": "Forest", "description": "You are in open forest, with a deep valley to one side.", "exits": {"east": 1, "down": 7, "forest": 5}},
+    {"id": 6, "name": "Inside Building", "description": "You are inside a building, a well house for a large spring. There are\nsome keys on the ground here. There is food here. There is a bottle here.", "exits": {"out": 1, "xyzzy": 20}},
+    {"id": 7, "name": "Valley", "description": "You are in a valley in the forest beside a stream tumbling along a\nrocky bed. The stream flows from the south.", "exits": {"upstream": 1, "downstream": 8, "south": 9}},
+    {"id": 8, "name": "Slit in Streambed", "description": "At your feet all the water of the stream splashes into a 2-inch slit\nin the rock. Downstream the streambed is bare rock.", "exits": {"upstream": 7, "downstream": 10, "forest": 2, "down": 11}},
+    {"id": 9, "name": "Gully", "description": "You are in a 20-foot depression floored with bare dirt. Set into the\ndirt is a strong steel grate mounted in concrete.", "exits": {"north": 7, "down": 12}},
+    {"id": 10, "name": "Outside Grate", "description": "You are in a small chamber beneath a 3x3 steel grate to the surface.\nA low crawl over cobbles leads inward to the west.", "exits": {"up": 9, "west": 13}},
+    {"id": 11, "name": "Below the Grate", "description": "You are in a small chamber beneath a 3x3 steel grate to the surface.\nA low crawl leads inward to the west.", "exits": {"up": 8, "west": 13}},
+    {"id": 12, "name": "Below the Grate", "description": "You are in a small chamber beneath the grate. A low crawl leads west.", "exits": {"up": 9, "west": 13}},
+    {"id": 13, "name": "Cobble Crawl", "description": "You are crawling over cobbles in a low passage. There is a dim light\nat the east end of the passage.", "exits": {"east": 10, "west": 14, "up": 10}},
+    {"id": 14, "name": "Debris Room", "description": "You are in a debris room filled with stuff washed in from the surface.\nA low wide passage with cobbles becomes plugged with mud and debris\nhere, but an awkward canyon leads upward and west.", "exits": {"east": 13, "west": 15, "up": 16}},
+    {"id": 15, "name": "Sloping E/W Canyon", "description": "You are in an awkward sloping east/west canyon.", "exits": {"east": 14, "west": 17, "up": 18}},
+    {"id": 16, "name": "Bird Chamber", "description": "You are in a splendid chamber thirty feet high. The walls are frozen\nrivers of orange stone. An awkward canyon leads up and west.\nA cheerful little bird is sitting here singing.", "exits": {"down": 14, "west": 17}},
+    {"id": 17, "name": "At Top of Small Pit", "description": "At your feet is a small pit breathing traces of white mist. An east\npassage ends here except for a small crack leading on.", "exits": {"east": 15, "down": 19, "crack": 20}},
+    {"id": 18, "name": "In Hall of Mists", "description": "You are in the Hall of Mists. Rough stone steps lead down the pit.", "exits": {"down": 17, "south": 21, "west": 22}},
+    {"id": 19, "name": "In Pit", "description": "You are in a large room full of dusty rocks. There is a big hole in\nthe floor. There are cracks everywhere, and a passage leading east.", "exits": {"up": 17, "east": 18, "down": 23}},
+    {"id": 20, "name": "In Hall of Mt. King", "description": "You are in the Hall of the Mountain King, with passages off in all directions.\nA huge green fierce snake bars the way! The snake is guarding a crystal bridge.", "exits": {"north": 24, "east": 25, "south": 26, "west": 27, "up": 17}},
+    {"id": 21, "name": "East Bank of Fissure", "description": "You are on the east bank of a fissure slicing clear across the hall.\nThe mist is quite thick here, and the fissure is too wide to jump.", "exits": {"north": 18, "cross": 28}},
+    {"id": 22, "name": "Nugget of Gold Room", "description": "This is a low room with a crude note on the wall. The note says:\n'You won't get it up the steps'", "exits": {"east": 18}},
+    {"id": 23, "name": "Dusty Rock Room", "description": "You are in a large room full of dusty rocks. There is a big hole\nin the floor. There are cracks everywhere.", "exits": {"up": 19, "down": 29}},
+    {"id": 24, "name": "At Low Window", "description": "You are at the bottom of a large pit with a 2 foot window in the wall.\nThe window is too high to reach.", "exits": {"south": 20}},
+    {"id": 25, "name": "In South Side Chamber", "description": "You are in the south side chamber. There is a crack in the wall here\nthrough which light streams in from the Hall of the Mountain King.", "exits": {"west": 20}},
+    {"id": 26, "name": "West Side Chamber", "description": "You are in the west side chamber of the Hall of the Mountain King.\nA passage continues west and up here.", "exits": {"north": 20, "west": 30, "up": 31}},
+    {"id": 27, "name": "Secret N/S Canyon Above Large Room", "description": "You are in a secret north/south canyon above a large room.", "exits": {"east": 20, "down": 32}},
+    {"id": 28, "name": "West Bank of Fissure", "description": "You are on the west side of the fissure in the Hall of Mists. There\nare diamonds here!", "exits": {"cross": 21, "west": 33}},
+    {"id": 29, "name": "Complex Junction", "description": "You are at a complex junction. A low hands and knees passage from the\nnorth joins a higher crawl from the east to make a walking passage going west.", "exits": {"up": 23, "west": 34, "north": 35}},
+    {"id": 30, "name": "At West End of Hall", "description": "You are at the west end of the Hall of Mists. A low wide crawl\ncontinues west and another goes north. To the south is a little passage.", "exits": {"east": 26, "west": 36, "north": 37, "south": 38}},
+    {"id": 31, "name": "In Crossover", "description": "You are at a crossover of a high N/S passage and a low E/W one.", "exits": {"down": 26, "west": 39, "north": 40}},
+    {"id": 32, "name": "At Y2", "description": "You are in a large room, with a passage to the south, a passage to the\nwest, and a wall of broken rock to the east. There is a large 'Y2' on\na rock in the room's center.", "exits": {"south": 27, "east": 41, "west": 42, "plugh": 6}},
+    {"id": 33, "name": "West Side of Fissure", "description": "You are on the west side of the fissure. The path slopes down to the west.", "exits": {"east": 28, "west": 43}},
+    {"id": 34, "name": "Bedquilt", "description": "You are in Bedquilt, a long east/west passage with holes everywhere.\nTo explore at random select north, south, up, or down.", "exits": {"east": 29, "west": 44, "north": 45, "down": 46, "up": 47}},
+    {"id": 35, "name": "Swiss Cheese Room", "description": "You are in a room whose walls resemble Swiss cheese. Obvious passages\ngo west, east, and northeast. A dark corridor leads south.", "exits": {"south": 29, "west": 48, "east": 49, "northeast": 50}},
+    {"id": 40, "name": "At Window on Pit", "description": "You're at a low window overlooking a huge pit, which extends up out\nof sight. A floor is indistinctly visible over 50 feet below.", "exits": {"south": 31, "jump": 51}},
+    {"id": 41, "name": "At Witt's End", "description": "You are at Witt's End. Passages lead off in *ALL* directions.", "exits": {"west": 32, "north": 52, "south": 52, "east": 52}},
+    {"id": 50, "name": "Soft Room", "description": "You are in the soft room. The walls are covered with heavy curtains,\nthe floor with a thick pile carpet. Moss covers the ceiling.", "exits": {"southwest": 35, "out": 35}},
+    {"id": 51, "name": "You have jumped into the pit and died", "description": "That was unwise.", "exits": {}}
+  ],
+  "items": [
+    {"id": 1, "name": "keys", "description": "A set of rusty keys.", "room_id": 6, "is_takeable": true, "value": 10, "weight": 1},
+    {"id": 2, "name": "lamp", "description": "A brass lantern. Essential for dark places.", "room_id": 6, "is_takeable": true, "value": 100, "weight": 3, "special_properties": {"light_source": true}},
+    {"id": 3, "name": "food", "description": "Tasty food.", "room_id": 6, "is_takeable": true, "value": 5, "weight": 2},
+    {"id": 4, "name": "bottle", "description": "A glass bottle. It can hold water.", "room_id": 6, "is_takeable": true, "value": 10, "weight": 2},
+    {"id": 5, "name": "cage", "description": "A small wicker cage.", "room_id": 16, "is_takeable": true, "value": 20, "weight": 5},
+    {"id": 6, "name": "bird", "description": "A cheerful little bird.", "room_id": 16, "is_takeable": true, "value": 50, "weight": 2},
+    {"id": 7, "name": "rod", "description": "A black rod with a rusty star on one end.", "room_id": 14, "is_takeable": true, "value": 30, "weight": 4},
+    {"id": 8, "name": "diamonds", "description": "Several diamonds! One of the treasures.", "room_id": 28, "is_takeable": true, "value": 1000, "weight": 3, "special_properties": {"is_treasure": true}},
+    {"id": 9, "name": "gold", "description": "Large gold nugget. A treasure!", "room_id": 22, "is_takeable": true, "value": 800, "weight": 20, "special_properties": {"is_treasure": true}},
+    {"id": 10, "name": "coins", "description": "Rare coins! A treasure.", "room_id": 50, "is_takeable": true, "value": 600, "weight": 2, "special_properties": {"is_treasure": true}}
+  ],
+  "monsters": [
+    {"id": 1, "name": "snake", "description": "A huge green fierce snake! It's guarding something.", "room_id": 20, "hardiness": 20, "agility": 15, "friendliness": "hostile", "courage": 80},
+    {"id": 2, "name": "dragon", "description": "A massive dragon blocks the path! Its eyes glow with malevolence.", "room_id": 27, "hardiness": 50, "agility": 12, "friendliness": "hostile", "courage": 95},
+    {"id": 3, "name": "pirate", "description": "A pirate springs out and robs you of your treasures!", "room_id": 34, "hardiness": 25, "agility": 18, "friendliness": "hostile", "courage": 70, "special_abilities": ["steal_treasure"]}
+  ],
+  "quests": [
+    {"id": 1, "name": "Collect the Treasures", "description": "Find all the treasures hidden in the cave.", "objectives": [{"type": "collect_treasures", "target": "Gather all treasures", "required": 15}], "reward_xp": 3000}
+  ],
+  "notes": ["Created 1976 by Will Crowther and Don Woods", "The FIRST text adventure game ever", "Originally written in FORTRAN", "Magic words: XYZZY, PLUGH, PLOVER", "Inspired by Mammoth Cave in Kentucky"]
+}

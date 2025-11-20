@@ -1,0 +1,57 @@
+{
+  "title": "Ballyhoo",
+  "author": "Inspired by Jeff O'Neill's Infocom Classic",
+  "intro": "The circus has come to town!\n\nTaber's Big Top Circus - featuring death-defying acrobats, trained animals,\nclowns, and more! You've come for an evening of entertainment.\n\nBut something is wrong. During the show, the young daughter of the circus\nowner is KIDNAPPED right before your eyes! The circus folk are acting\nstrange. The police are baffled.\n\nAs an amateur detective with nothing better to do, you decide to investigate.\nThe kidnapper left behind a ransom note demanding money by midnight.\nTime is running out!\n\nExplore the circus, question suspects, find clues, and rescue the girl\nbefore it's too late!\n\nWelcome to Ballyhoo - where the greatest show on Earth hides dark secrets.",
+  "start_room": 1,
+  "settings": {"allow_save": true, "time_limit": 480, "timed_mission": true},
+  "rooms": [
+    {"id": 1, "name": "Outside the Big Top", "description": "The main circus tent looms before you. Colorful banners flutter. You can\nhear music and applause inside. Other areas of the circus grounds spread\naround you. The ticket booth is east, the midway is west.", "exits": {"north": 2, "east": 10, "west": 20}},
+    {"id": 2, "name": "Inside the Big Top", "description": "The main circus arena. Three rings for performances. Bleachers surround.\nThe show is paused - performers mill about nervously after the kidnapping.\nBackstage is north. Exit is south.", "exits": {"north": 3, "south": 1}},
+    {"id": 3, "name": "Backstage Area", "description": "Behind the scenes. Performers prepare here. Props, costumes, equipment\neverywhere. Dressing rooms are west. Animal cages are east. The ring is south.", "exits": {"west": 4, "east": 5, "south": 2}},
+    {"id": 4, "name": "Dressing Rooms", "description": "Small rooms where performers change. Costumes hang on racks. Makeup\ntables with mirrors. The star performer's room is marked. Backstage is east.", "exits": {"east": 3, "star": 6}},
+    {"id": 5, "name": "Animal Cages", "description": "Cages holding circus animals - lions, elephants, seals. Trainers care\nfor them. The elephants seem agitated. Backstage is west.", "exits": {"west": 3}},
+    {"id": 6, "name": "Star's Dressing Room", "description": "The private dressing room of Chelsea Lark, the tightrope walker and\nowner's daughter - the kidnapping victim! Her belongings are scattered.\nSigns of a struggle. The dressing area is out.", "exits": {"out": 4}},
+    {"id": 10, "name": "Ticket Booth", "description": "A small booth where tickets are sold. The booth operator looks nervous.\nThe main area is west. The parking lot is east.", "exits": {"west": 1, "east": 11}},
+    {"id": 11, "name": "Parking Lot", "description": "Cars and trucks parked haphazardly. Circus trailers for living quarters\nare here. The owner's trailer is the largest. Ticket booth is west.", "exits": {"west": 10, "trailer": 12}},
+    {"id": 12, "name": "Owner's Trailer", "description": "Andrew Lark's (the owner) personal trailer. He's here, distraught about\nhis daughter's kidnapping. Photos of Chelsea everywhere. A safe is visible.\nThe lot is outside.", "exits": {"out": 11}},
+    {"id": 20, "name": "Midway", "description": "Carnival games and food stands. Ring toss, balloon darts, fried dough.\nA few customers wander about. The ferris wheel is north. Main area is east.", "exits": {"north": 21, "east": 1, "south": 22}},
+    {"id": 21, "name": "Ferris Wheel", "description": "The large ferris wheel sits idle. The operator is missing. From the top,\nyou'd have a good view of the whole circus. Midway is south.", "exits": {"south": 20, "up": 23}},
+    {"id": 22, "name": "House of Mirrors", "description": "A maze of distorting mirrors. Your reflection multiplies infinitely.\nYou could easily get lost here. Or hide something. Midway is north.", "exits": {"north": 20, "maze": 24}},
+    {"id": 23, "name": "Top of Ferris Wheel", "description": "You're at the highest point. From here you see the whole circus layout.\nWait - is that movement near the old maintenance shed? Down is south.", "exits": {"down": 21}},
+    {"id": 24, "name": "Deep in the Mirror Maze", "description": "You're lost in reflections. But you notice something - a hidden panel\nin one mirror! Behind it is a secret passage! Out is north.", "exits": {"north": 22, "secret": 30}},
+    {"id": 30, "name": "Secret Underground Tunnel", "description": "A hidden tunnel beneath the circus! It leads somewhere. Cobwebs and\ndarkness. The mirror maze is up. The tunnel continues north.", "exits": {"up": 24, "north": 31}},
+    {"id": 31, "name": "Old Maintenance Shed", "description": "An abandoned shed at the edge of the circus grounds. Dusty, cluttered.\nWait - there's someone here! A figure in a clown costume holds Chelsea!\nThe tunnel is south. The only exit is through them!", "exits": {"south": 30}},
+    {"id": 40, "name": "Security Office", "description": "A small office where circus security works. Filing cabinets, radio,\nlost and found. An incompetent guard sits here. The grounds are out.", "exits": {"out": 1}},
+    {"id": 50, "name": "Clown Alley", "description": "Where clowns prepare. Makeup everywhere. Costumes, props, gags. Several\nclowns are here, but one is missing - the one who did a special performance\njust before the kidnapping. Suspicious.", "exits": {"out": 3}}
+  ],
+  "items": [
+    {"id": 1, "name": "ticket stub", "description": "Your circus ticket stub. Section B, Row 12, Seat 7.", "room_id": 1, "is_takeable": true, "value": 0, "weight": 0},
+    {"id": 2, "name": "ransom note", "description": "'I have the girl. $50,000 by midnight or she dies. -C' Crude handwriting.", "room_id": 2, "is_takeable": true, "value": 0, "weight": 1},
+    {"id": 3, "name": "torn costume piece", "description": "A piece of fabric from a clown costume. Found near the kidnapping spot.", "room_id": 3, "is_takeable": true, "value": 50, "weight": 1},
+    {"id": 4, "name": "Chelsea's diary", "description": "Chelsea's personal diary. Recent entry: 'Father's new partner gives me\nthe creeps. Always watching me. I don't trust him.'", "room_id": 6, "is_takeable": true, "value": 100, "weight": 2},
+    {"id": 5, "name": "financial records", "description": "Circus financial records. The circus is broke! Bankrupt! A ransom might\nbe the only way to get money. But from who?", "room_id": 12, "is_takeable": true, "value": 200, "weight": 3},
+    {"id": 6, "name": "clown makeup", "description": "White makeup with a distinctive smell. Matches residue found on Chelsea's\ndressing room mirror.", "room_id": 50, "is_takeable": true, "value": 75, "weight": 1},
+    {"id": 7, "name": "binoculars", "description": "Allows you to see distant details. Useful from high places.", "room_id": 10, "is_takeable": true, "value": 50, "weight": 2},
+    {"id": 8, "name": "rope", "description": "Strong rope. Could be useful for restraining someone.", "room_id": 3, "is_takeable": true, "value": 25, "weight": 5},
+    {"id": 9, "name": "flashlight", "description": "Battery-powered light. Essential for dark tunnels.", "room_id": 40, "is_takeable": true, "value": 40, "weight": 2, "special_properties": {"light_source": true}}
+  ],
+  "monsters": [
+    {"id": 1, "name": "Andrew Lark", "description": "The circus owner and Chelsea's father. Distraught and worried. Or is he?", "room_id": 12, "hardiness": 10, "agility": 8, "friendliness": "neutral", "courage": 60, "dialogue_id": 1},
+    {"id": 2, "name": "Rimshaw the Clown", "description": "The head clown. Jovial exterior but oddly nervous. Where was he during\nthe kidnapping?", "room_id": 50, "hardiness": 12, "agility": 14, "friendliness": "neutral", "courage": 50, "dialogue_id": 2},
+    {"id": 3, "name": "Professor Marvel", "description": "The circus's mysterious new 'partner'. Arrived 3 months ago. Chelsea\ndidn't trust him. He's acting VERY nervous.", "room_id": 2, "hardiness": 15, "agility": 10, "friendliness": "hostile", "courage": 70, "dialogue_id": 3},
+    {"id": 4, "name": "Kidnapper in Clown Disguise", "description": "The kidnapper! Wearing a clown costume to blend in. Holding Chelsea captive!", "room_id": 31, "hardiness": 18, "agility": 12, "friendliness": "hostile", "courage": 80}
+  ],
+  "dialogues": [
+    {"npc_id": 1, "greeting": "My daughter! Please, you must help find her! I'll pay anything!", "topics": [{"keyword": "daughter", "response": "Chelsea is everything to me. If anything happens to her... I can't bear to think about it."}, {"keyword": "partner", "response": "Professor Marvel? He invested in the circus. But I barely know him. Chelsea didn't like him."}]},
+    {"npc_id": 2, "greeting": "Terrible business, this kidnapping! Just terrible! *nervous laugh*", "topics": [{"keyword": "clown", "response": "Me? I was performing when it happened. Lots of witnesses!"}, {"keyword": "costume", "response": "*shifts uncomfortably* We all wear similar costumes. Could be anyone."}]},
+    {"npc_id": 3, "greeting": "This is a disaster for business! The circus is ruined!", "topics": [{"keyword": "ransom", "response": "Andrew can't pay it. The circus has no money. Unless... *trails off*"}, {"keyword": "insurance", "response": "*eyes narrow* What are you implying?"}]}
+  ],
+  "quests": [
+    {"id": 1, "name": "Find the Kidnapper", "description": "Investigate the circus and discover who kidnapped Chelsea.", "objectives": [{"type": "collect_clues", "target": "Find all evidence", "required": 5}], "reward_xp": 300},
+    {"id": 2, "name": "Rescue Chelsea", "description": "Locate and rescue Chelsea before midnight!", "objectives": [{"type": "reach_location", "target": "Old Maintenance Shed", "required": 1}, {"type": "defeat_enemy", "target": "Kidnapper", "required": 1}], "reward_xp": 1000, "completion_triggers_ending": true}
+  ],
+  "puzzles": [
+    {"id": 1, "type": "hidden_object", "room_id": 22, "description": "The mirror maze hides a secret panel. Search carefully.", "success_message": "You find the hidden panel! A secret passage!", "failure_message": "Nothing but reflections here."}
+  ],
+  "notes": ["Ballyhoo by Jeff O'Neill, Infocom 1986", "Murder mystery at a circus", "Timed mission - rescue before midnight", "Red herrings and multiple suspects", "Solution: Professor Marvel is the kidnapper - insurance fraud scheme", "The circus is bankrupt, ransom is a scam"]
+}

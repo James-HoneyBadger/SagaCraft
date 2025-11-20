@@ -1,0 +1,422 @@
+{
+  "title": "Planetfall",
+  "author": "Inspired by Steve Meretzky's Classic",
+  "intro": "Another day, another mind-numbing task. As the lowest-ranking member of the\nStarship Feinstein's crew, you've been assigned to scrub the decks. Again.\n\nBut today is different. Alarms blare! The ship is doomed! You barely make it\nto an escape pod before the Feinstein explodes in a brilliant flash.\n\nYour pod crashes on a mysterious planet. The settlement below appears\nabandoned. What happened here? And more importantly: how will you survive?\n\nYour scanner indicates the pod's distress beacon is damaged. You'll need to\nfind a way to signal for rescue. But first, you need to not die.\n\nWelcome to Planetfall, Ensign Seventh Class. Try not to screw this up.",
+  "start_room": 1,
+  "settings": {
+    "allow_save": true,
+    "time_enabled": true,
+    "hunger_enabled": true
+  },
+  "rooms": [
+    {
+      "id": 1,
+      "name": "Escape Pod - Crashed",
+      "description": "Your escape pod is a smoking wreck. The cushions are scorched, control\npanels spark intermittently, and that smell... let's not talk about that smell.\n\nThe hatch is open to the north, leading to an alien world. Your survival\nkit should be here somewhere if it wasn't destroyed in the crash.",
+      "exits": {
+        "north": 2
+      }
+    },
+    {
+      "id": 2,
+      "name": "Crash Site",
+      "description": "A small crater marks where your pod impacted. Debris is scattered about.\nTo the north, you see buildings - a settlement of some kind. It looks\nabandoned. The pod is south.",
+      "exits": {
+        "north": 3,
+        "south": 1
+      }
+    },
+    {
+      "id": 3,
+      "name": "Main Plaza",
+      "description": "A wide plaza surrounded by structures. Everything is eerily quiet.\nNo people, no animals, no sound but the wind. North leads to administrative\nbuildings, east to residential, west to the supply depot, south to your crash site.",
+      "exits": {
+        "north": 10,
+        "east": 20,
+        "west": 30,
+        "south": 2
+      }
+    },
+    {
+      "id": 10,
+      "name": "Administration Building - Lobby",
+      "description": "A dusty lobby with an unmanned reception desk. Propaganda posters on\nthe walls cheerfully declare 'Resida: Building Tomorrow's Colony Today!'\nThe plaza is south. Offices are north, records room is east.",
+      "exits": {
+        "north": 11,
+        "east": 12,
+        "south": 3
+      }
+    },
+    {
+      "id": 11,
+      "name": "Director's Office",
+      "description": "A luxurious office with a large desk and comfortable chair. The Director\nleft in a hurry - papers scattered everywhere, a half-eaten meal rotting\non the desk. A computer terminal still glows. The lobby is south.",
+      "exits": {
+        "south": 10
+      }
+    },
+    {
+      "id": 12,
+      "name": "Records Room",
+      "description": "Filing cabinets line the walls. Most are empty or ransacked. One drawer\nis labeled 'BIOLOGICAL RESEARCH - CLASSIFIED'. The lobby is west.",
+      "exits": {
+        "west": 10
+      }
+    },
+    {
+      "id": 20,
+      "name": "Residential Complex - Common Area",
+      "description": "A communal living space with scattered furniture. Personal belongings\nsuggest a hasty evacuation. North leads to sleeping quarters, east to the\nrecreation room. The plaza is west.",
+      "exits": {
+        "north": 21,
+        "east": 22,
+        "west": 3
+      }
+    },
+    {
+      "id": 21,
+      "name": "Sleeping Quarters",
+      "description": "Rows of bunks, most stripped bare. A few personal items remain - photos,\nbooks, a child's toy. The common area is south.",
+      "exits": {
+        "south": 20
+      }
+    },
+    {
+      "id": 22,
+      "name": "Recreation Room",
+      "description": "Game tables, a small library, entertainment terminals. Someone tried to\nbarricade the door from the inside. The common area is west.",
+      "exits": {
+        "west": 20,
+        "down": 23
+      }
+    },
+    {
+      "id": 23,
+      "name": "Secret Underground Lab",
+      "description": "A hidden laboratory beneath the recreation room. Bio-containment pods line\nthe walls. Most are empty. One is still active, maintaining something inside.\n\nA robot lies dormant in the corner. Its nameplate reads: FLOYD.\nThe recreation room is up.",
+      "exits": {
+        "up": 22
+      }
+    },
+    {
+      "id": 30,
+      "name": "Supply Depot",
+      "description": "Shelves mostly bare. Looks like supplies were grabbed in a panic.\nYou might find food, tools, or other useful items if you search carefully.\nThe plaza is east. Storage is north.",
+      "exits": {
+        "north": 31,
+        "east": 3
+      }
+    },
+    {
+      "id": 31,
+      "name": "Storage Warehouse",
+      "description": "A large warehouse with industrial shelving. Most supplies are gone, but\nthere might be something useful in the back. The depot is south.\nA maintenance tunnel leads down.",
+      "exits": {
+        "south": 30,
+        "down": 40
+      }
+    },
+    {
+      "id": 40,
+      "name": "Maintenance Tunnels",
+      "description": "Dark, cramped tunnels running beneath the colony. Water drips from pipes.\nThe tunnels extend in multiple directions. Up returns to storage.\nEast leads deeper.",
+      "exits": {
+        "up": 31,
+        "east": 41,
+        "north": 42
+      }
+    },
+    {
+      "id": 41,
+      "name": "Power Station",
+      "description": "The colony's main power plant. Surprisingly, backup generators are still\nrunning. A control panel shows various systems. The tunnels are west.",
+      "exits": {
+        "west": 40
+      }
+    },
+    {
+      "id": 42,
+      "name": "Communications Center - Underground",
+      "description": "The colony's primary communications array. The transmitter is damaged but\nmight be repairable. A long-range antenna access is through a sealed door\nto the north. The tunnels are south.",
+      "exits": {
+        "north": 43,
+        "south": 40
+      }
+    },
+    {
+      "id": 43,
+      "name": "Antenna Platform",
+      "description": "An outdoor platform with the colony's main transmission antenna. The view\nof the planet is breathtaking from here. If you can repair the transmitter,\nyou can send a distress signal. The comm center is south.",
+      "exits": {
+        "south": 42
+      }
+    },
+    {
+      "id": 50,
+      "name": "Medical Center",
+      "description": "An abandoned medical facility. Exam rooms, surgical suite, pharmacy.\nSigns of a desperate fight against something biological. Quarantine\nwarnings are posted everywhere.",
+      "exits": {
+        "south": 3,
+        "west": 51
+      }
+    },
+    {
+      "id": 51,
+      "name": "Quarantine Ward",
+      "description": "Sealed containment rooms. Something terrible happened here. Medical logs\nmight explain what. The medical center is east.",
+      "exits": {
+        "east": 50
+      }
+    }
+  ],
+  "items": [
+    {
+      "id": 1,
+      "name": "survival kit",
+      "description": "A standard-issue survival kit. Contains basic supplies: water purification tablets, emergency rations, first aid.",
+      "room_id": 1,
+      "is_takeable": true,
+      "value": 50,
+      "weight": 5
+    },
+    {
+      "id": 2,
+      "name": "scanner",
+      "description": "A multi-purpose scanning device. Can analyze objects, detect power sources, and scan for life signs.",
+      "room_id": 1,
+      "is_takeable": true,
+      "value": 100,
+      "weight": 2
+    },
+    {
+      "id": 3,
+      "name": "access card",
+      "description": "A magnetic access card you found on a skeleton. Grants entry to restricted areas.",
+      "room_id": 11,
+      "is_takeable": true,
+      "value": 75,
+      "weight": 1
+    },
+    {
+      "id": 4,
+      "name": "classified files",
+      "description": "Top secret documents about 'Project Genesis' - a biological research program. The entries become increasingly alarming.",
+      "room_id": 12,
+      "is_takeable": true,
+      "value": 0,
+      "weight": 2
+    },
+    {
+      "id": 5,
+      "name": "nutrient bar",
+      "description": "An emergency food ration. Tastes like cardboard, but it's nutrition.",
+      "room_id": 30,
+      "is_takeable": true,
+      "value": 5,
+      "weight": 1,
+      "special_properties": {
+        "edible": true,
+        "restore_hunger": 30
+      }
+    },
+    {
+      "id": 6,
+      "name": "repair kit",
+      "description": "Tools for basic electronics repair. Includes multimeter, soldering iron, spare components.",
+      "room_id": 31,
+      "is_takeable": true,
+      "value": 80,
+      "weight": 4
+    },
+    {
+      "id": 7,
+      "name": "power cell",
+      "description": "A fully charged power cell. Can power various devices.",
+      "room_id": 41,
+      "is_takeable": true,
+      "value": 60,
+      "weight": 3
+    },
+    {
+      "id": 8,
+      "name": "transmitter parts",
+      "description": "Salvaged components for repairing the communications array.",
+      "room_id": 42,
+      "is_takeable": true,
+      "value": 100,
+      "weight": 5,
+      "special_properties": {
+        "is_quest_item": true
+      }
+    },
+    {
+      "id": 9,
+      "name": "medical log",
+      "description": "Dr. Karev's final entries: 'The pathogen spread faster than we anticipated. Evacuation is impossible. God forgive us for what we created.'",
+      "room_id": 51,
+      "is_takeable": true,
+      "value": 0,
+      "weight": 1
+    },
+    {
+      "id": 10,
+      "name": "decontamination spray",
+      "description": "Industrial-strength biohazard neutralizer. Might protect against the pathogen.",
+      "room_id": 50,
+      "is_takeable": true,
+      "value": 90,
+      "weight": 2
+    }
+  ],
+  "monsters": [
+    {
+      "id": 1,
+      "name": "Floyd",
+      "description": "A small maintenance robot with a cheerful personality. Badly damaged but repairable. His optical sensors light up when activated. 'Floyd is your friend!' he chirps.",
+      "room_id": 23,
+      "hardiness": 15,
+      "agility": 12,
+      "friendliness": "friend",
+      "courage": 100,
+      "dialogue_id": 1,
+      "can_trade": false,
+      "special_abilities": ["repair", "hack_terminals", "emotional_support"]
+    },
+    {
+      "id": 2,
+      "name": "mutated creature",
+      "description": "A horrifying fusion of multiple life forms, result of the biological experiment gone wrong. Aggressive and dangerous.",
+      "room_id": 51,
+      "hardiness": 25,
+      "agility": 18,
+      "friendliness": "hostile",
+      "courage": 80,
+      "special_abilities": ["plague_carrier", "regenerate"]
+    },
+    {
+      "id": 3,
+      "name": "security robot",
+      "description": "An automated security unit, still following its last orders: 'Quarantine in effect. No one leaves.'",
+      "room_id": 10,
+      "hardiness": 30,
+      "agility": 15,
+      "friendliness": "hostile",
+      "courage": 100,
+      "special_abilities": ["stun_blast", "armor_plating"]
+    }
+  ],
+  "dialogues": [
+    {
+      "npc_id": 1,
+      "greeting": "Floyd is happy to see you! Floyd has been alone for 347 days, 14 hours, 23 minutes!",
+      "topics": [
+        {
+          "keyword": "help",
+          "response": "Floyd helps friend! Floyd can fix things, open doors, keep you company! Floyd is best robot!"
+        },
+        {
+          "keyword": "colony",
+          "response": "Floyd remembers! People got sick. Very sick. They left Floyd behind. Floyd was sad. But now you are here!"
+        },
+        {
+          "keyword": "transmitter",
+          "response": "Floyd knows where transmitter is! Floyd can help fix! Then you can call for rescue and Floyd can go with you! Right? Floyd can come too?"
+        }
+      ]
+    }
+  ],
+  "quests": [
+    {
+      "id": 1,
+      "name": "Activate Floyd",
+      "description": "Repair and activate the maintenance robot named Floyd.",
+      "objectives": [
+        {
+          "type": "obtain_item",
+          "target": "power cell",
+          "required": 1
+        },
+        {
+          "type": "interact",
+          "target": "Install power cell in Floyd",
+          "required": 1
+        }
+      ],
+      "reward_xp": 150,
+      "reward_items": []
+    },
+    {
+      "id": 2,
+      "name": "Repair the Transmitter",
+      "description": "Fix the communications array to send a distress signal.",
+      "objectives": [
+        {
+          "type": "obtain_item",
+          "target": "repair kit",
+          "required": 1
+        },
+        {
+          "type": "obtain_item",
+          "target": "transmitter parts",
+          "required": 1
+        },
+        {
+          "type": "reach_location",
+          "target": "Antenna Platform",
+          "required": 1
+        }
+      ],
+      "reward_xp": 500,
+      "reward_items": []
+    },
+    {
+      "id": 3,
+      "name": "Discover the Truth",
+      "description": "Uncover what happened to the Resida colony.",
+      "objectives": [
+        {
+          "type": "obtain_item",
+          "target": "classified files",
+          "required": 1
+        },
+        {
+          "type": "obtain_item",
+          "target": "medical log",
+          "required": 1
+        }
+      ],
+      "reward_xp": 200,
+      "reward_items": []
+    },
+    {
+      "id": 4,
+      "name": "Survive and Escape",
+      "description": "Signal for rescue and survive until help arrives.",
+      "objectives": [
+        {
+          "type": "complete_quest",
+          "target": "Repair the Transmitter",
+          "required": 1
+        },
+        {
+          "type": "survival",
+          "target": "Stay alive for 10 turns after signaling",
+          "required": 10
+        }
+      ],
+      "reward_xp": 1000,
+      "reward_items": [],
+      "completion_triggers_ending": true
+    }
+  ],
+  "notes": [
+    "Inspired by Steve Meretzky's 'Planetfall' (1983), published by Infocom",
+    "Floyd the robot is one of gaming's most beloved characters",
+    "The original was famous for its emotional gut-punch ending",
+    "This adaptation focuses on survival and mystery elements",
+    "Hunger system should be active - player must find food",
+    "Floyd should be required for certain puzzles and provide comic relief",
+    "The biological experiment backstory explains the abandoned colony",
+    "Multiple endings possible based on player choices"
+  ]
+}

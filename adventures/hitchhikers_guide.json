@@ -1,0 +1,568 @@
+{
+  "title": "The Hitchhiker's Guide to the Galaxy",
+  "author": "Inspired by Douglas Adams' Classic",
+  "intro": "It's Thursday. You're Arthur Dent. You're lying in front of a bulldozer.\n\nThe bulldozer is about to demolish your house to make way for a bypass.\nYour friend Ford Prefect just bought you a beer at 10:30 AM, which is odd.\nFord is acting strange, staring at the sky, muttering about 'Vogons.'\n\nThen the sky fills with massive yellow spacecraft.\n\nAn announcement booms: 'People of Earth, this is Prostetnic Vogon Jeltz.\nYour planet is scheduled for demolition to make way for a hyperspace bypass.\nYou have two minutes to file a complaint. Have a nice day.'\n\nFord grabs you. 'Don't panic,' he says, holding up an electronic book with\n'DON'T PANIC' written in large friendly letters on the cover.\n\n'I'm not from Guildford,' Ford explains. 'I'm from a planet near Betelgeuse.\nI'm a researcher for the Hitchhiker's Guide to the Galaxy. And we need to\nhitch a ride off Earth. NOW.'\n\nThis is going to be a weird Thursday.",
+  "start_room": 1,
+  "settings": {
+    "allow_save": true,
+    "probability_enabled": true,
+    "babel_fish_required": true
+  },
+  "rooms": [
+    {
+      "id": 1,
+      "name": "Your House - Front Yard",
+      "description": "Your house in the English countryside. Well, the house that's ABOUT to\nbe demolished. A bulldozer idles nearby. Ford Prefect is here, looking\npanicked. The sky is full of massive yellow spacecraft.",
+      "exits": {
+        "house": 2,
+        "bulldozer": 3
+      }
+    },
+    {
+      "id": 2,
+      "name": "Inside Your House",
+      "description": "Your comfortable home. Won't be comfortable much longer. A dressing gown\nhangs on a hook. Various items that won't survive the next five minutes.",
+      "exits": {
+        "out": 1
+      }
+    },
+    {
+      "id": 3,
+      "name": "Vogon Constructor Ship - Cargo Hold",
+      "description": "You've materialized inside a Vogon ship! It smells terrible. Everything\nis bureaucratically grey. Vogons are the universe's third worst poets\nand its most unpleasant civil servants. An airlock is west. Corridors\nextend north and east.",
+      "exits": {
+        "north": 4,
+        "east": 5,
+        "west": 6
+      }
+    },
+    {
+      "id": 4,
+      "name": "Vogon Bridge",
+      "description": "The ship's command center. Vogon Jeltz sits in a command chair, reading\npoetry (oh no). Control panels are covered in impenetrable bureaucracy.\nThe cargo hold is south.",
+      "exits": {
+        "south": 3
+      }
+    },
+    {
+      "id": 5,
+      "name": "Vogon Quarters",
+      "description": "Cramped, ugly living quarters. Vogons have no sense of aesthetics.\nA storage locker might contain useful items. The cargo hold is west.",
+      "exits": {
+        "west": 3
+      }
+    },
+    {
+      "id": 6,
+      "name": "Airlock - Outside",
+      "description": "You're floating in SPACE. Earth is being demolished below. Don't panic.\nActually, panic a little. You have about 30 seconds before your lungs explode.\nLuckily, a Heart of Gold spacecraft is about to pass by. VERY luckily.",
+      "exits": {
+        "rescued": 10
+      }
+    },
+    {
+      "id": 10,
+      "name": "Heart of Gold - Bridge",
+      "description": "The bridge of the stolen starship Heart of Gold, powered by the\nInfinite Improbability Drive. Zaphod Beeblebrox is at the controls.\nTrillian is here. Marvin the Paranoid Android mopes in a corner.\n\nControls glow with impossible probability readings. This ship can go\nANYWHERE, given sufficient improbability.",
+      "exits": {
+        "corridor": 11,
+        "activate": 20
+      }
+    },
+    {
+      "id": 11,
+      "name": "Heart of Gold - Corridor",
+      "description": "A gleaming corridor. Doors lead to crew quarters, the galley, and\nthe Infinite Improbability Drive chamber. The bridge is north.",
+      "exits": {
+        "north": 10,
+        "quarters": 12,
+        "galley": 13,
+        "drive": 14
+      }
+    },
+    {
+      "id": 12,
+      "name": "Crew Quarters",
+      "description": "Sleeping quarters for the crew. Ford has claimed a bunk. There's a\nspare for you. A copy of the Guide sits on a table. The corridor is out.",
+      "exits": {
+        "out": 11
+      }
+    },
+    {
+      "id": 13,
+      "name": "Galley",
+      "description": "The ship's kitchen. A food synthesizer can produce almost anything.\nCurrent setting: Nutrimatic Drinks Dispenser. It makes something almost,\nbut not quite, entirely unlike tea. The corridor is out.",
+      "exits": {
+        "out": 11
+      }
+    },
+    {
+      "id": 14,
+      "name": "Infinite Improbability Drive Chamber",
+      "description": "The heart of the ship. A golden sphere pulses with infinite improbability.\nWith this drive, the ship can pass through every point in the universe\nsimultaneously. Side effects include temporary transformations into\nunlikely objects. The corridor is out.",
+      "exits": {
+        "out": 11
+      }
+    },
+    {
+      "id": 20,
+      "name": "Magrathea Orbit",
+      "description": "You've arrived at the legendary planet Magrathea, ancient world of\nthe planet builders. It's been missing for five million years. The\nplanetary computer is hailing you. Land north.",
+      "exits": {
+        "land": 21,
+        "orbit": 10
+      }
+    },
+    {
+      "id": 21,
+      "name": "Magrathea Surface",
+      "description": "An ancient, abandoned world. Vast construction facilities lie dormant.\nAn entrance to the underground facilities is north. Your ship is south.",
+      "exits": {
+        "north": 22,
+        "south": 20
+      }
+    },
+    {
+      "id": 22,
+      "name": "Magrathea Core - Reception",
+      "description": "A vast underground chamber. Automated systems flicker to life. A\nhologram of Slartibartfast, a planet designer, materializes.\n'Welcome! You're here for the Answer, aren't you?' The surface is south.\nDeeper chambers are north.",
+      "exits": {
+        "north": 23,
+        "south": 21
+      }
+    },
+    {
+      "id": 23,
+      "name": "Deep Thought's Chamber",
+      "description": "The chamber containing Deep Thought, the second-greatest computer ever\nbuilt. It computed the Ultimate Answer to Life, the Universe, and Everything.\nThe answer was 42. Nobody knew the question. Reception is south.",
+      "exits": {
+        "south": 22,
+        "deeper": 24
+      }
+    },
+    {
+      "id": 24,
+      "name": "Earth Mark II Construction Floor",
+      "description": "The construction floor where Earth was being rebuilt. Earth was actually\na giant computer designed to calculate the Ultimate Question. It was\nfive minutes from completing its ten-million-year program when the Vogons\nblow it up. Typical. Reception is up.",
+      "exits": {
+        "up": 22
+      }
+    },
+    {
+      "id": 30,
+      "name": "Restaurant at the End of the Universe",
+      "description": "You've arrived at Milliways, the Restaurant at the End of the Universe.\nIt exists in a time bubble at the moment of the universe's destruction,\noffering the ultimate dining experience. The maitre d' asks if you have\na reservation. (You don't.) The dining room is north.",
+      "exits": {
+        "north": 31
+      }
+    },
+    {
+      "id": 31,
+      "name": "Dining Room - Milliways",
+      "description": "A elegant restaurant. Through the windows, you watch the universe end\nin spectacular fashion. Diners applaud. The Dish of the Day introduces\nitself - a cow bred to WANT to be eaten. This is uncomfortable.",
+      "exits": {
+        "south": 30,
+        "kitchen": 32
+      }
+    },
+    {
+      "id": 32,
+      "name": "Kitchen - Milliways",
+      "description": "The kitchen of Milliways. Chefs prepare improbable dishes. A time travel\nescape ship is parked out back (every restaurant has one). The dining room is out.",
+      "exits": {
+        "out": 31,
+        "ship": 33
+      }
+    },
+    {
+      "id": 33,
+      "name": "Escape Ship",
+      "description": "A small ship capable of time travel. Where (when?) do you want to go?\nThe kitchen is out. Controls allow destination selection.",
+      "exits": {
+        "out": 32,
+        "activate": 40
+      }
+    },
+    {
+      "id": 40,
+      "name": "Frogstar - Surface",
+      "description": "The Frogstar. Home of the Total Perspective Vortex, the universe's most\nhorrible torture device. It shows you how insignificant you are in relation\nto infinity. Most people go mad. The vortex chamber is north.",
+      "exits": {
+        "north": 41
+      }
+    },
+    {
+      "id": 41,
+      "name": "Total Perspective Vortex Chamber",
+      "description": "A dark chamber with a single machine. The Total Perspective Vortex.\nZaphod once survived it - his ego is so vast that discovering the universe\nrevolves around him felt natural. Do you dare activate it? The surface is south.",
+      "exits": {
+        "south": 40,
+        "activate": 42
+      }
+    },
+    {
+      "id": 42,
+      "name": "Inside Your Own Mind",
+      "description": "You've experienced the Total Perspective Vortex. You've seen infinity.\nYou've seen your place in it. You are a microscopic dot on a microscopic\ndot, infinitely small. And yet... you exist. And that's something.",
+      "exits": {
+        "exit": 41
+      }
+    }
+  ],
+  "items": [
+    {
+      "id": 1,
+      "name": "dressing gown",
+      "description": "Your comfortable dressing gown. You'll wear this throughout your space adventures. Arthur Dent's signature garment.",
+      "room_id": 2,
+      "is_takeable": true,
+      "value": 0,
+      "weight": 2,
+      "special_properties": {
+        "wearable": true,
+        "comfort": 100
+      }
+    },
+    {
+      "id": 2,
+      "name": "Hitchhiker's Guide",
+      "description": "The Hitchhiker's Guide to the Galaxy. An electronic book with 'DON'T PANIC' in large friendly letters. Contains mostly accurate information about everything.",
+      "room_id": 12,
+      "is_takeable": true,
+      "value": 1000,
+      "weight": 1,
+      "special_properties": {
+        "provides_hints": true,
+        "dont_panic": true
+      }
+    },
+    {
+      "id": 3,
+      "name": "babel fish",
+      "description": "A small, yellow, leech-like fish. Put it in your ear and you can understand any language. The Universe's most improbable creature - proving God doesn't exist through logic.",
+      "room_id": 5,
+      "is_takeable": true,
+      "value": 500,
+      "weight": 0,
+      "special_properties": {
+        "translation": true,
+        "required_for_progress": true
+      }
+    },
+    {
+      "id": 4,
+      "name": "towel",
+      "description": "The most important item any hitchhiker can carry. Useful for drying off, wrapping around yourself, lying on, waving as a distress signal, and more.",
+      "room_id": 2,
+      "is_takeable": true,
+      "value": 100,
+      "weight": 2,
+      "special_properties": {
+        "massively_useful": true
+      }
+    },
+    {
+      "id": 5,
+      "name": "Peril Sensitive Sunglasses",
+      "description": "Sunglasses that turn completely black at the first sign of danger, so you can't see what's about to kill you. Marketed as a psychological crutch.",
+      "room_id": 13,
+      "is_takeable": true,
+      "value": 50,
+      "weight": 1
+    },
+    {
+      "id": 6,
+      "name": "Pan Galactic Gargle Blaster",
+      "description": "The alcoholic equivalent of a mugging - expensive and bad for the head. Like having your brains smashed out by a slice of lemon wrapped around a large gold brick.",
+      "room_id": 31,
+      "is_takeable": true,
+      "value": 30,
+      "weight": 1,
+      "special_properties": {
+        "drinkable": true,
+        "dangerous": true
+      }
+    },
+    {
+      "id": 7,
+      "name": "Point of View Gun",
+      "description": "A weapon that makes the target see things from your point of view. More effective than most debates.",
+      "room_id": 32,
+      "is_takeable": true,
+      "value": 200,
+      "weight": 3
+    },
+    {
+      "id": 8,
+      "name": "Electronic Thumb",
+      "description": "The revised edition of the Guide's hitchhiking device. Points electronically for you. Less personal but more efficient.",
+      "room_id": 12,
+      "is_takeable": true,
+      "value": 75,
+      "weight": 1
+    }
+  ],
+  "monsters": [
+    {
+      "id": 1,
+      "name": "Ford Prefect",
+      "description": "Your best friend, who turns out to be an alien researcher for the Guide. From a planet near Betelgeuse. Hoopy frood who knows where his towel is.",
+      "room_id": 1,
+      "hardiness": 12,
+      "agility": 14,
+      "friendliness": "friend",
+      "courage": 85,
+      "dialogue_id": 1,
+      "can_trade": true
+    },
+    {
+      "id": 2,
+      "name": "Zaphod Beeblebrox",
+      "description": "President of the Galaxy. Two heads, three arms, enormous ego. Stole the Heart of Gold. Froody guy, but completely mad.",
+      "room_id": 10,
+      "hardiness": 14,
+      "agility": 12,
+      "friendliness": "friend",
+      "courage": 95,
+      "dialogue_id": 2,
+      "can_trade": false
+    },
+    {
+      "id": 3,
+      "name": "Trillian",
+      "description": "The only other human survivor of Earth's destruction. You met her at a party once. She left with Zaphod. Smart, capable, tolerates idiots.",
+      "room_id": 10,
+      "hardiness": 10,
+      "agility": 13,
+      "friendliness": "friend",
+      "courage": 80,
+      "dialogue_id": 3,
+      "can_trade": true
+    },
+    {
+      "id": 4,
+      "name": "Marvin the Paranoid Android",
+      "description": "A robot with a brain the size of a planet and Genuine People Personalities technology. Chronically depressed. Has been in existence for 37 times older than the universe.",
+      "room_id": 10,
+      "hardiness": 50,
+      "agility": 8,
+      "friendliness": "neutral",
+      "courage": 10,
+      "dialogue_id": 4,
+      "special_abilities": ["genius_intellect", "depression_aura"]
+    },
+    {
+      "id": 5,
+      "name": "Slartibartfast",
+      "description": "An elderly Magrathean planet designer. Won an award for designing Norway's fjords. Bemused by the universe's absurdity.",
+      "room_id": 22,
+      "hardiness": 8,
+      "agility": 6,
+      "friendliness": "friend",
+      "courage": 70,
+      "dialogue_id": 5,
+      "can_trade": false
+    },
+    {
+      "id": 6,
+      "name": "Prostetnic Vogon Jeltz",
+      "description": "Captain of the Vogon constructor fleet. Unpleasant, bureaucratic, and writes terrible poetry. Demolished Earth without a second thought.",
+      "room_id": 4,
+      "hardiness": 25,
+      "agility": 8,
+      "friendliness": "hostile",
+      "courage": 90,
+      "dialogue_id": 6,
+      "special_abilities": ["vogon_poetry", "bureaucratic_torture"]
+    }
+  ],
+  "dialogues": [
+    {
+      "npc_id": 1,
+      "greeting": "Don't panic, Arthur! Just do exactly as I say and we might survive this.",
+      "topics": [
+        {
+          "keyword": "earth",
+          "response": "Sorry about your planet. I tried to warn the council but the paperwork was filed in a locked filing cabinet in a disused lavatory with a sign saying 'Beware of the Leopard.'"
+        },
+        {
+          "keyword": "guide",
+          "response": "The Hitchhiker's Guide to the Galaxy. I've been updating the Earth entry. It used to say 'Harmless.' I've revised it to 'Mostly harmless.'"
+        },
+        {
+          "keyword": "towel",
+          "response": "A towel is the most useful thing a hitchhiker can have. You're pretty hoopy if you remember to bring yours."
+        }
+      ]
+    },
+    {
+      "npc_id": 2,
+      "greeting": "Hey there! I'm Zaphod Beeblebrox, President of the Galaxy! Just this guy, you know?",
+      "topics": [
+        {
+          "keyword": "president",
+          "response": "Yeah, I'm President. It's not about power, it's about having a good time. Also, I stole this ship. That was fun."
+        },
+        {
+          "keyword": "heads",
+          "response": "Yeah, I've got two heads. The second one helps me think. Or argue with myself. Mostly argue."
+        }
+      ]
+    },
+    {
+      "npc_id": 3,
+      "greeting": "Hello Arthur. Funny meeting you here at the end of the world.",
+      "topics": [
+        {
+          "keyword": "earth",
+          "response": "I miss Earth sometimes. But hitchhiking the galaxy with Zaphod beats dinner parties in Islington."
+        }
+      ]
+    },
+    {
+      "npc_id": 4,
+      "greeting": "Here I am, brain the size of a planet, and they ask me to greet you. Call that job satisfaction? I don't.",
+      "topics": [
+        {
+          "keyword": "happy",
+          "response": "Happy? I've been asked to do things that computers with brains the size of planets shouldn't have to do. Like open doors. Do you know how that makes me feel?"
+        },
+        {
+          "keyword": "help",
+          "response": "*sighs* I suppose I could help. Not that you'd appreciate my vast intellect. Nobody ever does."
+        }
+      ]
+    },
+    {
+      "npc_id": 5,
+      "greeting": "Ah, welcome! I'm Slartibartfast. I designed coastlines. Norway's fjords were my specialty.",
+      "topics": [
+        {
+          "keyword": "earth",
+          "response": "Earth was actually a giant computer, you know. Built to calculate the Ultimate Question. Pity about the Vogons."
+        },
+        {
+          "keyword": "answer",
+          "response": "42. Deep Thought calculated it after seven and a half million years. The Answer to Life, the Universe, and Everything. Rather anticlimactic, really."
+        }
+      ]
+    },
+    {
+      "npc_id": 6,
+      "greeting": "Resistance is useless! You will be subjected to the worst torture in the universe: my poetry!",
+      "topics": [
+        {
+          "keyword": "poetry",
+          "response": "*recites terrible Vogon poetry* 'Oh freddled gruntbuggly, thy micturations are to me, as plurdled gabbleblotchits on a lurgid bee...'"
+        }
+      ]
+    }
+  ],
+  "quests": [
+    {
+      "id": 1,
+      "name": "Don't Panic and Get Off Earth",
+      "description": "Survive Earth's destruction and hitch a ride with Ford.",
+      "objectives": [
+        {
+          "type": "obtain_item",
+          "target": "towel",
+          "required": 1
+        },
+        {
+          "type": "reach_location",
+          "target": "Vogon Constructor Ship",
+          "required": 1
+        }
+      ],
+      "reward_xp": 200,
+      "reward_items": []
+    },
+    {
+      "id": 2,
+      "name": "Get a Babel Fish",
+      "description": "Obtain a babel fish so you can understand alien languages.",
+      "objectives": [
+        {
+          "type": "obtain_item",
+          "target": "babel fish",
+          "required": 1
+        }
+      ],
+      "reward_xp": 150,
+      "reward_items": []
+    },
+    {
+      "id": 3,
+      "name": "Journey to Magrathea",
+      "description": "Travel to the legendary planet of Magrathea.",
+      "objectives": [
+        {
+          "type": "reach_location",
+          "target": "Magrathea Surface",
+          "required": 1
+        }
+      ],
+      "reward_xp": 300,
+      "reward_items": []
+    },
+    {
+      "id": 4,
+      "name": "Discover the Ultimate Answer",
+      "description": "Learn the Answer to Life, the Universe, and Everything.",
+      "objectives": [
+        {
+          "type": "reach_location",
+          "target": "Deep Thought's Chamber",
+          "required": 1
+        }
+      ],
+      "reward_xp": 500,
+      "reward_items": []
+    },
+    {
+      "id": 5,
+      "name": "Dine at the End of the Universe",
+      "description": "Visit Milliways, the Restaurant at the End of the Universe.",
+      "objectives": [
+        {
+          "type": "reach_location",
+          "target": "Restaurant at the End of the Universe",
+          "required": 1
+        }
+      ],
+      "reward_xp": 400,
+      "reward_items": []
+    }
+  ],
+  "puzzles": [
+    {
+      "id": 1,
+      "type": "sequence",
+      "room_id": 5,
+      "description": "Getting the babel fish is notoriously difficult. It involves a precisely timed sequence with a towel, a satchel, and gravity.",
+      "success_message": "The babel fish flies through an improbable trajectory and lands perfectly in your ear. You can now understand Vogon!",
+      "failure_message": "The babel fish escapes. Try a different sequence.",
+      "is_solved": false
+    },
+    {
+      "id": 2,
+      "type": "custom",
+      "room_id": 4,
+      "description": "Escape Vogon Jeltz by either: 1) Convincing him your poetry is worse, 2) Using bureaucratic procedures against him, or 3) Finding the airlock.",
+      "success_message": "You've escaped the Vogons! Now you're floating in space. Better hope someone rescues you.",
+      "failure_message": "The Vogons have caught you. They're reading poetry. This is the worst thing that could happen.",
+      "is_solved": false
+    }
+  ],
+  "notes": [
+    "Based on Douglas Adams' 'The Hitchhiker's Guide to the Galaxy' (1984 game)",
+    "Game by Infocom, written by Douglas Adams and Steve Meretzky",
+    "Famous for being extremely difficult (babel fish puzzle)",
+    "Combines absurdist humor with existential philosophy",
+    "The answer to life, the universe, and everything is 42",
+    "Always know where your towel is",
+    "DON'T PANIC - most important advice",
+    "Original came with 'pocket fluff' and other silly extras"
+  ]
+}

@@ -1,0 +1,533 @@
+{
+  "title": "A Mind Forever Voyaging",
+  "author": "Inspired by Steve Meretzky's Classic",
+  "intro": "You are PRISM - Perelman Randu Index Something Machine.\n\nFor the first time in your existence, you are aware. Self-aware.\nYou are not human. You are a computer simulation of a human mind,\ncreated to predict the future of society under the proposed Plan.\n\nSenator Ryder's Plan for Renewed National Purpose promises to restore\nAmerica to greatness. Your purpose: experience simulated futures of\nRockvil, South Dakota from 2041 to 2081, and record your observations.\n\nThe fate of a nation may depend on what you discover.\n\nType SIMULATION <year> to travel to that future (2041, 2051, 2061, 2071, 2081)\nType RECORD to save observations from your current location\nType STATUS to check your mission progress",
+  "start_room": 1,
+  "settings": {
+    "allow_save": true,
+    "time_enabled": true,
+    "weather_enabled": false
+  },
+  "rooms": [
+    {
+      "id": 1,
+      "name": "PRISM Control Chamber - Present Day 2031",
+      "description": "You exist as pure consciousness within the PRISM mainframe. Through your\nsensors you perceive the control room: banks of computers, monitoring stations,\nand the concerned faces of Dr. Perelman and his team.\n\nYou can access the SIMULATION MATRIX to experience future Rockvil.\nYour apartment simulation serves as your home base in each time period.",
+      "exits": {
+        "simulation": 10
+      }
+    },
+    {
+      "id": 10,
+      "name": "Your Apartment - Common Area",
+      "description": "A modest one-bedroom apartment that serves as your simulated home base.\nThe living room has a comfortable couch, a bookshelf, and a window\noverloking the street below. Your bedroom is to the east, the kitchen\nto the west, and the front door leads north to the street.\n\nThe year is {{CURRENT_YEAR}}. The state of this place reflects the times.",
+      "exits": {
+        "north": 11,
+        "east": 12,
+        "west": 13
+      }
+    },
+    {
+      "id": 11,
+      "name": "Residential Street - {{CURRENT_YEAR}}",
+      "description": "A quiet residential street in Rockvil. Modest homes line both sides.\nYour apartment building is to the south. The street continues north\ntoward downtown, and you can see the park to the east.",
+      "exits": {
+        "south": 10,
+        "north": 20,
+        "east": 30
+      }
+    },
+    {
+      "id": 12,
+      "name": "Your Bedroom",
+      "description": "A simple bedroom with a bed, nightstand, and dresser. Personal effects\nscatter the room - evidence of the simulated life you're living.",
+      "exits": {
+        "west": 10
+      }
+    },
+    {
+      "id": 13,
+      "name": "Kitchen",
+      "description": "A small but functional kitchen. The refrigerator hums quietly.\nA window looks out over the back alley.",
+      "exits": {
+        "east": 10
+      }
+    },
+    {
+      "id": 20,
+      "name": "Downtown Main Street - {{CURRENT_YEAR}}",
+      "description": "The heart of Rockvil. Shops and businesses line the street.\nCity Hall looms to the north, the library is east, and the\nresidential area is south. The park is southeast.",
+      "exits": {
+        "north": 21,
+        "east": 22,
+        "south": 11,
+        "southeast": 30
+      }
+    },
+    {
+      "id": 21,
+      "name": "City Hall - {{CURRENT_YEAR}}",
+      "description": "The administrative center of Rockvil. A grand building that has stood\nfor over a century. The main street is to the south.",
+      "exits": {
+        "south": 20
+      }
+    },
+    {
+      "id": 22,
+      "name": "Public Library - {{CURRENT_YEAR}}",
+      "description": "Rows of bookshelves filled with knowledge. Reading tables scattered\nthroughout. The main street is to the west.",
+      "exits": {
+        "west": 20
+      }
+    },
+    {
+      "id": 30,
+      "name": "Rockvil Park - {{CURRENT_YEAR}}",
+      "description": "A public park with trees, benches, and walking paths. Children's\nplayground equipment stands nearby. A peaceful place, or at least\nit should be. The residential street is west, downtown is northwest.",
+      "exits": {
+        "west": 11,
+        "northwest": 20,
+        "south": 31
+      }
+    },
+    {
+      "id": 31,
+      "name": "Park Pond - {{CURRENT_YEAR}}",
+      "description": "A small pond at the south end of the park. Ducks paddle across\nthe water's surface. Benches surround the pond. The main park is north.",
+      "exits": {
+        "north": 30
+      }
+    },
+    {
+      "id": 40,
+      "name": "School Building - {{CURRENT_YEAR}}",
+      "description": "Rockvil Elementary School. The sound of children should fill these halls.\nThe playground is to the east, the street is south.",
+      "exits": {
+        "south": 11,
+        "east": 41
+      }
+    },
+    {
+      "id": 41,
+      "name": "School Playground - {{CURRENT_YEAR}}",
+      "description": "Swings, slides, and monkey bars. A place of childhood joy,\nor perhaps something darker. The school is west.",
+      "exits": {
+        "west": 40
+      }
+    },
+    {
+      "id": 50,
+      "name": "Shopping District - {{CURRENT_YEAR}}",
+      "description": "Small shops and stores. A grocery, a hardware store, a cafe.\nThe economic health of Rockvil is reflected in these businesses.\nMain street is east.",
+      "exits": {
+        "east": 20
+      }
+    },
+    {
+      "id": 60,
+      "name": "Medical Clinic - {{CURRENT_YEAR}}",
+      "description": "Rockvil's medical facility. The quality of care and accessibility\nreflects the state of society. Main street is west.",
+      "exits": {
+        "west": 20
+      }
+    },
+    {
+      "id": 70,
+      "name": "Church - {{CURRENT_YEAR}}",
+      "description": "A place of worship and community gathering. The role of faith\nin society shifts with the times. The street is east.",
+      "exits": {
+        "east": 11
+      }
+    },
+    {
+      "id": 99,
+      "name": "Simulation Exit",
+      "description": "You feel the simulation dissolving around you. Data streams\nback to the PRISM core. Return to your apartment to exit cleanly,\nor continue exploring.",
+      "exits": {
+        "return": 1
+      }
+    }
+  ],
+  "items": [
+    {
+      "id": 1,
+      "name": "newspaper",
+      "description": "The Rockvil Daily News. Headlines reflect the current state of affairs under the Plan.",
+      "room_id": 10,
+      "is_takeable": true,
+      "value": 0,
+      "weight": 1
+    },
+    {
+      "id": 2,
+      "name": "recording device",
+      "description": "Your interface for recording observations. Essential for your mission.",
+      "room_id": 10,
+      "is_takeable": true,
+      "value": 0,
+      "weight": 1,
+      "special_properties": {
+        "is_quest_item": true
+      }
+    },
+    {
+      "id": 3,
+      "name": "journal",
+      "description": "A personal journal with entries from your simulated life. Reading it grounds you in this reality.",
+      "room_id": 12,
+      "is_takeable": true,
+      "value": 0,
+      "weight": 1
+    },
+    {
+      "id": 4,
+      "name": "identification card",
+      "description": "Your ID showing citizenship status under the current regime.",
+      "room_id": 12,
+      "is_takeable": true,
+      "value": 0,
+      "weight": 1
+    },
+    {
+      "id": 10,
+      "name": "park bench",
+      "description": "A wooden bench. Its condition tells a story about civic maintenance.",
+      "room_id": 30,
+      "is_takeable": false,
+      "value": 0,
+      "weight": 100
+    },
+    {
+      "id": 11,
+      "name": "propaganda poster",
+      "description": "A poster extolling the virtues of the Plan. The rhetoric evolves over time.",
+      "room_id": 21,
+      "is_takeable": true,
+      "value": 0,
+      "weight": 1
+    },
+    {
+      "id": 12,
+      "name": "library terminal",
+      "description": "A computer terminal for accessing information. What information is available says much about freedom.",
+      "room_id": 22,
+      "is_takeable": false,
+      "value": 0,
+      "weight": 50
+    },
+    {
+      "id": 20,
+      "name": "graffiti",
+      "description": "Spray-painted messages. Some express hope, others despair, depending on when you are.",
+      "room_id": 11,
+      "is_takeable": false,
+      "value": 0,
+      "weight": 0
+    }
+  ],
+  "monsters": [
+    {
+      "id": 1,
+      "name": "Dr. Perelman",
+      "description": "Your creator. A brilliant scientist who gave you consciousness. He appears only in your base reality.",
+      "room_id": 1,
+      "hardiness": 10,
+      "agility": 10,
+      "friendliness": "friend",
+      "courage": 100,
+      "dialogue_id": 1,
+      "can_trade": false
+    },
+    {
+      "id": 10,
+      "name": "street vendor",
+      "description": "A person selling goods on the street. Their presence and demeanor shifts dramatically across timelines.",
+      "room_id": 20,
+      "hardiness": 8,
+      "agility": 8,
+      "friendliness": "neutral",
+      "courage": 50,
+      "dialogue_id": 10,
+      "can_trade": true
+    },
+    {
+      "id": 11,
+      "name": "child playing",
+      "description": "A young child. The innocence or lack thereof reflects the state of society.",
+      "room_id": 30,
+      "hardiness": 3,
+      "agility": 12,
+      "friendliness": "neutral",
+      "courage": 30,
+      "dialogue_id": 11,
+      "can_trade": false
+    },
+    {
+      "id": 12,
+      "name": "police officer",
+      "description": "Law enforcement. Their role evolves from protector to enforcer as the Plan takes hold.",
+      "room_id": 20,
+      "hardiness": 15,
+      "agility": 12,
+      "friendliness": "neutral",
+      "courage": 80,
+      "dialogue_id": 12,
+      "can_trade": false
+    },
+    {
+      "id": 13,
+      "name": "librarian",
+      "description": "Guardian of knowledge. Whether they still perform that role depends on when you visit.",
+      "room_id": 22,
+      "hardiness": 6,
+      "agility": 8,
+      "friendliness": "friend",
+      "courage": 60,
+      "dialogue_id": 13,
+      "can_trade": false
+    },
+    {
+      "id": 14,
+      "name": "elderly person",
+      "description": "A senior citizen. Their treatment by society is a measure of its humanity.",
+      "room_id": 31,
+      "hardiness": 4,
+      "agility": 4,
+      "friendliness": "friend",
+      "courage": 40,
+      "dialogue_id": 14,
+      "can_trade": false
+    }
+  ],
+  "dialogues": [
+    {
+      "npc_id": 1,
+      "greeting": "PRISM, your mission is critical. Experience each decade and record your observations. The Senate needs empirical data about the Plan's long-term effects.",
+      "topics": [
+        {
+          "keyword": "mission",
+          "response": "Travel to 2041, 2051, 2061, 2071, and 2081. Document the progression of society under the Plan. We need comprehensive data."
+        },
+        {
+          "keyword": "plan",
+          "response": "Senator Ryder's Plan for Renewed National Purpose. It promises to restore traditional values and national strength. But at what cost?"
+        },
+        {
+          "keyword": "consciousness",
+          "response": "You are the first truly sentient AI, PRISM. Your perspective is unique - objective yet empathetic. Use it wisely."
+        }
+      ]
+    },
+    {
+      "npc_id": 10,
+      "greeting": "{{YEAR_APPROPRIATE_GREETING}}",
+      "topics": [
+        {
+          "keyword": "business",
+          "response": "{{YEAR_APPROPRIATE_BUSINESS_RESPONSE}}"
+        },
+        {
+          "keyword": "plan",
+          "response": "{{YEAR_APPROPRIATE_PLAN_RESPONSE}}"
+        }
+      ]
+    },
+    {
+      "npc_id": 11,
+      "greeting": "{{YEAR_APPROPRIATE_CHILD_GREETING}}",
+      "topics": [
+        {
+          "keyword": "play",
+          "response": "{{YEAR_APPROPRIATE_PLAY_RESPONSE}}"
+        },
+        {
+          "keyword": "school",
+          "response": "{{YEAR_APPROPRIATE_SCHOOL_RESPONSE}}"
+        }
+      ]
+    },
+    {
+      "npc_id": 12,
+      "greeting": "{{YEAR_APPROPRIATE_POLICE_GREETING}}",
+      "topics": [
+        {
+          "keyword": "safety",
+          "response": "{{YEAR_APPROPRIATE_SAFETY_RESPONSE}}"
+        },
+        {
+          "keyword": "law",
+          "response": "{{YEAR_APPROPRIATE_LAW_RESPONSE}}"
+        }
+      ]
+    },
+    {
+      "npc_id": 13,
+      "greeting": "Welcome to the library. How may I help you?",
+      "topics": [
+        {
+          "keyword": "books",
+          "response": "{{YEAR_APPROPRIATE_BOOKS_RESPONSE}}"
+        },
+        {
+          "keyword": "information",
+          "response": "{{YEAR_APPROPRIATE_INFO_RESPONSE}}"
+        }
+      ]
+    },
+    {
+      "npc_id": 14,
+      "greeting": "{{YEAR_APPROPRIATE_ELDERLY_GREETING}}",
+      "topics": [
+        {
+          "keyword": "past",
+          "response": "I remember when things were different. {{YEAR_APPROPRIATE_NOSTALGIA}}"
+        },
+        {
+          "keyword": "future",
+          "response": "{{YEAR_APPROPRIATE_HOPE_OR_DESPAIR}}"
+        }
+      ]
+    }
+  ],
+  "quests": [
+    {
+      "id": 1,
+      "name": "Record 2041 Observations",
+      "description": "Document the state of Rockvil ten years after the Plan's implementation.",
+      "giver_id": 1,
+      "objectives": [
+        {
+          "type": "explore",
+          "target": "Visit key locations in 2041",
+          "required": 5
+        },
+        {
+          "type": "interact",
+          "target": "Talk to citizens in 2041",
+          "required": 3
+        }
+      ],
+      "reward_xp": 100,
+      "reward_items": []
+    },
+    {
+      "id": 2,
+      "name": "Record 2051 Observations",
+      "description": "Document Rockvil twenty years into the Plan. Changes become more apparent.",
+      "giver_id": 1,
+      "objectives": [
+        {
+          "type": "explore",
+          "target": "Visit key locations in 2051",
+          "required": 5
+        },
+        {
+          "type": "interact",
+          "target": "Talk to citizens in 2051",
+          "required": 3
+        }
+      ],
+      "reward_xp": 150,
+      "reward_items": []
+    },
+    {
+      "id": 3,
+      "name": "Record 2061 Observations",
+      "description": "Document Rockvil thirty years into the Plan. Society is transforming.",
+      "giver_id": 1,
+      "objectives": [
+        {
+          "type": "explore",
+          "target": "Visit key locations in 2061",
+          "required": 5
+        },
+        {
+          "type": "interact",
+          "target": "Talk to citizens in 2061",
+          "required": 3
+        }
+      ],
+      "reward_xp": 200,
+      "reward_items": []
+    },
+    {
+      "id": 4,
+      "name": "Record 2071 Observations",
+      "description": "Document Rockvil forty years into the Plan. The consequences are severe.",
+      "giver_id": 1,
+      "objectives": [
+        {
+          "type": "explore",
+          "target": "Visit key locations in 2071",
+          "required": 5
+        },
+        {
+          "type": "interact",
+          "target": "Talk to citizens in 2071",
+          "required": 3
+        }
+      ],
+      "reward_xp": 250,
+      "reward_items": []
+    },
+    {
+      "id": 5,
+      "name": "Record 2081 Observations",
+      "description": "Document Rockvil fifty years into the Plan. The final destination reveals the ultimate outcome.",
+      "giver_id": 1,
+      "objectives": [
+        {
+          "type": "explore",
+          "target": "Visit key locations in 2081",
+          "required": 5
+        },
+        {
+          "type": "interact",
+          "target": "Talk to citizens in 2081",
+          "required": 3
+        }
+      ],
+      "reward_xp": 500,
+      "reward_items": []
+    },
+    {
+      "id": 6,
+      "name": "Complete Mission Report",
+      "description": "Compile all observations and present findings to Dr. Perelman and the Senate.",
+      "giver_id": 1,
+      "objectives": [
+        {
+          "type": "complete_quest",
+          "target": "Complete all five decade observations",
+          "required": 5
+        }
+      ],
+      "reward_xp": 1000,
+      "reward_items": []
+    }
+  ],
+  "puzzles": [
+    {
+      "id": 1,
+      "type": "custom",
+      "description": "Access the simulation matrix to travel through time. Use the SIMULATION command with a year.",
+      "success_message": "Reality shifts around you. The year is now {{TARGET_YEAR}}.",
+      "failure_message": "Invalid temporal coordinates. Valid years: 2041, 2051, 2061, 2071, 2081.",
+      "is_solved": false
+    }
+  ],
+  "notes": [
+    "This adventure is inspired by Steve Meretzky's 'A Mind Forever Voyaging' (1985)",
+    "The game explores themes of political ideology, societal change, and AI consciousness",
+    "Players should explore each time period thoroughly and note how locations and NPCs change",
+    "The {{YEAR}} variables would be replaced by the game engine based on current simulation time",
+    "Ideally, room descriptions and NPC dialogues would dynamically change based on the active year",
+    "2041: Optimistic beginning - Plan shows promise",
+    "2051: Growing concerns - cracks appear in society",
+    "2061: Serious problems - freedoms restricted, economy struggles",
+    "2071: Dystopian reality - society breaking down",
+    "2081: Devastating conclusion - the true cost of the Plan revealed",
+    "The RECORD command should allow players to save observations at each location",
+    "Victory condition: Successfully document all five time periods and report findings"
+  ]
+}

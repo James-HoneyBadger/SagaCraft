@@ -1,0 +1,556 @@
+{
+  "title": "Zork: The Great Underground Empire",
+  "author": "Inspired by the Infocom Classic",
+  "intro": "You stand before a white house with a boarded front door.\nThere is a small mailbox here.\n\nYou are about to enter the Great Underground Empire, a realm of treasure,\nmagic, and deadly puzzles. Many adventurers have entered. Few have returned.\n\nYour quest: explore the vast caverns, collect the Twenty Treasures of Zork,\nand survive the many dangers that lurk in the darkness.\n\nIt is pitch black. You are likely to be eaten by a grue.\n\n(Unless you bring a light source.)\n\nWelcome to Zork!",
+  "start_room": 1,
+  "settings": {
+    "allow_save": true,
+    "darkness_deadly": true,
+    "grues_enabled": true
+  },
+  "rooms": [
+    {
+      "id": 1,
+      "name": "West of House",
+      "description": "You are standing in an open field west of a white house, with a boarded\nfront door. There is a small mailbox here.",
+      "exits": {
+        "north": 2,
+        "south": 3,
+        "east": 4
+      }
+    },
+    {
+      "id": 2,
+      "name": "North of House",
+      "description": "You are facing the north side of a white house. There is no door here,\nand all the windows are boarded up. To the north a narrow path winds\nthrough the trees.",
+      "exits": {
+        "south": 1,
+        "east": 5,
+        "west": 1
+      }
+    },
+    {
+      "id": 3,
+      "name": "South of House",
+      "description": "You are facing the south side of a white house. There is no door here,\nand all the windows are boarded. To the south is a forest.",
+      "exits": {
+        "north": 1,
+        "east": 6,
+        "west": 7
+      }
+    },
+    {
+      "id": 4,
+      "name": "Behind House",
+      "description": "You are behind the white house. A path leads into the forest to the east.\nIn one corner of the house there is a small window which is slightly ajar.",
+      "exits": {
+        "west": 1,
+        "north": 5,
+        "south": 6,
+        "window": 10
+      }
+    },
+    {
+      "id": 5,
+      "name": "Forest Path",
+      "description": "This is a path winding through a dimly lit forest. The path heads north-\nsouth here. One particularly large tree with some low branches stands at\nthe edge of the path.",
+      "exits": {
+        "south": 2,
+        "west": 2,
+        "up": 8
+      }
+    },
+    {
+      "id": 6,
+      "name": "Behind House - East Corner",
+      "description": "You are at the east side of the house, behind it. The forest surrounds\nthis area, and a path leads south into the woods.",
+      "exits": {
+        "north": 4,
+        "west": 3,
+        "south": 9
+      }
+    },
+    {
+      "id": 7,
+      "name": "Stone Barrow",
+      "description": "You are standing in front of a stone barrow. An ancient burial mound.\nSteps lead down into darkness. This seems unwise to enter unarmed.",
+      "exits": {
+        "east": 3,
+        "down": 20
+      }
+    },
+    {
+      "id": 8,
+      "name": "Up a Tree",
+      "description": "You are about 10 feet above the ground, nestled among some large branches.\nThe nearest branch above you is above your reach. Below you is the forest path.",
+      "exits": {
+        "down": 5
+      }
+    },
+    {
+      "id": 9,
+      "name": "Clearing",
+      "description": "You are in a small clearing in the forest. A pile of leaves is here.\nThe path continues north and south.",
+      "exits": {
+        "north": 6,
+        "south": 9
+      }
+    },
+    {
+      "id": 10,
+      "name": "Kitchen",
+      "description": "You are in the kitchen of the white house. A table seems to have been\nused recently for the preparation of food. A passage leads to the west\nand a dark staircase can be seen leading upward. A chimney leads down.\nOn the table is an elongated brown sack, smelling of hot peppers.",
+      "exits": {
+        "west": 11,
+        "up": 15,
+        "down": 30
+      }
+    },
+    {
+      "id": 11,
+      "name": "Living Room",
+      "description": "You are in the living room. There is a doorway to the east, a wooden\ndoor with strange gothic lettering to the west (which appears to be nailed\nshut), a trophy case, and a large oriental rug in the center of the room.",
+      "exits": {
+        "east": 10,
+        "down": 12
+      }
+    },
+    {
+      "id": 12,
+      "name": "Cellar",
+      "description": "You are in a dark and damp cellar with a narrow passageway leading\nnorth, and a crawlway to the south. On the west is the bottom of a steep\nmetal ramp which is unclimbable. The trap door is closed.",
+      "exits": {
+        "north": 13,
+        "south": 14,
+        "up": 11
+      }
+    },
+    {
+      "id": 13,
+      "name": "Troll Room",
+      "description": "This is a small room with passages off in all directions. A NASTY-looking\nTROLL blocks the eastern passage, guarding a bridge. The troll is armed\nwith a wicked-looking axe and doesn't look friendly.",
+      "exits": {
+        "south": 12,
+        "east": 16,
+        "west": 17,
+        "north": 18
+      }
+    },
+    {
+      "id": 14,
+      "name": "East-West Passage",
+      "description": "This is a narrow east-west passageway. There is a narrow stairway leading\ndown at the north end of the room.",
+      "exits": {
+        "north": 12,
+        "east": 19,
+        "down": 20
+      }
+    },
+    {
+      "id": 15,
+      "name": "Attic",
+      "description": "This is the attic. The only exit is a stairway leading down. A large\ncoil of rope is lying in the corner.",
+      "exits": {
+        "down": 10
+      }
+    },
+    {
+      "id": 16,
+      "name": "East of Chasm",
+      "description": "You are on the east edge of a chasm, the bottom of which cannot be seen.\nThe east/west path you are on continues past the chasm. A wooden plank\nlies nearby, suitable for crossing the chasm.",
+      "exits": {
+        "west": 13,
+        "cross": 21
+      }
+    },
+    {
+      "id": 17,
+      "name": "Maze of Twisty Little Passages",
+      "description": "You are in a maze of twisty little passages, all alike.\nA faint sound of water can be heard to the north.",
+      "exits": {
+        "north": 22,
+        "south": 17,
+        "east": 17,
+        "west": 17
+      }
+    },
+    {
+      "id": 18,
+      "name": "Round Room",
+      "description": "This is a circular stone room with passages in all directions. Several\nstrange markings are on the walls, written in what appears to be blood.",
+      "exits": {
+        "south": 13,
+        "north": 23,
+        "east": 24,
+        "west": 25
+      }
+    },
+    {
+      "id": 19,
+      "name": "Chasm",
+      "description": "You have come to a deep chasm. A narrow bridge spans the chasm,\nswaying ominously. Below, you can hear the sound of rushing water.",
+      "exits": {
+        "west": 14,
+        "cross": 26
+      }
+    },
+    {
+      "id": 20,
+      "name": "Temple",
+      "description": "This is the north end of a large temple. On the east wall is an ancient\ninscription, probably a prayer in a long-forgotten language. The hall\nextends to the south.",
+      "exits": {
+        "south": 27,
+        "up": 14
+      }
+    },
+    {
+      "id": 21,
+      "name": "Gallery",
+      "description": "This is an art gallery. Most of the paintings have been stolen by\nvandals with exceptional taste. The vandals left behind a valuable\npainting of unparalleled beauty.",
+      "exits": {
+        "west": 16
+      }
+    },
+    {
+      "id": 22,
+      "name": "Reservoir",
+      "description": "You are in a reservoir. A large lake fills this cavern. At the\nsouthern end is a dam. There is a small hole in the rocks to the east.",
+      "exits": {
+        "south": 17,
+        "east": 28
+      }
+    },
+    {
+      "id": 23,
+      "name": "Loud Room",
+      "description": "This is a large room with a ceiling which cannot be detected from the\nground. The acoustics of the room are such that loud noises echo and\nreverberate throughout the room. A single piece of metal lies on the floor.",
+      "exits": {
+        "south": 18,
+        "up": 29,
+        "west": 24,
+        "east": 25
+      }
+    },
+    {
+      "id": 24,
+      "name": "Deep Ravine",
+      "description": "You are on the south edge of a deep ravine. Passages exit to the east\nand west. You can hear the sound of water far below.",
+      "exits": {
+        "west": 18,
+        "east": 23
+      }
+    },
+    {
+      "id": 25,
+      "name": "Damp Cave",
+      "description": "This is a damp cave whose exit is to the east. A recent cave-in has\nblocked off the west passage. Some valuable items might be buried in the rubble.",
+      "exits": {
+        "east": 18
+      }
+    },
+    {
+      "id": 26,
+      "name": "Treasure Room",
+      "description": "This is the treasure room of the dungeon. Along the walls are chests,\ncrates, and boxes of all sizes. Most are empty, but some contain ancient\nartifacts and treasures. This is what you came for!",
+      "exits": {
+        "west": 19
+      }
+    },
+    {
+      "id": 27,
+      "name": "Egyptian Room",
+      "description": "This is a room that appears to be a temple from ancient Egypt. Stone\ncolumns support a painted ceiling. Hieroglyphics cover every surface.\nA sarcophagus stands in the center.",
+      "exits": {
+        "north": 20
+      }
+    },
+    {
+      "id": 28,
+      "name": "Stream",
+      "description": "You are on a small beach at the edge of a stream. The stream is flowing\nrapidly and appears to be a good place to launch a boat.",
+      "exits": {
+        "west": 22
+      }
+    },
+    {
+      "id": 29,
+      "name": "Dome Room",
+      "description": "You are in a magnificent dome room. The ceiling is painted with scenes\nfrom the creation of the Great Underground Empire. A torch holder\nis on one wall. Passages lead in multiple directions.",
+      "exits": {
+        "down": 23,
+        "north": 30,
+        "south": 31
+      }
+    },
+    {
+      "id": 30,
+      "name": "Torch Room",
+      "description": "This is a large room with a prominent doorway leading to a down staircase.\nAbove you is a large dome painted with scenes depicting elvish heros in battle.",
+      "exits": {
+        "south": 29,
+        "down": 32
+      }
+    },
+    {
+      "id": 31,
+      "name": "Temple Altar",
+      "description": "You are at the altar of an ancient temple. Offerings to forgotten gods\nlie scattered about. A jeweled golden chalice rests on the altar.",
+      "exits": {
+        "north": 29
+      }
+    },
+    {
+      "id": 32,
+      "name": "Entrance to Hades",
+      "description": "You are outside a large gateway, on top of a steep path leading up.\nThe gateway is sealed by a massive wooden door with bronze hinges.\nBeyond the door, you can hear the moans of tortured souls.",
+      "exits": {
+        "up": 30,
+        "south": 33
+      }
+    },
+    {
+      "id": 33,
+      "name": "Land of the Living Dead",
+      "description": "You have entered the Land of the Living Dead. Spirits float past,\nignoring your presence. This is not a place for the living.\nProceed with extreme caution. An exit is north.",
+      "exits": {
+        "north": 32
+      }
+    }
+  ],
+  "items": [
+    {
+      "id": 1,
+      "name": "mailbox",
+      "description": "A small mailbox. There is a leaflet inside.",
+      "room_id": 1,
+      "is_takeable": false,
+      "value": 0,
+      "weight": 50
+    },
+    {
+      "id": 2,
+      "name": "leaflet",
+      "description": "WELCOME TO ZORK! Instructions: 'Take the objects you need. Solve the puzzles. Don't get eaten by a grue.'",
+      "room_id": 1,
+      "is_takeable": true,
+      "value": 0,
+      "weight": 1
+    },
+    {
+      "id": 3,
+      "name": "brass lantern",
+      "description": "A battery-powered brass lantern. Essential for exploring dark places. Without it, grues will eat you.",
+      "room_id": 11,
+      "is_takeable": true,
+      "value": 100,
+      "weight": 3,
+      "special_properties": {
+        "light_source": true,
+        "prevents_grue": true
+      }
+    },
+    {
+      "id": 4,
+      "name": "rope",
+      "description": "A sturdy coil of rope. About fifty feet long. Useful for climbing.",
+      "room_id": 15,
+      "is_takeable": true,
+      "value": 50,
+      "weight": 5
+    },
+    {
+      "id": 5,
+      "name": "sword",
+      "description": "An elvish sword of great antiquity. It glows with a faint blue light when enemies are near.",
+      "room_id": 11,
+      "is_takeable": true,
+      "value": 200,
+      "weight": 8,
+      "special_properties": {
+        "weapon": true,
+        "glows_near_enemies": true
+      }
+    },
+    {
+      "id": 6,
+      "name": "sack of peppers",
+      "description": "A cloth sack containing hot peppers. The smell is overpowering.",
+      "room_id": 10,
+      "is_takeable": true,
+      "value": 10,
+      "weight": 3
+    },
+    {
+      "id": 7,
+      "name": "trophy case",
+      "description": "A large trophy case. This is where you should place your treasures. Each treasure placed here increases your score.",
+      "room_id": 11,
+      "is_takeable": false,
+      "value": 0,
+      "weight": 200
+    },
+    {
+      "id": 8,
+      "name": "painting",
+      "description": "A beautiful painting of unparalleled beauty. One of the Twenty Treasures of Zork.",
+      "room_id": 21,
+      "is_takeable": true,
+      "value": 500,
+      "weight": 10,
+      "special_properties": {
+        "is_treasure": true
+      }
+    },
+    {
+      "id": 9,
+      "name": "jeweled egg",
+      "description": "A large jewel-encrusted egg. A priceless Fabergé-style artifact. One of the Twenty Treasures.",
+      "room_id": 8,
+      "is_takeable": true,
+      "value": 600,
+      "weight": 4,
+      "special_properties": {
+        "is_treasure": true
+      }
+    },
+    {
+      "id": 10,
+      "name": "platinum bar",
+      "description": "A heavy bar of pure platinum. Stamped with the seal of the Great Underground Empire.",
+      "room_id": 23,
+      "is_takeable": true,
+      "value": 700,
+      "weight": 15,
+      "special_properties": {
+        "is_treasure": true
+      }
+    },
+    {
+      "id": 11,
+      "name": "jade figurine",
+      "description": "An exquisite jade figurine of a ancient deity. One of the Twenty Treasures.",
+      "room_id": 25,
+      "is_takeable": true,
+      "value": 550,
+      "weight": 3,
+      "special_properties": {
+        "is_treasure": true
+      }
+    },
+    {
+      "id": 12,
+      "name": "jeweled scarab",
+      "description": "A golden scarab encrusted with precious gems. From ancient Egypt. A treasure.",
+      "room_id": 27,
+      "is_takeable": true,
+      "value": 650,
+      "weight": 2,
+      "special_properties": {
+        "is_treasure": true
+      }
+    },
+    {
+      "id": 13,
+      "name": "golden chalice",
+      "description": "A magnificent golden chalice set with diamonds and rubies. One of the treasures.",
+      "room_id": 31,
+      "is_takeable": true,
+      "value": 800,
+      "weight": 6,
+      "special_properties": {
+        "is_treasure": true
+      }
+    }
+  ],
+  "monsters": [
+    {
+      "id": 1,
+      "name": "Troll",
+      "description": "A nasty troll blocks your path, brandishing a bloody axe. 'None shall pass!' he roars.",
+      "room_id": 13,
+      "hardiness": 30,
+      "agility": 12,
+      "friendliness": "hostile",
+      "courage": 90,
+      "special_abilities": ["axe_attack", "blocks_passage"]
+    },
+    {
+      "id": 2,
+      "name": "Grue",
+      "description": "It is pitch black. You are likely to be eaten by a grue. (The grue is a sinister, lurking presence in the dark places of the earth. It is invisible in darkness and only attacks those without light.)",
+      "room_id": 0,
+      "hardiness": 999,
+      "agility": 20,
+      "friendliness": "hostile",
+      "courage": 100,
+      "special_abilities": ["lurks_in_darkness", "instant_death", "avoids_light"]
+    },
+    {
+      "id": 3,
+      "name": "Thief",
+      "description": "A shadowy figure lurks here - the notorious Dungeon Thief. He steals treasures and vanishes into the maze.",
+      "room_id": 17,
+      "hardiness": 18,
+      "agility": 25,
+      "friendliness": "hostile",
+      "courage": 70,
+      "special_abilities": ["steal_treasures", "evade", "teleport"]
+    }
+  ],
+  "quests": [
+    {
+      "id": 1,
+      "name": "The Twenty Treasures",
+      "description": "Collect the Twenty Treasures of Zork and place them in the trophy case.",
+      "objectives": [
+        {
+          "type": "collect_treasures",
+          "target": "Place treasures in trophy case",
+          "required": 20
+        }
+      ],
+      "reward_xp": 5000,
+      "reward_items": [],
+      "completion_triggers_ending": true
+    },
+    {
+      "id": 2,
+      "name": "Defeat the Troll",
+      "description": "Get past the troll guarding the bridge.",
+      "objectives": [
+        {
+          "type": "defeat_enemy",
+          "target": "Troll",
+          "required": 1
+        }
+      ],
+      "reward_xp": 300,
+      "reward_items": []
+    },
+    {
+      "id": 3,
+      "name": "Navigate the Maze",
+      "description": "Find your way through the maze of twisty passages.",
+      "objectives": [
+        {
+          "type": "reach_location",
+          "target": "Reservoir",
+          "required": 1
+        }
+      ],
+      "reward_xp": 200,
+      "reward_items": []
+    }
+  ],
+  "notes": [
+    "Based on the original Zork (1977-1979) by MIT students",
+    "Published commercially by Infocom as Zork I, II, and III",
+    "This combines elements from all three games",
+    "The grue became one of gaming's most iconic monsters",
+    "Original tagline: 'The Great Underground Empire awaits you'",
+    "Treasures must be placed in trophy case for points",
+    "Dark rooms are deadly without a light source",
+    "The troll can be defeated or distracted with treasures",
+    "Maze requires mapping skills or dropping items as markers"
+  ]
+}

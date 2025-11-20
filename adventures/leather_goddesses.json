@@ -1,0 +1,424 @@
+{
+  "title": "Leather Goddesses of Phobos",
+  "author": "Inspired by Steve Meretzky's Classic",
+  "intro": "It's 1936. You're in a seedy bar in Upper Sandusky, Ohio, nursing a drink\nand contemplating life's disappointments.\n\nSuddenly, nature calls. You head to the restroom. But when you emerge,\neverything has changed. An alien just walked past. Your bartender has\ntentacles. And someone slipped a strange device into your pocket.\n\nBefore you can process this, a holographic message activates:\n\n'Greetings, Earthling! The Leather Goddesses of Phobos plan to enslave\nyour planet using their Kinetic Integrated Sinister Sex-ray! You must\nstop them! Collect the three vital components scattered across space\nand time, build the Anti-Leather-Goddess-of-Phobos Device, and save Earth!\n\nOh, and try not to die. Good luck!'\n\nWell, this beats another boring Tuesday.\n\nNote: This is a TAME version. The original had adjustable naughtiness levels.",
+  "start_room": 1,
+  "settings": {
+    "allow_save": true,
+    "humor_level": "high",
+    "absurdity_enabled": true
+  },
+  "rooms": [
+    {
+      "id": 1,
+      "name": "Joe's Bar - Upper Sandusky, Ohio, 1936",
+      "description": "A dingy bar that's seen better decades. The bartender (who definitely\ndidn't have tentacles a minute ago) polishes glasses with disturbing\nnonchalance. The restroom doors are marked 'MALE' and 'FEMALE' (choose\nwisely - it determines your adventure partner). Exit is south.",
+      "exits": {
+        "south": 2,
+        "restroom": 3
+      }
+    },
+    {
+      "id": 2,
+      "name": "Main Street - Upper Sandusky",
+      "description": "Main Street looks normal, if you ignore the flying saucer parked near\nthe courthouse and the Martian buying a newspaper. North is the bar.\nEast leads to the town square. A suspicious alley is west.",
+      "exits": {
+        "north": 1,
+        "east": 10,
+        "west": 20
+      }
+    },
+    {
+      "id": 3,
+      "name": "Interdimensional Restroom",
+      "description": "This restroom exists between dimensions. Graffiti on the walls is in\nalien languages. A portal shimmers in the mirror. One stall is labeled\n'MARS', another 'VENUS', a third 'PHOBOS'. Choose carefully.",
+      "exits": {
+        "mars": 30,
+        "venus": 40,
+        "phobos": 50,
+        "out": 1
+      }
+    },
+    {
+      "id": 10,
+      "name": "Town Square",
+      "description": "A quaint town square with a gazebo and statue of some forgotten politician.\nA TIME MACHINE disguised as a phone booth is here (subtle). West is Main Street.",
+      "exits": {
+        "west": 2,
+        "enter": 11
+      }
+    },
+    {
+      "id": 11,
+      "name": "Time Machine Interior",
+      "description": "Bigger on the inside (naturally). Controls are labeled for various\neras and locations. Current setting: RANDOM. A note says 'Don't touch\nthe pink button.' The square is outside.",
+      "exits": {
+        "exit": 10,
+        "activate": 12
+      }
+    },
+    {
+      "id": 12,
+      "name": "Ancient Egypt - 2000 BCE",
+      "description": "You've materialized near the Sphinx. Pyramids loom in the distance.\nA confused pharaoh is arguing with a leather-clad goddess about building codes.\nThe time machine is east.",
+      "exits": {
+        "east": 11,
+        "pyramid": 13
+      }
+    },
+    {
+      "id": 13,
+      "name": "Inside the Great Pyramid",
+      "description": "Torch-lit passages. Hieroglyphs cover the walls. One shows what appears\nto be ancient Martians teaching Egyptians mathematics. A secret chamber\nis hidden behind a loose stone. Egypt is west.",
+      "exits": {
+        "west": 12,
+        "secret": 14
+      }
+    },
+    {
+      "id": 14,
+      "name": "Secret Chamber",
+      "description": "An alien artifact rests on a pedestal: THE HYPER-DIMENSIONAL RUBBER DUCK.\nYes, really. It's one of the three components you need. The pyramid is out.",
+      "exits": {
+        "out": 13
+      }
+    },
+    {
+      "id": 20,
+      "name": "Mysterious Alley",
+      "description": "A dark alley that shouldn't exist in Upper Sandusky. A door marked\n'INTER-PLANETARY TRADING POST' glows softly. Main Street is east.",
+      "exits": {
+        "east": 2,
+        "enter": 21
+      }
+    },
+    {
+      "id": 21,
+      "name": "Trading Post",
+      "description": "A shop selling goods from across the galaxy. Weapons, gadgets, mysterious\npotions. The shopkeeper is a blob from Rigel VII. It accepts Earth money\n(currently 1936 dollars). The alley is out.",
+      "exits": {
+        "out": 20
+      }
+    },
+    {
+      "id": 30,
+      "name": "Mars - Canals District",
+      "description": "The famous Martian canals, which turn out to be real. Red sand, pink\nsky, and improbable architecture. Martians in leather jackets lounge\naround. A casino is north. The restroom portal is south.",
+      "exits": {
+        "north": 31,
+        "south": 3,
+        "east": 32
+      }
+    },
+    {
+      "id": 31,
+      "name": "Martian Casino",
+      "description": "Gambling! Martian-style! Games include 'Spin the Asteroid' and 'Tentacle\nPoker'. You could win useful items here. The canals are south.",
+      "exits": {
+        "south": 30
+      }
+    },
+    {
+      "id": 32,
+      "name": "Martian Junkyard",
+      "description": "Piles of discarded alien technology. A tinkerer's paradise or a junk\nheap, depending on perspective. THE QUANTUM SPATULA might be here somewhere.\nThe canals are west.",
+      "exits": {
+        "west": 30
+      }
+    },
+    {
+      "id": 40,
+      "name": "Venus - Jungle Clearing",
+      "description": "Dense jungle under a thick cloud cover. Everything is damp and green.\nAlien plants try to sell you insurance. North leads deeper into jungle.\nThe restroom portal is south.",
+      "exits": {
+        "north": 41,
+        "south": 3
+      }
+    },
+    {
+      "id": 41,
+      "name": "Temple of the Cosmic Kipper",
+      "description": "An ancient temple dedicated to a cosmic fish deity. Makes perfect sense\nif you don't think about it. THE CELESTIAL CHEESECLOTH is the third component,\nand it's here. The jungle is south.",
+      "exits": {
+        "south": 40
+      }
+    },
+    {
+      "id": 50,
+      "name": "Phobos - Leather Goddess Headquarters",
+      "description": "You've infiltrated the enemy stronghold! Leather Goddesses strut around\nin impractical footwear. The throne room is north. This is dangerous.\nThe restroom portal is south (escape route).",
+      "exits": {
+        "north": 51,
+        "south": 3
+      }
+    },
+    {
+      "id": 51,
+      "name": "Throne Room of the Leather Goddesses",
+      "description": "Three goddesses recline on thrones, discussing their evil plan. The\nKinetic Integrated Sinister Sex-ray looms ominously. You need to activate\nyour Anti-Leather-Goddess-of-Phobos Device here. Phobos entrance is south.",
+      "exits": {
+        "south": 50
+      }
+    }
+  ],
+  "items": [
+    {
+      "id": 1,
+      "name": "interdimensional hopper",
+      "description": "A small device that creates portals. Mysteriously appeared in your pocket. Smells like ozone and regret.",
+      "room_id": 1,
+      "is_takeable": true,
+      "value": 500,
+      "weight": 2
+    },
+    {
+      "id": 2,
+      "name": "rubber duck",
+      "description": "THE HYPER-DIMENSIONAL RUBBER DUCK. One of three components. It exists in multiple dimensions simultaneously. Still squeaks.",
+      "room_id": 14,
+      "is_takeable": true,
+      "value": 1000,
+      "weight": 3,
+      "special_properties": {
+        "is_quest_item": true,
+        "component": 1
+      }
+    },
+    {
+      "id": 3,
+      "name": "quantum spatula",
+      "description": "THE QUANTUM SPATULA. Component two. Can flip pancakes and reality. Mostly reality.",
+      "room_id": 32,
+      "is_takeable": true,
+      "value": 1000,
+      "weight": 2,
+      "special_properties": {
+        "is_quest_item": true,
+        "component": 2
+      }
+    },
+    {
+      "id": 4,
+      "name": "celestial cheesecloth",
+      "description": "THE CELESTIAL CHEESECLOTH. The third component. Woven from cosmic dairy byproducts. Don't ask.",
+      "room_id": 41,
+      "is_takeable": true,
+      "value": 1000,
+      "weight": 1,
+      "special_properties": {
+        "is_quest_item": true,
+        "component": 3
+      }
+    },
+    {
+      "id": 5,
+      "name": "Martian whiskey",
+      "description": "Potent Martian alcohol. 200 proof. Possibly flammable. Definitely inadvisable.",
+      "room_id": 30,
+      "is_takeable": true,
+      "value": 20,
+      "weight": 2
+    },
+    {
+      "id": 6,
+      "name": "scratch-and-sniff card",
+      "description": "An alien scratch-and-sniff card. Smells like purple. Yes, purple has a smell now.",
+      "room_id": 21,
+      "is_takeable": true,
+      "value": 5,
+      "weight": 0
+    },
+    {
+      "id": 7,
+      "name": "disguise kit",
+      "description": "A complete disguise kit. Includes fake tentacles, leather outfit, and an attitude.",
+      "room_id": 21,
+      "is_takeable": true,
+      "value": 100,
+      "weight": 5
+    },
+    {
+      "id": 8,
+      "name": "assembly instructions",
+      "description": "Instructions for building the Anti-Leather-Goddess-of-Phobos Device. Written in 47 languages, none helpful.",
+      "room_id": 10,
+      "is_takeable": true,
+      "value": 0,
+      "weight": 1
+    }
+  ],
+  "monsters": [
+    {
+      "id": 1,
+      "name": "Trent",
+      "description": "Your randomly-assigned adventure companion. Brave, loyal, and confused about what's happening. Attracted to you but terrible at expressing it.",
+      "room_id": 2,
+      "hardiness": 12,
+      "agility": 10,
+      "friendliness": "friend",
+      "courage": 75,
+      "dialogue_id": 1,
+      "can_trade": true
+    },
+    {
+      "id": 2,
+      "name": "Leather Goddess #1 - Tawny",
+      "description": "Tall, imperious, and dressed in impractical leather. Leader of the trio. Surprisingly good at chess.",
+      "room_id": 51,
+      "hardiness": 18,
+      "agility": 16,
+      "friendliness": "hostile",
+      "courage": 90,
+      "dialogue_id": 2,
+      "special_abilities": ["seduction", "whip_attack"]
+    },
+    {
+      "id": 3,
+      "name": "Martian hustler",
+      "description": "A Martian trying to sell you 'authentic' Earth artifacts. Everything is suspiciously from the future.",
+      "room_id": 31,
+      "hardiness": 8,
+      "agility": 12,
+      "friendliness": "neutral",
+      "courage": 40,
+      "dialogue_id": 3,
+      "can_trade": true
+    },
+    {
+      "id": 4,
+      "name": "tentacle bartender",
+      "description": "Your bartender from Joe's Bar. Now has tentacles. Still makes a mean martini. Doesn't want to discuss the tentacles.",
+      "room_id": 1,
+      "hardiness": 10,
+      "agility": 14,
+      "friendliness": "neutral",
+      "courage": 60,
+      "dialogue_id": 4,
+      "can_trade": true
+    }
+  ],
+  "dialogues": [
+    {
+      "npc_id": 1,
+      "greeting": "I... I don't understand what's happening. But I'm with you. Whatever this is.",
+      "topics": [
+        {
+          "keyword": "help",
+          "response": "I can carry stuff, fight leather goddesses, and provide moral support. Also, I'm pretty sure I'm falling for you, but this isn't the time."
+        },
+        {
+          "keyword": "goddesses",
+          "response": "Evil alien dominatrices trying to enslave Earth? Sure, why not. This week can't get weirder."
+        }
+      ]
+    },
+    {
+      "npc_id": 2,
+      "greeting": "Foolish Earthling! You dare challenge the Leather Goddesses of Phobos?",
+      "topics": [
+        {
+          "keyword": "plan",
+          "response": "We will enslave your planet with our Kinetic Integrated Sinister Sex-ray! Earth will bow before us in fashionable leather!"
+        },
+        {
+          "keyword": "negotiate",
+          "response": "Negotiate? We are goddesses! We don't negotiate! Well... maybe over dinner. Are you free Thursday?"
+        }
+      ]
+    },
+    {
+      "npc_id": 3,
+      "greeting": "Hey pal! Want to buy authentic Earth artifacts? Got a genuine 1987 Walkman right here!",
+      "topics": [
+        {
+          "keyword": "1987",
+          "response": "What? Oh, uh... time flows differently on Mars. Yeah. That's it."
+        }
+      ]
+    },
+    {
+      "npc_id": 4,
+      "greeting": "What'll it be? And please don't mention the tentacles.",
+      "topics": [
+        {
+          "keyword": "tentacles",
+          "response": "*sighs* It happened when reality shifted. I'm adapting. At least I can multitask now."
+        }
+      ]
+    }
+  ],
+  "quests": [
+    {
+      "id": 1,
+      "name": "Collect the Three Components",
+      "description": "Find the Hyper-Dimensional Rubber Duck, Quantum Spatula, and Celestial Cheesecloth.",
+      "objectives": [
+        {
+          "type": "obtain_item",
+          "target": "rubber duck",
+          "required": 1
+        },
+        {
+          "type": "obtain_item",
+          "target": "quantum spatula",
+          "required": 1
+        },
+        {
+          "type": "obtain_item",
+          "target": "celestial cheesecloth",
+          "required": 1
+        }
+      ],
+      "reward_xp": 500,
+      "reward_items": []
+    },
+    {
+      "id": 2,
+      "name": "Build the Anti-Leather-Goddess Device",
+      "description": "Assemble the three components into a functional device.",
+      "objectives": [
+        {
+          "type": "complete_quest",
+          "target": "Collect the Three Components",
+          "required": 1
+        },
+        {
+          "type": "obtain_item",
+          "target": "assembly instructions",
+          "required": 1
+        }
+      ],
+      "reward_xp": 300,
+      "reward_items": []
+    },
+    {
+      "id": 3,
+      "name": "Defeat the Leather Goddesses",
+      "description": "Infiltrate Phobos and stop the Kinetic Integrated Sinister Sex-ray!",
+      "objectives": [
+        {
+          "type": "complete_quest",
+          "target": "Build the Anti-Leather-Goddess Device",
+          "required": 1
+        },
+        {
+          "type": "reach_location",
+          "target": "Throne Room",
+          "required": 1
+        }
+      ],
+      "reward_xp": 1000,
+      "reward_items": [],
+      "completion_triggers_ending": true
+    }
+  ],
+  "notes": [
+    "Inspired by Steve Meretzky's 'Leather Goddesses of Phobos' (1986), Infocom",
+    "Original had three 'naughtiness' levels - this is the TAME version",
+    "Famous for absurdist humor and time-travel shenanigans",
+    "Player could choose gender at start (restroom choice)",
+    "Came with scratch-and-sniff card in original packaging",
+    "Intentionally silly and irreverent tone throughout",
+    "Multiple solutions to puzzles encouraged creativity"
+  ]
+}

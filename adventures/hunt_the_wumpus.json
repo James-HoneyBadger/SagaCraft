@@ -1,0 +1,39 @@
+{
+  "title": "Hunt the Wumpus",
+  "author": "Inspired by Gregory Yob's 1973 Classic",
+  "intro": "You are hunting the deadly Wumpus!\n\nThe Wumpus lives in a cave of 20 rooms connected by tunnels. The cave\nhas hazards: bottomless pits that will kill you, and giant bats that\nwill carry you to random rooms.\n\nYou have 5 crooked arrows. You can shoot an arrow through up to 5 rooms.\nIf your arrow hits the Wumpus, you win! If you enter the Wumpus's room,\nit eats you. If you shoot yourself, you die (embarrassing).\n\nYou can sense nearby hazards:\n- Wumpus nearby: 'I smell a Wumpus!'\n- Pit nearby: 'I feel a draft!'\n- Bats nearby: 'I hear bats!'\n\nGood luck, hunter!",
+  "start_room": 1,
+  "settings": {"allow_save": false, "permadeath": true},
+  "rooms": [
+    {"id": 1, "name": "Cave Room 1", "description": "You are in room 1 of the cave system. Tunnels lead to rooms 2, 5, and 8.", "exits": {"2": 2, "5": 5, "8": 8}},
+    {"id": 2, "name": "Cave Room 2", "description": "You are in room 2. Tunnels lead to 1, 3, and 10.", "exits": {"1": 1, "3": 3, "10": 10}},
+    {"id": 3, "name": "Cave Room 3", "description": "You are in room 3. Tunnels lead to 2, 4, and 12.", "exits": {"2": 2, "4": 4, "12": 12}},
+    {"id": 4, "name": "Cave Room 4", "description": "You are in room 4. Tunnels lead to 3, 5, and 14.", "exits": {"3": 3, "5": 5, "14": 14}},
+    {"id": 5, "name": "Cave Room 5", "description": "You are in room 5. Tunnels lead to 1, 4, and 6.", "exits": {"1": 1, "4": 4, "6": 6}},
+    {"id": 6, "name": "Cave Room 6", "description": "You are in room 6. Tunnels lead to 5, 7, and 15.", "exits": {"5": 5, "7": 7, "15": 15}},
+    {"id": 7, "name": "Cave Room 7", "description": "You are in room 7. Tunnels lead to 6, 8, and 17.", "exits": {"6": 6, "8": 8, "17": 17}},
+    {"id": 8, "name": "Cave Room 8", "description": "You are in room 8. Tunnels lead to 1, 7, and 11.", "exits": {"1": 1, "7": 7, "11": 11}},
+    {"id": 9, "name": "Cave Room 9 - BAT ROOM", "description": "Giant bats live here! They grab you and drop you somewhere random!", "exits": {"10": 10, "12": 12, "19": 19}, "special_properties": {"has_bats": true}},
+    {"id": 10, "name": "Cave Room 10", "description": "You are in room 10. Tunnels lead to 2, 9, and 11.", "exits": {"2": 2, "9": 9, "11": 11}},
+    {"id": 11, "name": "Cave Room 11", "description": "You are in room 11. Tunnels lead to 8, 10, and 20.", "exits": {"8": 8, "10": 10, "20": 20}},
+    {"id": 12, "name": "Cave Room 12 - PIT", "description": "AAAAAH! A bottomless pit! You fall to your death!", "exits": {}, "special_properties": {"has_pit": true}},
+    {"id": 13, "name": "Cave Room 13", "description": "You are in room 13. Tunnels lead to 4, 14, and 16.", "exits": {"4": 4, "14": 14, "16": 16}},
+    {"id": 14, "name": "Cave Room 14", "description": "You are in room 14. Tunnels lead to 4, 13, and 15.", "exits": {"4": 4, "13": 13, "15": 15}},
+    {"id": 15, "name": "Cave Room 15 - BAT ROOM", "description": "More giant bats! They carry you away!", "exits": {"6": 6, "14": 14, "16": 16}, "special_properties": {"has_bats": true}},
+    {"id": 16, "name": "Cave Room 16", "description": "You are in room 16. Tunnels lead to 13, 15, and 17.", "exits": {"13": 13, "15": 15, "17": 17}},
+    {"id": 17, "name": "Cave Room 17 - PIT", "description": "AAAAAH! Another pit! You fall!", "exits": {}, "special_properties": {"has_pit": true}},
+    {"id": 18, "name": "Cave Room 18", "description": "You are in room 18. Tunnels lead to 16, 17, and 19.", "exits": {"16": 16, "17": 17, "19": 19}},
+    {"id": 19, "name": "Cave Room 19", "description": "You are in room 19. Tunnels lead to 9, 18, and 20.", "exits": {"9": 9, "18": 18, "20": 20}},
+    {"id": 20, "name": "Cave Room 20 - WUMPUS LAIR", "description": "You hear a terrible roar! The WUMPUS is here!", "exits": {"11": 11, "19": 19, "2": 2}, "special_properties": {"has_wumpus": true}}
+  ],
+  "items": [
+    {"id": 1, "name": "crooked arrow", "description": "A special arrow that can curve through tunnels.", "room_id": 1, "is_takeable": true, "value": 50, "weight": 1, "special_properties": {"ammunition": true, "quantity": 5}}
+  ],
+  "monsters": [
+    {"id": 1, "name": "Wumpus", "description": "A terrible beast with sucker-filled tentacles! If you enter its room, it eats you. Shoot it with an arrow to win!", "room_id": 20, "hardiness": 1, "agility": 5, "friendliness": "hostile", "courage": 100, "special_abilities": ["instant_kill_if_encountered", "dies_to_arrow"]}
+  ],
+  "quests": [
+    {"id": 1, "name": "Hunt the Wumpus", "description": "Shoot the Wumpus with your crooked arrows before it eats you!", "objectives": [{"type": "defeat_enemy", "target": "Wumpus", "required": 1}], "reward_xp": 1000, "completion_triggers_ending": true}
+  ],
+  "notes": ["Created 1973 by Gregory Yob", "One of the earliest computer games", "Originally on mainframes", "Simple but addictive gameplay", "Player must deduce Wumpus location from clues"]
+}
