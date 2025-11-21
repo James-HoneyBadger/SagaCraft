@@ -51,7 +51,7 @@ Violations may be reported to: support@honeybadgeruniverse.com
 
 ### Prerequisites
 
-- Python 3.6 or higher
+- Python 3.10 or higher
 - Git for version control
 - Text editor or IDE (VS Code, PyCharm recommended)
 - Basic understanding of Python
@@ -96,14 +96,19 @@ Violations may be reported to: support@honeybadgeruniverse.com
 git clone https://github.com/James-HoneyBadger/HB_Adventure_Games.git
 cd HB_Adventure_Games
 
-# Install dependencies (if any)
-pip install -r requirements.txt
+# (Optional) Create a virtual environment
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+
+# Install development tooling (pytest, flake8, etc.) if not available globally
+python -m pip install pytest flake8
 
 # Run tests
-python3 -m pytest tests/
+python -m pytest tests/
 
 # Launch IDE
-python3 -m src.acs.ui.ide
+python -m src.acs.ui.ide
 ```
 
 ### Development Tools
@@ -354,16 +359,16 @@ class TestParser:
 
 ```bash
 # Run all tests
-python3 -m pytest tests/
+python -m pytest tests/
 
 # Run specific test file
-python3 tests/test_parser_detailed.py
+python tests/test_parser_detailed.py
 
 # Run with coverage
-python3 -m pytest --cov=. tests/
+python -m pytest --cov=. tests/
 
 # Run specific test
-python3 -m pytest tests/test_parser.py::TestParser::test_movement
+python -m pytest tests/test_parser.py::TestParser::test_movement
 ```
 
 ### Test Coverage
@@ -376,7 +381,7 @@ python3 -m pytest tests/test_parser.py::TestParser::test_movement
 
 **Check Coverage**:
 ```bash
-python3 -m pytest --cov=. --cov-report=html tests/
+python -m pytest --cov=. --cov-report=html tests/
 # Open htmlcov/index.html
 ```
 

@@ -48,7 +48,7 @@ The Adventure Construction Set (ACS) is a powerful, modern system for creating a
 
 ### System Requirements
 
-- **Python 3.6 or higher**
+- **Python 3.10 or higher**
 - **Operating System**: Linux, macOS, or Windows
 - **RAM**: 512 MB minimum
 - **Disk Space**: 50 MB
@@ -59,23 +59,24 @@ The Adventure Construction Set (ACS) is a powerful, modern system for creating a
 # Clone or download the repository
 cd HB_Adventure_Games
 
-# Install dependencies (if any)
-pip install -r requirements.txt
-
-# Verify installation
-./bin/verify_installation.sh
+# (Optional) Create a virtual environment and install tooling
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
 
 # Launch the IDE
-python3 -m src.acs.ui.ide
+python -m src.acs.ui.ide
 ```
+
+Want shortcuts? Run `./quickstart.sh` and choose **Launch IDE**.
 
 ### Manual Setup
 
 1. **Download** the HB_Adventure_Games directory
-2. **Navigate** to the directory in terminal
-3. **Run** `python3 -m src.acs.ui.ide`
+2. **Open** a terminal in that directory
+3. **Run** `python -m src.acs.ui.ide`
 
-That's it! No complex installation needed.
+No additional dependencies are required; the IDE runs with the Python standard library.
 
 ---
 
@@ -85,7 +86,7 @@ That's it! No complex installation needed.
 
 1. **Launch the IDE**:
    ```bash
-   python3 -m src.acs.ui.ide
+   python -m src.acs.ui.ide
    ```
 
 2. **Load a Sample Adventure**:
@@ -104,7 +105,7 @@ The system includes a built-in tutorial:
 
 ```bash
 # Run the tutorial adventure
-python3 -m src.acs.ui.ide
+python -m src.acs.ui.ide
 # Select "Tutorial Quest" from the menu
 ```
 
@@ -570,10 +571,10 @@ Configure in Room properties:
 2. Go to **Play** tab
 3. Click **Start/Resume Adventure**
 
-**From IDE**:
+**From terminal**:
 ```bash
-python3 -m src.acs.ui.ide
-# Select adventure from menu
+python -m src.acs.ui.ide
+# Select adventure from the launcher menu
 ```
 
 **Direct Play**:
@@ -742,12 +743,13 @@ Add custom features via plugins:
 
 #### IDE Won't Launch
 
-**Problem**: `python3 -m src.acs.ui.ide` fails
+**Problem**: `python -m src.acs.ui.ide` fails
 
 **Solutions**:
-1. Check Python version: `python3 --version` (need 3.6+)
-2. Install Tkinter: `sudo apt-get install python3-tk` (Linux)
-3. Try: `python3 -m src.acs.ui.ide` (without '3')
+1. Check Python version: `python --version` (need 3.10+)
+2. Install Tkinter (Linux): `sudo apt-get install python3-tk`
+3. Launch via quickstart: `./quickstart.sh` → **Launch IDE**
+4. Ensure virtual environment is activated if you created one
 
 #### Adventure Won't Load
 

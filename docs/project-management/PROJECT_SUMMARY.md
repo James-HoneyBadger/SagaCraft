@@ -57,7 +57,7 @@ HB_Adventure_Games/
 ### Play and Create Adventures
 ```bash
 ./quickstart.sh              # Quick start menu
-python3 -m src.acs.ui.ide    # Launch IDE
+python -m src.acs.ui.ide     # Launch IDE
 ```
 
 ### Using the IDE

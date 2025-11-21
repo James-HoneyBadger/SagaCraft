@@ -74,10 +74,10 @@ HB_Adventure_Games/
 │
 ├── 📁 archive/                # Archived files
 │
-├── 📄 python3 -m src.acs.ui.ide             # IDE launcher
+├── 📄 python -m src.acs.ui.ide              # IDE launcher
 ├── 📄 acs_engine_enhanced.py          # Game engine
 ├── 📄 acs_parser.py          # Command parser
-├── 📄 python3 -m src.acs.ui.ide        # Game launcher
+├── 📄 python -m src.acs.ui.ide         # Game launcher
 ├── 📄 acs_*.py               # Other modules
 ├── 📄 dsk_converter.py       # DSK converter
 ├── 📄 requirements.txt       # Dependencies

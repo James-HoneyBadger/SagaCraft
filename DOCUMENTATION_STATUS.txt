@@ -9,21 +9,21 @@ SUMMARY
 ================================================================================
 
 ✅ All documentation files updated to match actual project structure
-✅ All incorrect file references fixed (acs_ide.py, acs_launcher.py, etc.)
+✅ Command references standardized on `python -m src.acs.ui.ide`
 ✅ All 10 adventure games verified as playable
 ✅ Project structure validated against filesystem
-✅ All executable scripts confirmed present and working
+✅ Entry points verified (quickstart, IDE launcher, legacy engine)
 
 ================================================================================
 CORRECT COMMAND REFERENCES
 ================================================================================
 
-Launch IDE:         ./scripts/acs-ide
-Play adventures:    ./scripts/acs-play  
-Convert DSK files:  ./scripts/acs-convert
+Launch IDE:         python -m src.acs.ui.ide
+Play adventures:    python -m src.acs.ui.ide  
+Legacy CLI:         python acs_engine_enhanced.py
 Quick start menu:   ./quickstart.sh
 
-Engine file:        acs_engine_enhanced.py
+Engine file:        src/acs/core/engine.py (IDE) / acs_engine_enhanced.py (CLI)
 
 ================================================================================
 FILES UPDATED (11 documentation files)

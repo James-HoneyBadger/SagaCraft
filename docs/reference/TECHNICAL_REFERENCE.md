@@ -30,7 +30,7 @@ The Adventure Construction Set (ACS) follows a modular, event-driven architectur
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                     User Interface                       │
-│                    (python3 -m src.acs.ui.ide)                         │
+│                    (python -m src.acs.ui.ide)                          │
 └────────────────────┬────────────────────────────────────┘
                      │
 ┌────────────────────▼────────────────────────────────────┐
@@ -63,53 +63,22 @@ The Adventure Construction Set (ACS) follows a modular, event-driven architectur
 
 ```
 HB_Adventure_Games/
-├── core/                    # Core engine components
-│   ├── __init__.py
-│   ├── engine.py           # Main game engine
-│   ├── state.py            # Game state management
-│   └── events.py           # Event system
+├── src/acs/                # Application source code (package)
+│   ├── core/               # Engine, parser, state, event infrastructure
+│   ├── data/               # Config/data services (IO, persistence)
+│   ├── systems/            # Gameplay systems (combat, achievements, journal...)
+│   ├── tools/              # Author tooling (commands, modding)
+│   └── ui/                 # Tkinter IDE and accessibility modules
 │
-├── systems/                 # Enhancement systems
-│   ├── __init__.py
-│   ├── combat.py           # Combat mechanics
-│   ├── npc_context.py      # NPC AI and memory
-│   ├── environment.py      # Weather, lighting, etc.
-│   ├── journal.py          # Quest tracking
-│   ├── achievements.py     # Achievement system
-│   └── accessibility.py    # Accessibility features
-│
-├── ui/                      # User interface
-│   ├── __init__.py
-│   └── ide.py              # Main IDE
-│
-├── utils/                   # Utilities
-│   ├── __init__.py
-│   ├── parser.py           # Command parser
-│   ├── validator.py        # Data validation
-│   └── helpers.py          # Helper functions
-│
-├── plugins/                 # Plugin system
-│   ├── __init__.py
-│   ├── base.py             # Plugin base class
-│   └── examples/           # Example plugins
-│
-├── tests/                   # Test suite
-│   ├── unit/               # Unit tests
-│   ├── integration/        # Integration tests
-│   ├── test_parser_detailed.py
-│   └── test_all_commands.py
-│
-├── adventures/              # Adventure files
-├── saves/                   # Save games
-├── config/                  # Configuration
-├── docs/                    # Documentation
-├── bin/                     # Shell scripts
-│
-├── python3 -m src.acs.ui.ide              # IDE launcher
-├── acs_engine_enhanced.py           # Engine launcher
-├── acs_parser.py           # Parser module
-├── python3 -m src.acs.ui.ide         # Game launcher
-├── requirements.txt        # Dependencies
+├── adventures/             # Adventure JSON bundles
+├── config/                 # Engine and plugin configuration
+├── docs/                   # Documentation (guides, references)
+├── plugins/                # Optional plugin packages
+├── saves/                  # Player save data
+├── scripts/                # Maintenance/util scripts
+├── tests/                  # Pytest suites (parser + integration)
+├── quickstart.sh           # Menu-based launcher
+├── acs_engine_enhanced.py  # Legacy CLI engine entry point
 ├── LICENSE                 # MIT License
 └── README.md               # Project overview
 ```

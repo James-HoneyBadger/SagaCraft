@@ -22,11 +22,11 @@ read -p "Enter choice (1-3): " choice
 case $choice in
     1)
         echo "Launching IDE..."
-        python3 -m src.acs.ui.ide
+        python -m src.acs.ui.ide
         ;;
     2)
         echo "Running tests..."
-        .venv/bin/python -m pytest tests/ -v
+        python -m pytest tests/ -v
         ;;
     3)
         echo "Documentation is in docs/"

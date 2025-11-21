@@ -150,7 +150,7 @@ The parser understands MANY ways to say things:
 Try loading one of the showcase adventures and experiment:
 
 ```bash
-python3 acs_engine.py adventures/enchanted_forest.json
+python acs_engine_enhanced.py adventures/enchanted_forest.json
 ```
 
 Then try commands like:

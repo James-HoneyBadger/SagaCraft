@@ -9,7 +9,7 @@ Copyright © 2025 Honey Badger Universe | MIT License
 ## ⚡ Quick Start (30 seconds)
 
 ```bash
-python3 -m src.acs.ui.ide
+python -m src.acs.ui.ide
 ```
 
 That's it! The graphical IDE will launch.
@@ -53,7 +53,7 @@ See **[docs/README.md](docs/README.md)** for all organized documentation.
 
 ```bash
 # Launch IDE to create or play adventures
-python3 -m src.acs.ui.ide
+python -m src.acs.ui.ide
 ```
 
 ---

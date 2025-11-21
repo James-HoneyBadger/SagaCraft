@@ -4,7 +4,7 @@
 
 **New to the refactored architecture?**
 1. Read [REFACTORING_SUMMARY.md](../project-management/REFACTORING_SUMMARY.md) - Overview of changes
-2. Run `python3 demo_architecture.py` - See it in action
+2. Run `python tests/demo_architecture.py` - See it in action
 3. Read [ARCHITECTURE.md](ARCHITECTURE.md) - Understand the design
 4. Read [PLUGIN_GUIDE.md](../developer-guides/PLUGIN_GUIDE.md) - Learn to extend
 
@@ -51,15 +51,15 @@
 
 ### Run the Demo
 ```bash
-python3 demo_architecture.py
+python tests/demo_architecture.py
 ```
 
 ### Test Core Modules
 ```bash
-python3 -c "
-from core import Engine, BasePlugin, Event
-from utils import ConfigService, IOService, DataService
-print('✓ All modules working!')
+python -c "
+from acs.core.engine import AdventureGame
+from acs.core.base_plugin import PluginMetadata
+print('✓ Core modules import successfully!')
 "
 ```
 
@@ -89,11 +89,10 @@ class MyPlugin(BasePlugin):
         print(f"Player moved to room {event.data['to_room']}")
 ```
 
-### Run the Original Engine (Still Works)
+### Run the Engine
 ```bash
-python3 -m src.acs.ui.ide
-# Or use the graphical IDE
-python3 -m src.acs.ui.ide
+python -m src.acs.ui.ide          # Graphical IDE (recommended)
+python acs_engine_enhanced.py     # Legacy CLI entry point
 ```
 
 ## 📊 Status Overview

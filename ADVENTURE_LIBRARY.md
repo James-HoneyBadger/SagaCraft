@@ -117,12 +117,12 @@ All adventures have been tested and confirmed working. Each game loads correctly
 
 ### Using the IDE (Graphical Interface)
 ```bash
-python3 -m src.acs.ui.ide
+python -m src.acs.ui.ide
 ```
 
 ### Direct Python
 ```bash
-python3 acs_engine_enhanced.py
+python acs_engine_enhanced.py
 ```
 
 ---

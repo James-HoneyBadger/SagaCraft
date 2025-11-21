@@ -83,15 +83,14 @@ from acs.core.parser import NaturalLanguageParser
 ### Using Scripts (Recommended)
 ```bash
 ./quickstart.sh           # Interactive menu
-python3 -m src.acs.ui.ide         # Launch IDE
-python3 -m src.acs.ui.ide        # Play adventures
+python -m src.acs.ui.ide  # Launch IDE & play adventures
 ./scripts/# Converter removed     # Convert DSK files
 ```
 
 ### Using Python Directly
 ```bash
-python3 -m acs.ui.ide
-python3 -m acs.ui.launcher
+python -m acs.ui.ide
+python -m acs.ui.launcher
 ```
 
 ## Benefits of New Structure
@@ -122,5 +121,5 @@ from setuptools import setup, find_packages
 
 The project can be run directly without installation using:
 ```bash
-python3 -m src.acs.ui.ide
+python -m src.acs.ui.ide
 ```

@@ -1,332 +1,154 @@
-# Adventure Construction Set
+# Adventure Construction Set (ACS)
 
-**Modern text adventure creation and gameplay system**
+**Modern toolkit for building and playing rich text adventures**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Python 3.6+](https://img.shields.io/badge/python-3.6+-blue.svg)](https://www.python.org/downloads/)
-[![Version 2.0](https://img.shields.io/badge/version-2.0-green.svg)](PROJECT_STRUCTURE.md)
+[![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
+
+ACS combines a desktop IDE, a natural language parser, and a rules-driven engine so that authors can craft adventures without writing code while power users extend the simulation through Python modules.
 
 ---
 
-## 🎮 What is This?
+## 🎮 Overview
 
-A powerful **Adventure Construction Set** for creating and playing text adventures with:
+- 🖥️ **Graphical IDE only** – launch the Tk-based editor to design rooms, items, NPCs, quests, and play-test in the same workspace.
+- 🧠 **Natural language parser** – `src/acs/core/parser.py` translates conversational input into structured commands for the engine.
+- ⚙️ **Modular systems** – combat, achievements, journal, context hints, accessibility, and environment logic live in `src/acs/systems/`.
+- 🔌 **Extensible infrastructure** – service registry, event bus, and plugin scaffolding allow additional systems without touching the engine core.
+- 📚 **Data-driven content** – adventures are JSON documents; configuration and plugin toggles live under `config/`.
 
-- ✨ **Graphical IDE** - Create adventures without coding
-- 🧠 **Natural Language Parser** - Understands conversational commands (99.2% accuracy)
-- 🎨 **5 Beautiful Themes** - Dark, Light, Dracula, Nord, Monokai
-- ⚔️ **Rich Gameplay** - Combat, NPCs, quests, environmental effects
-- 🔌 **Plugin System** - Extend with custom features
-- 📚 **Comprehensive Docs** - User manual, technical reference, tutorials
+---
 
 ## 🚀 Quick Start
 
-```bash
-# Clone or download this repository
-cd HB_Adventure_Games
-
-# Run the quick start menu
-./quickstart.sh
-
-# Or launch IDE directly:
-python3 -m src.acs.ui.ide
-```
-
-That's it! No installation needed (Python 3.6+ required).
-
-## 📖 Features
-
-### For Players
-
-- **Classic Text Adventures** with modern enhancements
-- **Natural Language Commands** - "what am I carrying?" just works
-- **Rich Combat System** - Tactical fights with weapons and armor
-- **NPC Interactions** - Talk, trade, recruit party members
-- **Quest System** - Track objectives and earn rewards
-- **Save/Load** - Never lose progress
-
-### For Creators
-
-- **Visual IDE** - No programming required
-- **Room Editor** - Design locations with exits and descriptions
-- **Item Creator** - Weapons, armor, treasures, quest items
-- **NPC Designer** - Configure personality, dialogue, AI behavior
-- **Live Testing** - Play your adventure while building
-- **JSON Export** - Portable, shareable adventure files
-
-### For Developers
-
-- **Modular Architecture** - Clean, maintainable code
-- **Event-Driven** - Loose coupling via event bus
-- **Plugin System** - Extend without modifying core
-- **99.2% Parser Accuracy** - Comprehensive test suite
-- **Full API** - Hook into any system
-- **MIT Licensed** - Free to use and modify
-
-## 🎯 Command Examples
-
-The parser understands natural language:
-
-```
-> look around
-> what am I carrying?
-> go north
-> get the rusty sword
-> examine the old chest
-> talk to the merchant
-> tell alice to attack the goblin
-> eat the bread
-> wear the leather armor
-> open the wooden door
-```
-
-**30 Commands Supported** - Movement, inventory, combat, interaction, and more!
-
-## 📂 Project Structure
-
-```
-HB_Adventure_Games/
-├── src/acs/              # Source code
-│   ├── core/            # Game engine (parser, state, events)
-│   ├── systems/         # Game systems (combat, NPCs, environment)
-│   ├── ui/              # User interfaces (IDE, launcher)
-│   ├── tools/           # Utilities (DSK converter, modding)
-│   └── data/            # Data services (config, I/O)
-├── adventures/           # Adventure files (.json)
-├── docs/                 # Documentation
-├── tests/                # Test suite
-├── config/               # Configuration
-├── examples/             # Example adventures
-├── archive/              # Archived legacy code
-├── quickstart.sh         # Quick start menu
-├── README.md             # This file
-└── LICENSE               # MIT License
-```
-
-## 📚 Documentation
-
-**Organized by category** - See [docs/README.md](docs/README.md) for complete index
-
-| Category | Key Documents |
-|----------|---------------|
-| **User Guides** | [Quick Start](docs/user-guides/QUICKSTART.md), [User Manual](docs/user-guides/USER_MANUAL.md), [IDE Guide](docs/user-guides/IDE_GUIDE.md) |
-| **Developer Guides** | [Contributing](docs/developer-guides/CONTRIBUTING.md), [Plugin Guide](docs/developer-guides/PLUGIN_GUIDE.md) |
-| **Reference** | [Technical Reference](docs/reference/TECHNICAL_REFERENCE.md), [Commands](docs/reference/COMMANDS.md), [Architecture](docs/reference/ARCHITECTURE.md) |
-
-**Full documentation index**: [docs/README.md](docs/README.md)
-
-## 🎨 Themes
-
-Choose from 5 professionally designed color schemes:
-
-| Theme | Style | Best For |
-|-------|-------|----------|
-| **Dark** | Black background, white text | Long sessions, low light |
-| **Light** | White background, black text | Daytime, high ambient light |
-| **Dracula** | Purple/pink highlights | Stylish dark theme |
-| **Nord** | Cool blues and grays | Professional appearance |
-| **Monokai** | Warm browns and oranges | Classic editor feel |
-
-Change themes: **View → Theme** in the IDE
-
-## 🔧 Advanced Features
-
-### Achievement System
-Track player accomplishments with custom achievements
-
-### Journal System
-Automatic quest tracking and game log
-
-### Context-Aware NPCs
-NPCs remember past interactions and change behavior
-
-### Dynamic Environment
-Weather, lighting, temperature, time of day
-
-### Plugin Support
-Extend with custom features without modifying core code
-
-### Modding Support
-Load custom content and mechanics
-
-## 📊 Parser Performance
-
-| Metric | Value |
-|--------|-------|
-| **Test Coverage** | 129 tests across 11 categories |
-| **Success Rate** | 99.2% (128/129 passing) |
-| **Parse Speed** | <1ms average |
-| **Natural Language** | Conversational input supported |
-
-See [Parser Improvements](docs/legacy/PARSER_IMPROVEMENTS.md) for details.
-
-## 🛠️ Technology Stack
-
-- **Language**: Python 3.6+
-- **UI Framework**: Tkinter (built-in)
-- **Data Format**: JSON
-- **Architecture**: Modular, event-driven
-- **Testing**: Unit and integration tests
-- **License**: MIT
-
-## 🎓 Learning Resources
-
-### Tutorials
-
-- **First Adventure** - Create a simple dungeon in 10 minutes
-- **Command Mastery** - Learn all 30 commands
-- **NPC Design** - Build memorable characters
-- **Quest Creation** - Design engaging objectives
-
-### Examples
-
-Sample adventures included:
-- `tutorial_quest.json` - Learn the basics
-- `sample_adventure.json` - Full-featured example
-- `demo_dungeon.json` - Combat-focused
-
-### Community
-
-- **Discord** - Join the community (link in docs)
-- **GitHub Issues** - Report bugs, request features
-- **Forums** - Share adventures, get help
-
-## 🤝 Contributing
-
-We welcome contributions! See [CONTRIBUTING.md](docs/developer-guides/CONTRIBUTING.md) for:
-
-- Code style guide
-- Pull request process
-- Testing requirements
-- Development setup
-
-## 📜 License
-
-**MIT License**
-
-Copyright © 2025 Honey Badger Universe
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
-See [LICENSE](LICENSE) for full text.
-
-## 🙏 Credits
-
-### Adventure Construction System
-- Developed by **Honey Badger Universe** (2025)
-- Built with Python and Tkinter
-- Universal adventure creation system
-
-### Special Thanks
-- Interactive fiction community for inspiration
-- Beta testers and contributors
-- Open source community
-
-## 📞 Contact
-
-- **GitHub**: github.com/James-HoneyBadger/HB_Adventure_Games
-- **Email**: support@honeybadgeruniverse.com
-- **GitHub**: github.com/honeybadgeruniverse/eamon-acs
-
-## 🗺️ Roadmap
-
-### Version 2.0 ✅
-- [x] Modular architecture
-- [x] Natural language parser (99.2% accuracy)
-- [x] 5 IDE themes
-- [x] Font customization
-- [x] Comprehensive documentation
-- [x] MIT License
-
-### Version 2.1 (Planned)
-- [ ] Spell checker for typos
-- [ ] Pronoun support (it, them)
-- [ ] Multi-action commands
-- [ ] Sound effects
-- [ ] Graphics/ASCII art support
-- [ ] Online multiplayer
-
-### Version 3.0 (Future)
-- [ ] AI-assisted adventure generation
-- [ ] Voice input/output
-- [ ] Mobile app
-- [ ] Web-based IDE
-- [ ] Marketplace for adventures
-
-## 🎮 Sample Gameplay
-
-```
-=== THE DARK TOWER ===
-by Honey Badger Universe
-
-You stand at the entrance of a foreboding tower. Dark clouds 
-swirl overhead, and a chill wind howls through the stone archway.
-A rusted iron door stands to the north.
-
-Exits: north
-Items: torch
-NPCs: none
-
-> get torch
-You take the wooden torch. It flickers to life in your hand.
-
-> go north
-You push through the heavy door...
-
-The Great Hall stretches before you, lit by flickering torches.
-Ancient tapestries hang from the walls, depicting battles long 
-forgotten. A guard stands at attention near the far door.
-
-Exits: north, south, east
-Items: none
-NPCs: guard
-
-> talk to guard
-Guard: "Halt! State your business in the Dark Tower!"
-
-> examine guard
-A stern-looking guard in burnished chainmail. He grips a 
-longsword with practiced ease.
-
-> attack guard
-The guard readies his weapon!
-
-You hit the guard for 8 damage.
-The guard strikes you for 5 damage.
-```
-
-## 📈 Statistics
-
-- **30** supported commands
-- **5** color themes
-- **129** parser tests
-- **99.2%** parser accuracy
-- **1000+** lines of documentation
-- **500+** lines of test code
-- **MIT** licensed
+1. Clone the repository and move into it:
+   ```bash
+   git clone https://github.com/James-HoneyBadger/HB_Adventure_Games.git
+   cd HB_Adventure_Games
+   ```
+2. (Optional) Create a virtual environment and install local tooling:
+   ```bash
+   python3 -m venv .venv
+   source .venv/bin/activate
+   python -m pip install --upgrade pip
+   ```
+   ACS relies on the Python standard library. Install additional tooling (flake8, pytest) if you do not have them globally.
+3. Launch the IDE:
+   ```bash
+   python -m src.acs.ui.ide
+   ```
+   The interface starts in creation mode; switch to **Play** to test your adventure.
+4. Prefer a guided entry point? Run `./quickstart.sh` for launcher shortcuts.
 
 ---
 
-**Start your adventure today!**
+## 🧰 Capabilities
 
-```bash
-python3 -m src.acs.ui.ide
+### Players
+- Classic text adventure experience with party management, tactical combat, and environmental feedback.
+- Save/load support and optional accessibility overlays for readability.
+- Smart command history with typo correction (`SmartCommandSystem` in `src/acs/tools/commands.py`).
+
+### Creators
+- Drag-and-drop editors for rooms, props, monsters, effects, and quest lines.
+- Inline validators highlight missing exits, orphaned items, or inconsistent NPC data.
+- Export adventures as portable JSON bundles for sharing.
+
+### Engine & Infrastructure
+- `AdventureGame` (`src/acs/core/engine.py`) owns game state, command dispatch, and subsystem coordination.
+- `NaturalLanguageParser` (`src/acs/core/parser.py`) and helper models (`src/acs/core/natural_language.py`) deliver multi-word verb handling and direction normalization.
+- Systems in `src/acs/systems/` implement combat, achievements, journal, tutorials, NPC context, and environmental effects.
+- Shared utilities live in `src/acs/data/` (config/data services) and `src/acs/tools/` (modding hooks, command tooling).
+- `src/acs/core/base_plugin.py` and `plugins/achievements_plugin.py` illustrate the plugin contract for third-party extensions.
+
+---
+
+## 🏗️ Architecture at a Glance
+
+```
+┌──────────────────────────────────────────────┐
+│                Adventure IDE                 │
+│            (src/acs/ui/ide.py)               │
+└──────────────────────┬───────────────────────┘
+                       │
+┌──────────────────────▼───────────────────────┐
+│               AdventureGame                   │
+│         (src/acs/core/engine.py)              │
+├──────────────┬─────────────┬─────────────────┤
+│   Parser     │   Systems   │   Services &    │
+│(core/parser) │(systems/*)  │  Registries     │
+└──────────────┴─────────────┴─────────────────┘
+                       │
+          Adventure JSON + Config Assets
 ```
 
-*Adventure awaits...*
+- **Event Bus** (`src/acs/core/event_bus.py`) and **Service Registry** (`src/acs/core/services.py`) supply loose coupling.
+- **Data services** (`src/acs/data/*.py`) load/save adventures, persist settings, and expose domain queries.
+- **Plugin surface** (`plugins/`, `config/plugins/`) provides opt-in features without editing the core engine.
+
+---
+
+## 📂 Project Layout
+
+```
+HB_Adventure_Games/
+├── adventures/               # Bundled adventure JSON files
+├── archive/                  # Legacy engine snapshots and assets
+├── config/                   # Engine & plugin configuration (JSON/YAML)
+│   └── plugins/
+├── docs/                     # Manuals, technical references, guides
+├── plugins/                  # Standalone plugin packages
+├── saves/                    # Player save files
+├── scripts/                  # Utility scripts and helpers
+├── src/acs/
+│   ├── core/                 # Engine, parser, state, infrastructure
+│   ├── data/                 # Config/data access services
+│   ├── systems/              # Gameplay systems (combat, achievements, …)
+│   ├── tools/                # Modding and command utilities
+│   └── ui/                   # Graphical IDE and accessibility modules
+├── tests/                    # Pytest suites covering parser & systems
+├── quickstart.sh             # Menu for common launch tasks
+└── LICENSE                   # MIT license text
+```
+
+For a narrated walkthrough see [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md).
+
+---
+
+## 📘 Documentation
+
+| Topic | Primary Reference |
+|-------|-------------------|
+| Getting started | [START_HERE.md](START_HERE.md) |
+| Player & creator guidance | [docs/user-guides/QUICKSTART.md](docs/user-guides/QUICKSTART.md) |
+| IDE walkthrough | [docs/user-guides/IDE_GUIDE.md](docs/user-guides/IDE_GUIDE.md) |
+| System architecture | [docs/reference/ARCHITECTURE.md](docs/reference/ARCHITECTURE.md) |
+| API & module details | [docs/reference/TECHNICAL_REFERENCE.md](docs/reference/TECHNICAL_REFERENCE.md) |
+| Contributing workflow | [docs/developer-guides/CONTRIBUTING.md](docs/developer-guides/CONTRIBUTING.md) |
+
+`docs/README.md` lists every guide by role.
+
+---
+
+## 🧪 Development & Quality
+
+Run the automated checks locally:
+
+```bash
+python -m pytest              # run the regression suite
+python -m flake8              # lint using the repo configuration
+```
+
+The test suite focuses on parser correctness, command coverage, and system integration scenarios (`tests/test_all_*`).
+
+---
+
+## 🤝 Contributing
+
+Pull requests are welcome! Review the coding standards, testing expectations, and issue triage process in [docs/developer-guides/CONTRIBUTING.md](docs/developer-guides/CONTRIBUTING.md).
+
+---
+
+## 📜 License
+
+Distributed under the [MIT License](LICENSE). Crafted with ❤️ by Honey Badger Universe.

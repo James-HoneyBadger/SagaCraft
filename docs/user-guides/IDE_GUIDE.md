@@ -326,7 +326,7 @@ The IDE works seamlessly with command-line tools:
 ./launch_ide.sh  # Open and edit
 
 # Validate from command line
-python3 -m json.tool adventures/my_adventure.json
+python -m json.tool adventures/my_adventure.json
 ```
 
 ## Performance Tips

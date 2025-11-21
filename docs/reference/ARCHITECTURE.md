@@ -2,337 +2,213 @@
 
 ## Overview
 
-The Adventure Construction Set has been refactored into a **modular, event-driven architecture** that emphasizes:
+The Adventure Construction Set (ACS) is built around a **modular, data-driven engine** that keeps authoring tools, runtime systems, and extension points cleanly separated. Core design goals:
 
-- **Loose coupling** through events and dependency injection
-- **Extensibility** via a plugin system
-- **Maintainability** with clear separation of concerns
-- **Testability** through service abstraction
+- **Loose coupling** through a service registry and event bus hooks
+- **Extensibility** via plugins and drop-in gameplay systems
+- **Maintainability** with focused modules under `src/acs/`
+- **Testability** using pytest suites for parser and system validation
+
+---
 
 ## Architecture Layers
 
 ```
-┌─────────────────────────────────────────┐
-│           User Interface (UI)           │
-│  Graphical IDE                           │
-└──────────────┬──────────────────────────┘
-               │
-┌──────────────┴──────────────────────────┐
-│        Engine (Orchestration)           │
-│  Plugin management, game loop           │
-└──────────────┬──────────────────────────┘
-               │
-┌──────────────┴──────────────────────────┐
-│          Plugin System                  │
-│  Achievement, Combat, NPC, etc.         │
-└──────────────┬──────────────────────────┘
-               │
-┌──────────────┴──────────────────────────┐
-│     Core Infrastructure                 │
-│  EventBus, GameState, Services          │
-└─────────────────────────────────────────┘
+┌──────────────────────────────────────────────┐
+│                 Adventure IDE                │
+│             (src/acs/ui/ide.py)              │
+└──────────────────────┬───────────────────────┘
+                       │ invokes
+┌──────────────────────▼───────────────────────┐
+│              AdventureGame Engine            │
+│          (src/acs/core/engine.py)            │
+├──────────────┬─────────────┬─────────────────┤
+│ Natural Lang.│ Gameplay    │ Services & Data │
+│ Parser        │ Systems     │ (core/data/tools)│
+└──────────────┴─────────────┴─────────────────┘
+                       │ consumes
+          Adventure JSON + Config Assets + Plugins
 ```
 
-## Directory Structure
+---
+
+## Directory Map
 
 ```
 HB_Adventure_Games/
-├── core/                    # Core engine components
-│   ├── __init__.py
-│   ├── base_plugin.py      # Plugin base class and interfaces
-│   ├── event_bus.py        # Event system
-│   ├── game_state.py       # Centralized state management
-│   ├── engine.py           # Main orchestration layer
-│   └── services.py         # Service registry
-│
-├── systems/                 # Plugin implementations
-│   ├── __init__.py
-│   ├── achievements.py     # Achievement system plugin
-│   ├── combat.py           # Combat system plugin
-│   ├── npc.py              # NPC/dialogue plugin
-│   └── ...                 # Other game systems
-│
-├── utils/                   # Shared services
-│   ├── __init__.py
-│   ├── config_service.py   # Configuration management
-│   ├── io_service.py       # File I/O operations
-│   └── data_service.py     # Entity data management
-│
-├── ui/                      # User interfaces
-│   ├── __init__.py
-│   ├── ide.py              # Graphical IDE
-│   └── accessibility.py    # Accessibility features
-│
-├── plugins/                 # User-installable plugins
-│   └── custom_plugins/     # Third-party extensions
-│
-├── config/                  # Configuration files
-│   ├── engine.yaml         # Engine settings
-│   └── plugins/            # Plugin configurations
-│
-└── tests/                   # Test suite
-    ├── unit/               # Unit tests
-    ├── integration/        # Integration tests
-    └── fixtures/           # Test data
+├── adventures/               # Bundled adventure JSON scenarios
+├── config/                   # Engine defaults + per-plugin settings
+├── docs/                     # Guides, references, manuals
+├── plugins/                  # Optional plugin packages (e.g. achievements)
+├── saves/                    # Player save files
+├── src/acs/                  # Application source
+│   ├── core/                 # Engine, parser, state, plugin contract
+│   ├── data/                 # Config, data, and I/O services
+│   ├── systems/              # Built-in gameplay systems
+│   ├── tools/                # Command helpers and modding hooks
+│   └── ui/                   # Tkinter IDE and accessibility surfaces
+├── tests/                    # Pytest suites (parser + integration)
+└── quickstart.sh             # CLI launcher / maintenance script
 ```
 
-## Core Components
+Refer to `PROJECT_STRUCTURE.md` for an annotated walkthrough of every folder.
 
-### 1. Engine (`core/engine.py`)
+---
 
-The **Engine** is the main orchestrator that:
-- Manages plugin lifecycle (register, initialize, enable/disable)
-- Coordinates the game loop
-- Manages state transitions
-- Provides event publishing interface
+## Core Modules
+
+### AdventureGame (`src/acs/core/engine.py`)
+
+`AdventureGame` orchestrates runtime play:
+
+- Loads adventure JSON (rooms, items, NPCs, effects) and builds domain objects
+- Maintains `Player`, turn counter, party, and combat state
+- Integrates optional systems (achievements, journal, environment, tutorial, accessibility)
+- Routes parsed commands to handlers (`look`, `move`, `get`, combat verbs, etc.)
+- Emits feedback to the console/IDE play panel
+
+Minimal usage when embedding the engine:
 
 ```python
-from core import Engine
-from systems import AchievementPlugin
+from acs.core.engine import AdventureGame
 
-engine = Engine()
-engine.register_plugin(AchievementPlugin())
-engine.initialize()
-engine.load_adventure('my_adventure.json')
-engine.run()
+game = AdventureGame("adventures/beginners_cave.json")
+game.load_adventure()
+game.look()           # display current room
+game.move("north")    # process a command
 ```
 
-### 2. EventBus (`core/event_bus.py`)
+### Natural Language Parser (`src/acs/core/parser.py` & `natural_language.py`)
 
-The **EventBus** enables loose coupling through publish-subscribe pattern:
+- Tokenizes player input, recognises verbs, directions, and objects
+- Resolves synonyms (e.g. `take`, `grab`, `pick up`) into canonical actions
+- Supplies higher-level models (`ParsedCommand`, grammar helpers) used by `AdventureGame`
+- Provides companion handling and pronoun resolution when enhanced parser is enabled
 
-**Benefits:**
-- Plugins don't need direct references to each other
-- Easy to add/remove features
-- Clear event flow
-- Support for cancellable events
+### Event Bus & Services (`src/acs/core/event_bus.py`, `services.py`)
 
-**Events:**
-```python
-# Publishing events
-event_bus.publish('game.move', {
-    'from_room': 1,
-    'to_room': 2,
-    'player': player_data
-})
+- `EventBus` implements publish/subscribe hooks so new systems can react to engine events without direct coupling
+- `ServiceRegistry` manages shared services (config, data, I/O) exposed to plugins and gameplay systems
+- Services derive from `Service` and support `initialize(config)` / `shutdown()` lifecycles
 
-# Subscribing to events  
-def on_move(event):
-    print(f"Player moved to room {event.data['to_room']}")
-    
-event_bus.subscribe('game.move', on_move)
+### GameState (`src/acs/core/game_state.py`)
+
+- Central store for player stats, flags, quest progress, and plugin data
+- Supports serialization for saving/loading via `data/io_service.py`
+- Offers helpers like `set_flag`, `increment_stat`, and plugin-scoped storage
+
+### Plugin Contract (`src/acs/core/base_plugin.py`)
+
+- `BasePlugin` defines initialization, enable/disable, and shutdown hooks
+- `PluginMetadata` describes name, version, dependencies, and `PluginPriority`
+- Built-in systems adopt the same API, ensuring consistent lifecycle management
+
+---
+
+## Gameplay Systems (`src/acs/systems/`)
+
+Modular systems extend the base engine by subscribing to events, reading state, or exposing helper APIs:
+
+- `achievements.py` – Tracks player statistics, unlocks achievements, and persists progress snapshots
+- `combat.py` – Handles turn-based combat resolution, attack rolls, and damage output
+- `environment.py` – Simulates day/night cycles, weather, and ambient room flavour
+- `journal.py` – Logs narrative events and quest updates for review in the IDE
+- `npc_context.py` – Maintains NPC memory, relationship scores, and conversation context
+- `tutorial.py` – Provides context-sensitive hints based on player actions
+
+Systems can be enabled/disabled individually, and new modules can be added by following the plugin contract.
+
+---
+
+## Data & Tools Layers
+
+### Services (`src/acs/data/`)
+
+- `config_service.py` – Loads engine defaults and writes per-plugin overrides (JSON/YAML)
+- `data_service.py` – Caches rooms, items, monsters, and offers lookup helpers used by systems
+- `io_service.py` – Wraps file-system access for adventures and save slots
+
+### Authoring Utilities (`src/acs/tools/`)
+
+- `commands.py` – Smart command history, fuzzy suggestions, macro execution
+- `modding.py` – Safe execution environment for scripted extensions and custom triggers
+
+---
+
+## User Interface (`src/acs/ui/`)
+
+- `ide.py` is the Tk-based Adventure IDE (entry point `python -m src.acs.ui.ide`)
+  - Tabs for rooms, items, NPCs, conversations, quests, testing, and analytics
+  - Includes export/import workflows to JSON
+  - Embeds a play panel for immediate testing
+- `accessibility.py` adds adjustable fonts, high-contrast themes, and text-to-speech hooks
+
+The IDE communicates with the engine by invoking API methods and streaming console output back into the UI.
+
+---
+
+## Plugins & Extensibility
+
+- Example plugin: `plugins/achievements_plugin.py` demonstrates registering metadata, reading configuration, and responding to events
+- Plugin configuration lives under `config/plugins/<plugin>.json` or `.yaml`
+- Third-party plugins receive access to `GameState`, `EventBus`, and `ServiceRegistry` during `initialize`
+- Set plugin priority using `PluginPriority` (`CRITICAL`, `HIGH`, `NORMAL`, `LOW`) to control load order
+
+Lifecycle summary:
+
+1. Engine discovers/instantiates plugin
+2. `initialize(state, event_bus, services)` wired with dependencies
+3. `get_event_subscriptions()` returns mapping of event names to handlers
+4. `on_enable()` fires when plugin becomes active
+5. `on_disable()` and `shutdown()` handle teardown
+
+---
+
+## Adventure Assets & Configuration
+
+- **Adventures**: JSON definitions in `adventures/` include rooms, items, monsters, effects, and metadata consumed by `AdventureGame.load_adventure()`
+- **Saves**: Player progress stored under `saves/` via `io_service`
+- **Engine defaults**: `config/engine.json` toggles themes, auto-save, difficulty, and IDE defaults
+- **Plugins**: Each plugin has a companion config file under `config/plugins/`
+
+---
+
+## Testing & Quality
+
+- Pytest suites live in `tests/`
+  - `test_all_commands.py` verifies parser verb coverage
+  - `test_all_systems.py` runs integration checks for combat, journal, tutorial, achievements, etc.
+  - `test_parser_detailed.py` covers complex parsing edge cases
+- Execute locally with:
+
+```bash
+python -m pytest
+python -m flake8
 ```
 
-**Common Events:**
-- `engine.initialized` - Engine ready
-- `game.start` - Game begins
-- `game.move` - Player movement
-- `command.input` - Player command entered
-- `combat.start` - Combat initiated
-- `item.pickup` - Item collected
-- `achievement.unlocked` - Achievement earned
+These checks guard against regressions as systems evolve.
 
-### 3. GameState (`core/game_state.py`)
+---
 
-**GameState** is a centralized data container:
-- Single source of truth for game data
-- Easy to serialize/deserialize (save/load)
-- Plugin-specific data storage
-- Global flags and turn counter
-
-```python
-# Access player data
-player = state.player
-player.gold += 100
-
-# Plugin data
-state.set_plugin_data('achievements', 'total_unlocked', 5)
-unlocked = state.get_plugin_data('achievements', 'total_unlocked', 0)
-
-# Flags
-state.set_flag('dragon_defeated', True)
-if state.get_flag('dragon_defeated'):
-    print("The dragon is gone!")
-```
-
-### 4. BasePlugin (`core/base_plugin.py`)
-
-All game systems extend **BasePlugin**:
-
-```python
-from core import BasePlugin, PluginMetadata, PluginPriority
-
-class MyPlugin(BasePlugin):
-    def __init__(self):
-        metadata = PluginMetadata(
-            name="my_plugin",
-            version="1.0",
-            priority=PluginPriority.NORMAL
-        )
-        super().__init__(metadata)
-        
-    def initialize(self, state, event_bus, services):
-        super().initialize(state, event_bus, services)
-        # Setup code here
-        
-    def get_event_subscriptions(self):
-        return {
-            'game.move': self.on_move,
-            'combat.start': self.on_combat,
-        }
-        
-    def on_move(self, event):
-        # Handle movement
-        pass
-        
-    def on_combat(self, event):
-        # Handle combat
-        pass
-```
-
-### 5. Services (`core/services.py`, `utils/`)
-
-**Services** provide shared functionality:
-
-**ConfigService** - Settings management
-```python
-config = services.get('config')
-theme = config.get('ui.theme', 'dark')
-config.set_plugin_config('my_plugin', 'enabled', True)
-```
-
-**IOService** - File operations
-```python
-io = services.get('io')
-adventure = io.load_adventure('forest_quest')
-io.save_game('slot1', game_state)
-```
-
-**DataService** - Entity management
-```python
-data = services.get('data')
-room = data.get_room(5)
-items_here = data.find_items_by_location(5)
-```
-
-## Plugin System
-
-### Plugin Lifecycle
-
-1. **Registration** - `engine.register_plugin(plugin)`
-2. **Initialization** - Plugin receives state, event_bus, services
-3. **Event Subscription** - Plugin handlers registered with event bus
-4. **Activation** - `plugin.on_enable()` called
-5. **Operation** - Plugin handles events during gameplay
-6. **Deactivation** - `plugin.on_disable()` called
-7. **Shutdown** - `plugin.shutdown()` for cleanup
-
-### Plugin Priority
-
-Plugins execute in priority order:
-- **CRITICAL (0)** - Core systems (state, I/O)
-- **HIGH (10)** - Game logic (combat, items)
-- **NORMAL (50)** - Features (achievements, journal)
-- **LOW (100)** - UI/UX (tutorial, accessibility)
-
-### Creating a Plugin
-
-See `PLUGIN_GUIDE.md` for detailed examples.
-
-## Event-Driven Communication
-
-### Why Events?
-
-**Before (Tight Coupling):**
-```python
-class Engine:
-    def move(self):
-        # Directly call all systems
-        self.achievements.track_movement()
-        self.journal.log_movement()
-        self.tutorial.check_hints()
-        self.npc.update_context()
-        # Adding features requires modifying Engine
-```
-
-**After (Loose Coupling):**
-```python
-class Engine:
-    def move(self):
-        # Just publish event
-        self.event_bus.publish('game.move', {'room': new_room})
-        # Plugins handle it independently
-```
-
-### Event Flow Example
+## Event Flow (Conceptual)
 
 ```
-Player Command "go north"
-         ↓
-[Engine processes command]
-         ↓
-engine.event_bus.publish('game.move', {data})
-         ↓
-    ┌────┴────┬────────┬─────────┬─────────┐
-    ↓         ↓        ↓         ↓         ↓
- Journal  Achievement NPC    Tutorial Environment
-  logs      tracks    updates  checks    updates
- movement   stats    context   hints     time
+Player enters command in IDE → NaturalLanguageParser → AdventureGame command handler
+       ↓                                         ↓
+Optional EventBus notifications ──────────────► Systems (achievements, journal, tutorial, etc.)
+       ↓
+ServiceRegistry for shared utilities (config, data, I/O)
 ```
 
-## Benefits of This Architecture
+Even when events are not explicitly published, systems read from shared state/services to react consistently.
 
-### 1. **Modularity**
-- Each system is self-contained
-- Can enable/disable features independently
-- Clear boundaries and responsibilities
+---
 
-### 2. **Extensibility**
-- Add new plugins without modifying core
-- Third-party developers can extend
-- Plugin dependencies managed automatically
+## Related Documentation
 
-### 3. **Maintainability**
-- Small, focused modules
-- Clear interfaces
-- Easy to locate and fix bugs
+- [PROJECT_STRUCTURE.md](../../PROJECT_STRUCTURE.md) – directory deep dive
+- [TECHNICAL_REFERENCE.md](TECHNICAL_REFERENCE.md) – API reference and module catalog
+- [PLUGIN_GUIDE.md](../developer-guides/PLUGIN_GUIDE.md) – building third-party extensions
+- [CONTRIBUTING.md](../developer-guides/CONTRIBUTING.md) – coding standards and workflows
 
-### 4. **Testability**
-- Mock services for unit tests
-- Test plugins in isolation
-- Inject test data easily
-
-### 5. **Flexibility**
-- Swap implementations (e.g., database vs file I/O)
-- Different UIs use same engine
-- Hot-reload plugins during development
-
-## Migration from Old Architecture
-
-The original monolithic `acs_engine.py` has been refactored:
-
-**Old:**
-- 1025 lines in single file
-- Tight coupling between features
-- Hard to test individual systems
-- Difficult to add features
-
-**New:**
-- Core engine: ~250 lines
-- Each plugin: ~200-400 lines
-- Clear interfaces
-- Easy to extend
-
-## Next Steps
-
-1. **Converting Existing Systems** - See `systems/` directory
-2. **Creating New Plugins** - See `PLUGIN_GUIDE.md`
-3. **UI Development** - See `ui/` directory
-4. **Contributing** - See `CONTRIBUTING.md`
-
-## Resources
-
-- **API Documentation** - See docstrings in code
-- **Plugin Examples** - See `systems/` directory
-- **Configuration** - See `config/` directory
-- **Testing** - See `tests/` directory
+The architecture continues to evolve; keep an eye on `docs/legacy/` for historical context and `project-management/` for upcoming roadmap items.

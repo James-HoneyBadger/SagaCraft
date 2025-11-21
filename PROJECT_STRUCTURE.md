@@ -161,62 +161,164 @@ User interface modules:
 
 Launch the IDE:
 ```bash
-python3 -m src.acs.ui.ide
+python -m src.acs.ui.ide
 ```
 
-All scripts are Python modules using `python3 -m` syntax.
+All scripts are Python modules using `python -m` syntax.
 
 ---
 
-## 🧪 Testing
+# 📁 Project Structure
 
-### **tests/**
-Comprehensive test suite:
+**Adventure Construction Set** – infrastructure overview (updated November 2025)
 
-| Directory/File | Purpose |
-|----------------|---------|
-| `unit/` | Unit tests for individual modules |
-| `integration/` | Integration tests for systems |
-| `test_engine.py` | Engine functionality tests |
-| `test_parser_detailed.py` | Parser accuracy tests (99.2%) |
-| `test_all_commands.py` | Command coverage tests |
-| `test_all_systems.py` | System integration tests |
-| `test_converter.py` | DSK converter tests |
+The repository is organised around three pillars:
+
+1. **Runtime engine** under `src/acs/` (core logic, systems, UI)
+2. **Authoring assets** in `adventures/`, `config/`, `plugins/`, and `saves/`
+3. **Documentation and quality** in `docs/`, `tests/`, and supporting scripts
 
 ---
 
-## 🔌 Plugins
+## 🗂️ Top-Level Layout
 
-### **plugins/**
-Extension modules:
-- `achievements_plugin.py` - Achievement system
-
-### **config/plugins/**
-Plugin configuration files
-
----
-
-## 📦 Configuration
-
-### **config/**
-System configuration:
-- `engine.json` - Engine settings (theme, auto-save, etc.)
-- `plugins/` - Plugin configurations
-
----
-
-## 💾 Save Games
-
-### **saves/**
-Player save game files (auto-saved and manual)
+```
+HB_Adventure_Games/
+├── adventures/           # Ready-to-play adventure JSON bundles
+├── archive/              # Historical/legacy engine snapshots
+├── config/               # Engine and plugin configuration files
+│   └── plugins/          # Per-plugin overrides
+├── docs/                 # User manuals, technical guides, reference
+├── plugins/              # Optional plugin packages (standalone from core)
+├── saves/                # Player save games
+├── scripts/              # Utility scripts for automation/testing
+├── src/acs/              # Application source code
+├── tests/                # Pytest suites covering engine & parser
+├── quickstart.sh         # Menu-based launcher for common tasks
+├── README.md             # Project overview
+└── LICENSE               # MIT license text
+```
 
 ---
 
-## 📜 Archive
+## 🧠 Core Source (`src/acs/`)
 
-### **archive/**
-Historical code and old game files:
-- `old_core_engine.py` - Original engine version
+```
+src/acs/
+├── core/                 # Engine orchestration and infrastructure
+├── data/                 # Persistent data and configuration services
+├── systems/              # Gameplay systems layered on the engine
+├── tools/                # Author tooling (modding, command helpers)
+└── ui/                   # Graphical IDE and accessibility modules
+```
+
+### `core/`
+
+| File | Purpose |
+|------|---------|
+| `engine.py` | `AdventureGame` class – loads adventures, runs turn loop, coordinates systems |
+| `parser.py` | `NaturalLanguageParser` – synonym dictionaries, command parsing helpers |
+| `natural_language.py` | Grammar models (`ParsedCommand`, `GrammarPattern`) and parsing utilities |
+| `game_state.py` | Dataclasses for persistent game state and plugin storage helpers |
+| `event_bus.py` | Publish/subscribe hub for decoupling subsystems |
+| `services.py` | Service registry for dependency injection inside plugins/systems |
+| `base_plugin.py` | Base class and metadata helpers for optional plugin packages |
+| `inform_integration.py` | Bridge utilities for Inform-compatible content |
+
+### `data/`
+
+| File | Purpose |
+python -m src.acs.ui.ide
+| `config_service.py` | Reads/writes engine and plugin configuration (JSON/YAML) |
+| `data_service.py` | In-memory store for rooms/items/monsters with convenience queries |
+| `io_service.py` | File-system helpers for loading adventures and saving games |
+### `systems/`
+
+Built-in gameplay systems that extend the engine:
+
+- `achievements.py` – statistics tracking and unlockable achievements
+- `combat.py` – tactical combat engine with status effects and AI
+- `environment.py` – weather, lighting, and environmental modifiers
+- `journal.py` – quest log and narrative journaling
+- `npc_context.py` – NPC memory and relationship tracking
+- `tutorial.py` – context-sensitive hints and onboarding
+
+Each module exposes classes that can be instantiated directly by the engine or leveraged by plugins.
+### `tools/`
+
+- `commands.py` – Smart command history, fuzzy suggestions, and macro support
+- `modding.py` – Script hooks and safe execution context for custom behaviours
+python -m src.acs.ui.ide  # Play or create in IDE
+### `ui/`
+
+- `ide.py` – Tkinter-based Adventure IDE (entry point: `python -m src.acs.ui.ide`)
+- `accessibility.py` and related helpers – adjustable fonts, high-contrast overlays, etc.
+python -m src.acs.ui.ide  # Create adventures in GUI
+---
+
+## 🔌 Plugins & Extensions
+
+python acs_engine_enhanced.py  # Run engine directly
+- `config/plugins/` stores per-plugin enablement and configuration.
+- Third-party plugins can live alongside `plugins/` or be installed as packages; they receive access to `GameState`, the event bus, and shared services during initialisation.
+
+---
+
+## 📄 Adventure Content & Saves
+
+- `adventures/` contains curated JSON adventures used for demos and regression tests.
+- Each file follows the schema expected by `AdventureGame.load_adventure()`.
+- `saves/` mirrors the runtime save directory used by the IDE and engine.
+
+---
+
+## 🧾 Configuration
+
+- `config/engine.json` (or `engine.yaml`) controls defaults like theme, auto-save, and difficulty.
+- Plugin-specific configuration is stored under `config/plugins/<plugin>.json` or `.yaml`.
+
+---
+
+## 📚 Documentation
+
+- `docs/README.md` – navigation hub grouped by audience.
+- `docs/user-guides/` – Quick-start, IDE guide, user manual.
+- `docs/developer-guides/` – Contributing workflow, plugin guidelines, parser deep dives.
+- `docs/reference/` – Architecture diagrams, technical reference, command catalogue.
+- `docs/project-management/` – Roadmaps and organisational notes.
+- `docs/legacy/` – Archival snapshots, historical status reports.
+
+---
+
+## 🧪 Testing & Quality
+
+- `tests/test_all_commands.py` – verifies parser verb/action coverage.
+- `tests/test_all_systems.py` – spot checks integrated systems (combat, achievements, tutorial, etc.).
+- `tests/test_parser_detailed.py` – exhaustive parser regression suite.
+- Run locally with `python -m pytest` and lint with `python -m flake8` (configuration in `.flake8`).
+
+---
+
+## 🚀 Entry Points
+
+| Role | Command |
+|------|---------|
+| Play or create adventures | `python -m src.acs.ui.ide` |
+| Quick launcher | `./quickstart.sh` |
+| Engine scripting (legacy) | `python acs_engine_enhanced.py` |
+
+`START_HERE.md` summarises the same paths from a newcomer perspective.
+
+---
+
+## 📊 Useful Counts (November 2025)
+
+- 10 curated adventures bundled in `adventures/`
+- 6 built-in gameplay systems under `src/acs/systems/`
+- 17 automated regression tests in the `tests/` package
+- 1 reference plugin and scaffolding for additional third-party plugins
+
+These numbers change as the project evolves; regenerate with `pytest --maxfail=1` and repo statistics scripts as needed.
 - `archive/` - Legacy code and historical files
 
 ---
@@ -225,17 +327,17 @@ Historical code and old game files:
 
 ### For Players:
 ```bash
-python3 -m src.acs.ui.ide  # Play or create in IDE
+python -m src.acs.ui.ide  # Play or create in IDE
 ```
 
 ### For Creators:
 ```bash
-python3 -m src.acs.ui.ide  # Create adventures in GUI
+python -m src.acs.ui.ide  # Create adventures in GUI
 ```
 
 ### For Developers:
 ```bash
-python3 acs_engine_enhanced.py  # Run engine directly
+python acs_engine_enhanced.py  # Run engine directly
 ```
 
 ---

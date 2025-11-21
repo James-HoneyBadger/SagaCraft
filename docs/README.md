@@ -77,16 +77,18 @@
 
 #### Create or play adventures
 1. Read: [Quick Start](user-guides/QUICKSTART.md)
-2. Run: `python3 -m src.acs.ui.ide`
+2. Run: `python -m src.acs.ui.ide`
 3. Follow: [IDE Guide](user-guides/IDE_GUIDE.md) and [User Manual](user-guides/USER_MANUAL.md)
 
 #### Develop a plugin
 1. Read: [Plugin Guide](developer-guides/PLUGIN_GUIDE.md)
 2. Reference: [Technical Reference](reference/TECHNICAL_REFERENCE.md)
+3. Review: `docs/reference/MODULAR_ARCHITECTURE.md` for system integration patterns
 
 #### Contribute code
 1. Read: [Contributing Guide](developer-guides/CONTRIBUTING.md)
 2. Reference: [Architecture](reference/ARCHITECTURE.md)
+3. Run: `python -m pytest` and `python -m flake8` before submitting changes
 
 #### Look up a command
 1. Check: [Commands Reference](reference/COMMANDS.md)
@@ -126,6 +128,7 @@
 - **Main README**: [../README.md](../README.md)
 - **Start Here**: [../START_HERE.md](../START_HERE.md)
 - **Adventure Library**: [../ADVENTURE_LIBRARY.md](../ADVENTURE_LIBRARY.md)
+- **Project Structure**: [../PROJECT_STRUCTURE.md](../PROJECT_STRUCTURE.md)
 - **Source Code**: [../src/](../src/)
 
 ---
