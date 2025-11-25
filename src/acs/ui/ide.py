@@ -4,15 +4,21 @@ Colossal StoryWorks - Graphical Adventure Editor
 A complete IDE for creating, editing, and playing text adventures
 """
 
+# pylint: disable=too-many-lines
+
+import ast
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, scrolledtext
+import difflib
 import json
 import os
-import subprocess
 import sys
 import importlib.util
 from pathlib import Path
 from io import StringIO
+
+from acs.tools.modding import ModdingSystem
+from acs.ui.visual_player import PointAndClickWindow
 
 
 class AdventureIDE:
@@ -123,11 +129,94 @@ class AdventureIDE:
             "items": [],
             "monsters": [],
             "effects": [],
+            "mode": "text",
+            "scenes": [],
         }
 
         self.current_file = None
         self.modified = False
 
+        # Recent files and quick status state
+        self.recent_files = self._load_recent_files()
+        self.recent_list_container = None
+        self.validation_badge_var = tk.StringVar(value="Validation: —")
+        self.test_badge_var = tk.StringVar(value="Play: Idle")
+        self.demo_scripts = self._default_demo_scripts()
+        self.demo_script_var = tk.StringVar()
+        self.game_instance = None
+        self.game_running = False
+        self.point_and_click = None
+        self.mod_root = Path("mods")
+        self.mod_state_path = Path("config/modding_state.json")
+        self.mod_catalog = []
+        self.enabled_mods = set()
+        self.mod_cache = {}
+        self.mod_tree = None
+        self.mod_detail_text = None
+        self.mod_console = None
+        self.mod_output_history = []
+        self.mod_toggle_button = None
+        self.mod_view_button = None
+
+        # Widget references populated during UI construction
+        self.notebook = None
+        self.status_bar = None
+        self.game_output = None
+        self.command_entry = None
+        self.play_tab = None
+        self.preview_text = None
+        self.title_var = None
+        self.author_var = None
+        self.start_room_var = None
+        self.intro_text = None
+        self.rooms_listbox = None
+        self.room_id_var = None
+        self.room_name_var = None
+        self.room_desc = None
+        self.exit_vars = {}
+        self.items_listbox = None
+        self.item_id_var = None
+        self.item_name_var = None
+        self.item_desc = None
+        self.item_weight_var = None
+        self.item_value_var = None
+        self.item_location_var = None
+        self.item_is_weapon_var = None
+        self.item_is_takeable_var = None
+        self.monsters_listbox = None
+        self.monster_id_var = None
+        self.monster_name_var = None
+        self.monster_desc = None
+        self.monster_room_var = None
+        self.monster_hardiness_var = None
+        self.monster_agility_var = None
+        self.monster_friendliness_var = None
+        self.monster_gold_var = None
+        self.game_mode_var = None
+        self.scenes_listbox = None
+        self.scene_id_var = None
+        self.scene_name_var = None
+        self.scene_room_var = None
+        self.scene_background_var = None
+        self.scene_music_var = None
+        self.scene_grid_visible_var = None
+        self.scene_grid_size_var = None
+        self.scene_narration_text = None
+        self.hotspots_listbox = None
+        self.hotspot_id_var = None
+        self.hotspot_label_var = None
+        self.hotspot_shape_var = None
+        self.hotspot_x_var = None
+        self.hotspot_y_var = None
+        self.hotspot_width_var = None
+        self.hotspot_height_var = None
+        self.hotspot_action_var = None
+        self.hotspot_value_var = None
+        self.hotspot_tooltip_var = None
+        self._suppress_mode_change = False
+
+        self._ensure_mod_root()
+        self._load_mod_state()
         self.setup_ui()
         self.new_adventure()
 
@@ -308,7 +397,7 @@ class AdventureIDE:
             activebackground=self.colors["accent"],
         )
         view_menu.add_cascade(label="🎨 Theme", menu=theme_menu)
-        for theme_name in self.themes.keys():
+        for theme_name in self.themes:
             theme_menu.add_command(
                 label=theme_name, command=lambda t=theme_name: self.change_theme(t)
             )
@@ -422,6 +511,8 @@ class AdventureIDE:
         self.create_rooms_tab()
         self.create_items_tab()
         self.create_monsters_tab()
+        self.create_visual_tab()
+        self.create_modding_tab()
         self.create_preview_tab()
 
         # Status bar with color
@@ -493,6 +584,30 @@ class AdventureIDE:
         )
         room_spin.grid(row=row + 1, column=0, sticky=tk.W, pady=(0, 15))
 
+        # Experience mode toggle
+        row += 2
+        ttk.Label(
+            form_frame,
+            text="🕹️ Experience Mode:",
+            style="Subtitle.TLabel",
+        ).grid(row=row, column=0, sticky=tk.W, pady=(0, 5))
+        self.game_mode_var = tk.StringVar(value="text")
+        mode_frame = ttk.Frame(form_frame)
+        mode_frame.grid(row=row + 1, column=0, sticky=tk.W, pady=(0, 15))
+        ttk.Radiobutton(
+            mode_frame,
+            text="Text Adventure (classic parser)",
+            value="text",
+            variable=self.game_mode_var,
+        ).pack(side=tk.LEFT, padx=(0, 15))
+        ttk.Radiobutton(
+            mode_frame,
+            text="Point & Click Visual",
+            value="visual",
+            variable=self.game_mode_var,
+        ).pack(side=tk.LEFT)
+        self.game_mode_var.trace_add("write", lambda *_: self._on_mode_changed())
+
         # Introduction
         row += 2
         ttk.Label(
@@ -531,6 +646,19 @@ class AdventureIDE:
             style="Success.TButton",
         )
         save_btn.grid(row=row, column=0, sticky=tk.E, pady=(10, 0))
+
+        # Recent adventures panel
+        recent_panel = ttk.Frame(frame, style="Panel.TFrame", padding="15")
+        recent_panel.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=20)
+        ttk.Label(
+            recent_panel,
+            text="Recent Adventures",
+            style="Subtitle.TLabel",
+        ).pack(anchor=tk.W, pady=(0, 10))
+
+        self.recent_list_container = ttk.Frame(recent_panel, style="TFrame")
+        self.recent_list_container.pack(fill=tk.X)
+        self.refresh_recent_files_ui()
 
     def create_rooms_tab(self):
         """Rooms editor tab"""
@@ -849,6 +977,730 @@ class AdventureIDE:
             right_panel, text="Update Monster", command=self.update_monster
         ).grid(row=row, column=1, sticky=tk.E, pady=10)
 
+    def create_visual_tab(self):
+        """Graphical scene builder for point-and-click adventures."""
+        frame = ttk.Frame(self.notebook, padding="10")
+        self.notebook.add(frame, text="🖼️ Visual Builder")
+
+        frame.columnconfigure(1, weight=1)
+        frame.rowconfigure(0, weight=1)
+
+        # Scene list on the left
+        left_panel = ttk.Frame(frame)
+        left_panel.grid(row=0, column=0, sticky=(tk.N, tk.S), padx=(0, 10))
+        ttk.Label(left_panel, text="Scenes:").pack(anchor=tk.W)
+
+        self.scenes_listbox = tk.Listbox(left_panel, width=32, height=18)
+        self.scenes_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.scenes_listbox.bind("<<ListboxSelect>>", self.select_scene)
+
+        scene_scroll = ttk.Scrollbar(
+            left_panel, orient=tk.VERTICAL, command=self.scenes_listbox.yview
+        )
+        scene_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        self.scenes_listbox.config(yscrollcommand=scene_scroll.set)
+
+        scene_buttons = ttk.Frame(left_panel)
+        scene_buttons.pack(pady=5)
+        ttk.Button(scene_buttons, text="Add Scene", command=self.add_scene).pack(
+            side=tk.LEFT, padx=2
+        )
+        ttk.Button(scene_buttons, text="Delete", command=self.delete_scene).pack(
+            side=tk.LEFT, padx=2
+        )
+
+        # Scene detail and hotspots on the right
+        right_panel = ttk.Frame(frame)
+        right_panel.grid(row=0, column=1, sticky=(tk.N, tk.S, tk.E, tk.W))
+        right_panel.columnconfigure(0, weight=1)
+
+        scene_frame = ttk.Frame(right_panel, padding=10, style="Panel.TFrame")
+        scene_frame.grid(row=0, column=0, sticky=(tk.W, tk.E))
+        scene_frame.columnconfigure(1, weight=1)
+
+        ttk.Label(scene_frame, text="Scene ID:").grid(row=0, column=0, sticky=tk.W)
+        self.scene_id_var = tk.IntVar(value=0)
+        ttk.Label(scene_frame, textvariable=self.scene_id_var).grid(
+            row=0, column=1, sticky=tk.W
+        )
+
+        ttk.Label(scene_frame, text="Name:").grid(row=1, column=0, sticky=tk.W)
+        self.scene_name_var = tk.StringVar()
+        ttk.Entry(scene_frame, textvariable=self.scene_name_var, width=40).grid(
+            row=1, column=1, sticky=(tk.W, tk.E), pady=4
+        )
+
+        ttk.Label(scene_frame, text="Linked Room ID:").grid(
+            row=2, column=0, sticky=tk.W
+        )
+        self.scene_room_var = tk.IntVar(value=0)
+        ttk.Spinbox(
+            scene_frame,
+            from_=0,
+            to=999,
+            textvariable=self.scene_room_var,
+            width=12,
+        ).grid(row=2, column=1, sticky=tk.W, pady=4)
+
+        ttk.Label(scene_frame, text="Background Image:").grid(
+            row=3, column=0, sticky=tk.W
+        )
+        self.scene_background_var = tk.StringVar()
+        background_frame = ttk.Frame(scene_frame)
+        background_frame.grid(row=3, column=1, sticky=(tk.W, tk.E), pady=4)
+        background_frame.columnconfigure(0, weight=1)
+        ttk.Entry(
+            background_frame,
+            textvariable=self.scene_background_var,
+        ).grid(row=0, column=0, sticky=(tk.W, tk.E))
+        ttk.Button(
+            background_frame,
+            text="Browse",
+            command=self.browse_scene_background,
+        ).grid(row=0, column=1, padx=5)
+
+        ttk.Label(scene_frame, text="Ambient Music (optional):").grid(
+            row=4, column=0, sticky=tk.W
+        )
+        self.scene_music_var = tk.StringVar()
+        ttk.Entry(scene_frame, textvariable=self.scene_music_var).grid(
+            row=4, column=1, sticky=(tk.W, tk.E), pady=4
+        )
+
+        self.scene_grid_visible_var = tk.BooleanVar(value=False)
+        self.scene_grid_size_var = tk.IntVar(value=64)
+        ttk.Label(scene_frame, text="Grid Overlay:").grid(row=5, column=0, sticky=tk.W)
+        grid_controls = ttk.Frame(scene_frame)
+        grid_controls.grid(row=5, column=1, sticky=(tk.W, tk.E), pady=4)
+        ttk.Checkbutton(
+            grid_controls,
+            text="Enabled",
+            variable=self.scene_grid_visible_var,
+        ).pack(side=tk.LEFT)
+        ttk.Label(grid_controls, text="Cell Size:").pack(side=tk.LEFT, padx=(12, 4))
+        ttk.Spinbox(
+            grid_controls,
+            from_=16,
+            to=256,
+            increment=8,
+            textvariable=self.scene_grid_size_var,
+            width=6,
+        ).pack(side=tk.LEFT)
+
+        ttk.Label(scene_frame, text="Narration / Notes:").grid(
+            row=6, column=0, sticky=tk.NW
+        )
+        self.scene_narration_text = scrolledtext.ScrolledText(
+            scene_frame, width=45, height=5, wrap=tk.WORD
+        )
+        self.scene_narration_text.grid(row=6, column=1, sticky=(tk.W, tk.E), pady=4)
+
+        ttk.Button(scene_frame, text="Update Scene", command=self.update_scene).grid(
+            row=7, column=1, sticky=tk.E, pady=(10, 0)
+        )
+
+        # Hotspot editor
+        hotspot_frame = ttk.Frame(right_panel, padding=10, style="Panel.TFrame")
+        hotspot_frame.grid(
+            row=1, column=0, sticky=(tk.N, tk.S, tk.E, tk.W), pady=(10, 0)
+        )
+        hotspot_frame.columnconfigure(1, weight=1)
+        right_panel.rowconfigure(1, weight=1)
+
+        ttk.Label(hotspot_frame, text="Hotspots", style="Subtitle.TLabel").grid(
+            row=0, column=0, columnspan=2, sticky=tk.W
+        )
+
+        list_container = ttk.Frame(hotspot_frame)
+        list_container.grid(row=1, column=0, columnspan=2, sticky=(tk.W, tk.E))
+
+        self.hotspots_listbox = tk.Listbox(list_container, height=8)
+        self.hotspots_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.hotspots_listbox.bind("<<ListboxSelect>>", self.select_hotspot)
+
+        hotspot_scroll = ttk.Scrollbar(
+            list_container, orient=tk.VERTICAL, command=self.hotspots_listbox.yview
+        )
+        hotspot_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        self.hotspots_listbox.config(yscrollcommand=hotspot_scroll.set)
+
+        hotspot_btns = ttk.Frame(hotspot_frame)
+        hotspot_btns.grid(row=2, column=0, columnspan=2, sticky=tk.W, pady=5)
+        ttk.Button(hotspot_btns, text="Add Hotspot", command=self.add_hotspot).pack(
+            side=tk.LEFT, padx=2
+        )
+        ttk.Button(hotspot_btns, text="Delete", command=self.delete_hotspot).pack(
+            side=tk.LEFT, padx=2
+        )
+
+        ttk.Label(hotspot_frame, text="Hotspot ID:").grid(row=3, column=0, sticky=tk.W)
+        self.hotspot_id_var = tk.IntVar(value=0)
+        ttk.Label(hotspot_frame, textvariable=self.hotspot_id_var).grid(
+            row=3, column=1, sticky=tk.W
+        )
+
+        ttk.Label(hotspot_frame, text="Label:").grid(row=4, column=0, sticky=tk.W)
+        self.hotspot_label_var = tk.StringVar()
+        ttk.Entry(hotspot_frame, textvariable=self.hotspot_label_var).grid(
+            row=4, column=1, sticky=(tk.W, tk.E), pady=2
+        )
+
+        ttk.Label(hotspot_frame, text="Tooltip:").grid(row=5, column=0, sticky=tk.W)
+        self.hotspot_tooltip_var = tk.StringVar()
+        ttk.Entry(hotspot_frame, textvariable=self.hotspot_tooltip_var).grid(
+            row=5, column=1, sticky=(tk.W, tk.E), pady=2
+        )
+
+        ttk.Label(hotspot_frame, text="Shape:").grid(row=6, column=0, sticky=tk.W)
+        self.hotspot_shape_var = tk.StringVar(value="rectangle")
+        ttk.Combobox(
+            hotspot_frame,
+            textvariable=self.hotspot_shape_var,
+            values=["rectangle", "circle"],
+            state="readonly",
+            width=12,
+        ).grid(row=6, column=1, sticky=tk.W, pady=2)
+
+        coord_labels = ["X", "Y", "Width", "Height"]
+        coord_vars = []
+        self.hotspot_x_var = tk.IntVar(value=0)
+        self.hotspot_y_var = tk.IntVar(value=0)
+        self.hotspot_width_var = tk.IntVar(value=100)
+        self.hotspot_height_var = tk.IntVar(value=100)
+        coord_vars.extend(
+            [
+                self.hotspot_x_var,
+                self.hotspot_y_var,
+                self.hotspot_width_var,
+                self.hotspot_height_var,
+            ]
+        )
+        for idx, (label, var) in enumerate(zip(coord_labels, coord_vars), start=7):
+            ttk.Label(hotspot_frame, text=f"{label}:").grid(
+                row=idx, column=0, sticky=tk.W
+            )
+            ttk.Spinbox(
+                hotspot_frame,
+                from_=-9999,
+                to=9999,
+                textvariable=var,
+                width=10,
+            ).grid(row=idx, column=1, sticky=tk.W, pady=2)
+
+        ttk.Label(hotspot_frame, text="Action:").grid(row=11, column=0, sticky=tk.W)
+        self.hotspot_action_var = tk.StringVar(value="command")
+        ttk.Combobox(
+            hotspot_frame,
+            textvariable=self.hotspot_action_var,
+            values=["command", "command_sequence"],
+            state="readonly",
+            width=20,
+        ).grid(row=11, column=1, sticky=tk.W, pady=2)
+
+        ttk.Label(hotspot_frame, text="Command / Value:").grid(
+            row=12, column=0, sticky=tk.W
+        )
+        self.hotspot_value_var = tk.StringVar()
+        ttk.Entry(hotspot_frame, textvariable=self.hotspot_value_var).grid(
+            row=12, column=1, sticky=(tk.W, tk.E), pady=2
+        )
+
+        ttk.Button(
+            hotspot_frame, text="Update Hotspot", command=self.update_hotspot
+        ).grid(row=13, column=1, sticky=tk.E, pady=(10, 0))
+
+    def create_modding_tab(self):
+        """Modding management tab"""
+        frame = ttk.Frame(self.notebook, padding="10")
+        self.notebook.add(frame, text="🧩 Mods")
+
+        frame.columnconfigure(1, weight=1)
+        frame.rowconfigure(2, weight=1)
+
+        header = ttk.Label(frame, text="Mod Browser", style="Title.TLabel")
+        header.grid(row=0, column=0, columnspan=2, sticky=tk.W, pady=(0, 5))
+
+        description = ttk.Label(
+            frame,
+            text=(
+                "Enable and inspect gameplay mods without leaving the IDE. "
+                "Mods are loaded when you start a play session."
+            ),
+        )
+        description.grid(row=1, column=0, columnspan=2, sticky=tk.W, pady=(0, 10))
+
+        # Mod list
+        list_frame = ttk.Frame(frame, style="Panel.TFrame", padding="10")
+        list_frame.grid(row=2, column=0, sticky=(tk.N, tk.S), padx=(0, 10))
+        list_frame.rowconfigure(1, weight=1)
+
+        ttk.Label(list_frame, text="Available Mods", style="Subtitle.TLabel").grid(
+            row=0, column=0, sticky=tk.W
+        )
+
+        tree_container = ttk.Frame(list_frame)
+        tree_container.grid(row=1, column=0, sticky=(tk.N, tk.S))
+
+        columns = ("status", "name", "version")
+        self.mod_tree = ttk.Treeview(
+            tree_container,
+            columns=columns,
+            show="headings",
+            height=20,
+            selectmode="browse",
+        )
+        self.mod_tree.heading("status", text="Status")
+        self.mod_tree.heading("name", text="Mod")
+        self.mod_tree.heading("version", text="Version")
+        self.mod_tree.column("status", width=90, anchor=tk.W)
+        self.mod_tree.column("name", width=220, anchor=tk.W)
+        self.mod_tree.column("version", width=80, anchor=tk.W)
+        self.mod_tree.bind("<<TreeviewSelect>>", self._on_mod_select)
+        self.mod_tree.grid(row=0, column=0, sticky=(tk.N, tk.S))
+
+        scrollbar = ttk.Scrollbar(
+            tree_container, orient=tk.VERTICAL, command=self.mod_tree.yview
+        )
+        scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
+        self.mod_tree.configure(yscrollcommand=scrollbar.set)
+
+        button_bar = ttk.Frame(list_frame)
+        button_bar.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(10, 0))
+        self.mod_toggle_button = ttk.Button(
+            button_bar, text="Enable Mod", command=self._toggle_selected_mod
+        )
+        self.mod_toggle_button.grid(row=0, column=0, sticky=tk.W, padx=(0, 6))
+        self.mod_view_button = ttk.Button(
+            button_bar, text="View Script", command=self._view_selected_mod
+        )
+        self.mod_view_button.grid(row=0, column=1, sticky=tk.W, padx=(0, 6))
+        ttk.Button(
+            button_bar,
+            text="Reload List",
+            command=self.refresh_mod_catalog_ui,
+        ).grid(row=0, column=2, sticky=tk.W)
+
+        # Details panel
+        detail_frame = ttk.Frame(frame, style="Panel.TFrame", padding="10")
+        detail_frame.grid(row=2, column=1, sticky=(tk.N, tk.S, tk.E, tk.W))
+        detail_frame.columnconfigure(0, weight=1)
+        detail_frame.rowconfigure(1, weight=1)
+        detail_frame.rowconfigure(3, weight=1)
+
+        ttk.Label(detail_frame, text="Mod Details", style="Subtitle.TLabel").grid(
+            row=0, column=0, sticky=tk.W
+        )
+
+        self.mod_detail_text = scrolledtext.ScrolledText(
+            detail_frame,
+            height=12,
+            wrap=tk.WORD,
+            state=tk.DISABLED,
+            bg=self.colors["text_bg"],
+            fg=self.colors["fg"],
+            insertbackground=self.colors["fg"],
+            relief=tk.FLAT,
+            bd=5,
+        )
+        self.mod_detail_text.grid(row=1, column=0, sticky=(tk.N, tk.S, tk.E, tk.W))
+
+        ttk.Label(
+            detail_frame, text="Recent Mod Activity", style="Subtitle.TLabel"
+        ).grid(row=2, column=0, sticky=tk.W, pady=(10, 0))
+
+        self.mod_console = scrolledtext.ScrolledText(
+            detail_frame,
+            height=10,
+            wrap=tk.WORD,
+            state=tk.DISABLED,
+            bg=self.colors["text_bg"],
+            fg=self.colors["fg"],
+            insertbackground=self.colors["fg"],
+            relief=tk.FLAT,
+            bd=5,
+        )
+        self.mod_console.grid(row=3, column=0, sticky=(tk.N, tk.S, tk.E, tk.W))
+
+        self.refresh_mod_catalog_ui()
+        self._populate_mod_console()
+        self._update_mod_action_state()
+
+    def refresh_mod_catalog_ui(self):
+        """Refresh the UI list of discovered mods."""
+        self.mod_catalog = self._discover_mods()
+
+        if not self.mod_tree:
+            return
+
+        current_selection = None
+        if self.mod_tree.selection():
+            current_selection = self.mod_tree.selection()[0]
+
+        for item in self.mod_tree.get_children():
+            self.mod_tree.delete(item)
+
+        self.mod_tree.tag_configure("enabled", foreground=self.colors["success"])
+        self.mod_tree.tag_configure("disabled", foreground=self.colors["fg"])
+
+        for mod in self.mod_catalog:
+            status = "Enabled" if mod["enabled"] else "Disabled"
+            version = mod.get("version", "—") or "—"
+            tag = "enabled" if mod["enabled"] else "disabled"
+            self.mod_tree.insert(
+                "",
+                tk.END,
+                iid=mod["relative"],
+                values=(status, mod["name"], version),
+                tags=(tag,),
+            )
+
+        selection_target = None
+        if current_selection and self.mod_tree.exists(current_selection):
+            selection_target = current_selection
+        elif self.mod_catalog:
+            enabled_mod = next((m for m in self.mod_catalog if m["enabled"]), None)
+            selection_target = (
+                enabled_mod["relative"]
+                if enabled_mod
+                else self.mod_catalog[0]["relative"]
+            )
+
+        if selection_target:
+            self.mod_tree.selection_set(selection_target)
+            self.mod_tree.focus(selection_target)
+            self._display_mod_details(selection_target)
+        else:
+            self._clear_mod_detail()
+
+        self._update_mod_action_state()
+
+    def _populate_mod_console(self):
+        if not self.mod_console:
+            return
+        self.mod_console.config(state=tk.NORMAL)
+        self.mod_console.delete("1.0", tk.END)
+        for line in self.mod_output_history:
+            self.mod_console.insert(tk.END, line + "\n")
+        self.mod_console.config(state=tk.DISABLED)
+
+    def _update_mod_action_state(self):
+        has_selection = bool(self.mod_tree and self.mod_tree.selection())
+        state = tk.NORMAL if has_selection else tk.DISABLED
+        if self.mod_toggle_button:
+            self.mod_toggle_button.config(state=state)
+        if self.mod_view_button:
+            self.mod_view_button.config(state=state)
+
+        if has_selection:
+            mod = self._get_selected_mod()
+            if mod:
+                label = "Disable Mod" if mod["enabled"] else "Enable Mod"
+                self.mod_toggle_button.config(text=label)
+
+    def _on_mod_select(self, _event=None):
+        if not self.mod_tree or not self.mod_tree.selection():
+            self._clear_mod_detail()
+            self._update_mod_action_state()
+            return
+        mod_id = self.mod_tree.selection()[0]
+        self._display_mod_details(mod_id)
+        self._update_mod_action_state()
+
+    def _toggle_selected_mod(self):
+        mod = self._get_selected_mod()
+        if not mod:
+            return
+        self._set_mod_enabled(mod["relative"], not mod["enabled"])
+        self.refresh_mod_catalog_ui()
+
+    def _view_selected_mod(self):
+        mod = self._get_selected_mod()
+        if not mod:
+            return
+
+        try:
+            content = Path(mod["absolute"]).read_text(encoding="utf-8")
+        except OSError as exc:
+            messagebox.showerror("View Script", f"Unable to read mod:\n{exc}")
+            return
+
+        preview = tk.Toplevel(self.root)
+        preview.title(f"Mod Preview - {mod['name']}")
+        preview.geometry("800x600")
+
+        text_widget = scrolledtext.ScrolledText(
+            preview,
+            wrap=tk.NONE,
+            bg=self.colors["text_bg"],
+            fg=self.colors["fg"],
+            insertbackground=self.colors["fg"],
+            font=(self.editor_font_family, self.editor_font_size),
+        )
+        text_widget.pack(fill=tk.BOTH, expand=True)
+        text_widget.insert(tk.END, content)
+        text_widget.config(state=tk.DISABLED)
+
+    def _get_selected_mod(self):
+        if not self.mod_tree or not self.mod_tree.selection():
+            return None
+        mod_id = self.mod_tree.selection()[0]
+        return self._find_mod(mod_id)
+
+    def _find_mod(self, mod_id):
+        for mod in self.mod_catalog:
+            if mod["relative"] == mod_id:
+                return mod
+        return None
+
+    def _clear_mod_detail(self):
+        if not self.mod_detail_text:
+            return
+        self.mod_detail_text.config(state=tk.NORMAL)
+        self.mod_detail_text.delete("1.0", tk.END)
+        self.mod_detail_text.insert(
+            tk.END,
+            "No mods discovered in the 'mods' folder yet. Add .py files to see them here.",
+        )
+        self.mod_detail_text.config(state=tk.DISABLED)
+
+    def _display_mod_details(self, mod_id):
+        mod = self._find_mod(mod_id)
+        if not mod or not self.mod_detail_text:
+            self._clear_mod_detail()
+            return
+
+        summary = self._get_mod_summary(mod)
+
+        lines = [
+            f"Name: {mod['name']}",
+            f"Version: {mod.get('version', '—') or '—'}",
+            f"Author: {mod.get('author', 'Unknown')}",
+            f"Location: {mod['relative']}",
+            f"Status: {'Enabled' if mod['enabled'] else 'Disabled'}",
+            "",
+        ]
+
+        if mod.get("summary"):
+            lines.append(mod["summary"])
+            lines.append("")
+
+        if summary.get("error"):
+            lines.append(f"⚠ Unable to load mod for inspection: {summary['error']}")
+        else:
+            if summary.get("hooks"):
+                lines.append("Registered Hooks:")
+                for hook in summary["hooks"]:
+                    filter_desc = ", ".join(
+                        f"{key}={value}" for key, value in hook["filters"].items()
+                    )
+                    if filter_desc:
+                        filter_desc = f" [{filter_desc}]"
+                    lines.append(
+                        f"  • {hook['event']} (priority {hook['priority']}){filter_desc}"
+                    )
+            if summary.get("commands"):
+                if summary.get("hooks"):
+                    lines.append("")
+                lines.append("Custom Commands:")
+                for command in summary["commands"]:
+                    alias_text = (
+                        f" (aliases: {', '.join(command['aliases'])})"
+                        if command["aliases"]
+                        else ""
+                    )
+                    help_text = command["help_text"] or "No description provided."
+                    lines.append(f"  • {command['verb']}{alias_text}: {help_text}")
+
+        detail_text = "\n".join(lines)
+        self.mod_detail_text.config(state=tk.NORMAL)
+        self.mod_detail_text.delete("1.0", tk.END)
+        self.mod_detail_text.insert(tk.END, detail_text)
+        self.mod_detail_text.config(state=tk.DISABLED)
+
+    def _get_mod_summary(self, mod):
+        cache_entry = self.mod_cache.get(mod["relative"])
+        if cache_entry and cache_entry["mtime"] == mod["mtime"]:
+            return cache_entry["data"]
+
+        summary = {"hooks": [], "commands": [], "error": None}
+        sandbox = ModdingSystem()
+        try:
+            success = sandbox.load_mod_file(str(mod["absolute"]))
+        except OSError as exc:
+            summary["error"] = str(exc)
+        else:
+            if not success:
+                summary["error"] = "Failed to execute mod script."
+            else:
+                for event, hooks in sandbox.hooks.items():
+                    for hook in hooks:
+                        summary["hooks"].append(
+                            {
+                                "event": event.value,
+                                "priority": hook.priority,
+                                "filters": hook.filter_params or {},
+                            }
+                        )
+                seen_verbs = set()
+                for command in sandbox.custom_commands.values():
+                    if command.verb in seen_verbs:
+                        continue
+                    seen_verbs.add(command.verb)
+                    summary["commands"].append(
+                        {
+                            "verb": command.verb,
+                            "aliases": list(command.aliases),
+                            "help_text": command.help_text,
+                        }
+                    )
+
+        self.mod_cache[mod["relative"]] = {
+            "mtime": mod["mtime"],
+            "data": summary,
+        }
+        return summary
+
+    def _discover_mods(self):
+        mods = []
+        if not self.mod_root.exists():
+            return mods
+
+        for path in sorted(self.mod_root.rglob("*.py")):
+            if path.name.startswith("__"):
+                continue
+            metadata = self._parse_mod_metadata(path)
+            relative_path = path.relative_to(self.mod_root).as_posix()
+            metadata.update(
+                {
+                    "absolute": path,
+                    "relative": relative_path,
+                    "enabled": relative_path in self.enabled_mods,
+                    "mtime": path.stat().st_mtime,
+                }
+            )
+            mods.append(metadata)
+
+        return mods
+
+    def _parse_mod_metadata(self, path: Path):
+        metadata = {
+            "name": path.stem.replace("_", " ").title(),
+            "version": "1.0",
+            "author": "Unknown",
+            "summary": "No summary provided.",
+            "docstring": "",
+        }
+
+        try:
+            source = path.read_text(encoding="utf-8")
+        except OSError:
+            metadata["summary"] = "Unable to read mod file."
+            return metadata
+
+        try:
+            module = ast.parse(source)
+        except SyntaxError as exc:
+            metadata["summary"] = f"Syntax error: {exc}".strip()
+            return metadata
+
+        docstring = ast.get_docstring(module) or ""
+        metadata["docstring"] = docstring
+
+        for line in docstring.splitlines():
+            if ":" not in line:
+                continue
+            key, value = line.split(":", 1)
+            key = key.strip().lower()
+            value = value.strip()
+            if key == "name" and value:
+                metadata["name"] = value
+            elif key == "version" and value:
+                metadata["version"] = value
+            elif key in {"summary", "description"} and value:
+                metadata["summary"] = value
+            elif key == "author" and value:
+                metadata["author"] = value
+
+        return metadata
+
+    def _set_mod_enabled(self, relative_path: str, enabled: bool):
+        if enabled:
+            self.enabled_mods.add(relative_path)
+        else:
+            self.enabled_mods.discard(relative_path)
+        self._save_mod_state()
+
+    def _ensure_mod_root(self):
+        self.mod_root.mkdir(parents=True, exist_ok=True)
+
+    def _load_mod_state(self):
+        self.enabled_mods = set()
+        self.mod_state_path.parent.mkdir(parents=True, exist_ok=True)
+        if not self.mod_state_path.exists():
+            self._save_mod_state()
+            return
+
+        try:
+            with open(self.mod_state_path, "r", encoding="utf-8") as handle:
+                data = json.load(handle)
+        except (OSError, json.JSONDecodeError, TypeError, ValueError):
+            data = {}
+
+        enabled = data.get("enabled_mods", []) or []
+        self.enabled_mods = {entry for entry in enabled if isinstance(entry, str)}
+
+    def _save_mod_state(self):
+        self.mod_state_path.parent.mkdir(parents=True, exist_ok=True)
+        data = {"enabled_mods": sorted(self.enabled_mods)}
+        try:
+            with open(self.mod_state_path, "w", encoding="utf-8") as handle:
+                json.dump(data, handle, indent=2)
+        except OSError:
+            messagebox.showwarning(
+                "Mod State",
+                "Unable to persist mod selection. Changes will apply for this session only.",
+            )
+
+    def _clear_mod_console(self):
+        self.mod_output_history.clear()
+        if not self.mod_console:
+            return
+        self.mod_console.config(state=tk.NORMAL)
+        self.mod_console.delete("1.0", tk.END)
+        self.mod_console.config(state=tk.DISABLED)
+
+    def _log_mod_console(self, message: str):
+        timestamped = message
+        self.mod_output_history.append(timestamped)
+        if len(self.mod_output_history) > 200:
+            self.mod_output_history = self.mod_output_history[-200:]
+        if self.mod_console:
+            self.mod_console.config(state=tk.NORMAL)
+            self.mod_console.insert(tk.END, timestamped + "\n")
+            self.mod_console.see(tk.END)
+            self.mod_console.config(state=tk.DISABLED)
+
+    def _apply_active_mods_to_game(self):
+        messages = []
+        if not self.game_instance or not hasattr(self.game_instance, "modding"):
+            messages.append("Modding system not available for this adventure.")
+            return messages
+
+        self.game_instance.modding = ModdingSystem(engine=self.game_instance)
+
+        for relative_path in sorted(self.enabled_mods):
+            mod_path = self.mod_root / relative_path
+            if not mod_path.exists():
+                messages.append(f"⚠ Missing mod: {relative_path}")
+                continue
+            success = self.game_instance.modding.load_mod_file(str(mod_path))
+            if success:
+                messages.append(f"✅ Loaded {relative_path}")
+            else:
+                messages.append(f"⚠ Failed to load {relative_path}")
+
+        return messages
+
     def create_preview_tab(self):
         """JSON preview tab"""
         frame = ttk.Frame(self.notebook, padding="10")
@@ -869,11 +1721,17 @@ class AdventureIDE:
         ttk.Button(btn_frame, text="Copy to Clipboard", command=self.copy_preview).pack(
             side=tk.LEFT, padx=5
         )
+        ttk.Button(
+            btn_frame,
+            text="Show Diff vs Saved",
+            command=self.show_json_diff,
+        ).pack(side=tk.LEFT, padx=5)
 
     def create_play_tab(self):
         """Interactive play tab with modern design"""
         frame = ttk.Frame(self.notebook, padding="20")
         self.notebook.add(frame, text="▶️ Play")
+        self.play_tab = frame
 
         # Header
         header = ttk.Label(frame, text="Adventure Playthrough", style="Title.TLabel")
@@ -932,6 +1790,20 @@ class AdventureIDE:
         )
         send_btn.pack(side=tk.LEFT)
 
+        # Status badges
+        status_frame = ttk.Frame(frame)
+        status_frame.pack(fill=tk.X, pady=(0, 5))
+        ttk.Label(
+            status_frame,
+            textvariable=self.validation_badge_var,
+            style="Subtitle.TLabel",
+        ).pack(side=tk.LEFT, padx=5)
+        ttk.Label(
+            status_frame,
+            textvariable=self.test_badge_var,
+            style="Subtitle.TLabel",
+        ).pack(side=tk.LEFT, padx=5)
+
         # Control buttons with colors
         control_frame = ttk.Frame(frame)
         control_frame.pack(fill=tk.X)
@@ -963,9 +1835,53 @@ class AdventureIDE:
             width=15,
         ).pack(side=tk.LEFT, padx=5)
 
-        # Initialize game state
-        self.game_instance = None
-        self.game_running = False
+        # Quick save/load controls
+        quick_frame = ttk.Frame(frame)
+        quick_frame.pack(fill=tk.X, pady=(10, 5))
+        ttk.Label(quick_frame, text="Quick Save Slots", style="Subtitle.TLabel").pack(
+            anchor=tk.W, padx=5
+        )
+        slot_container = ttk.Frame(quick_frame)
+        slot_container.pack(anchor=tk.W, padx=5)
+        for slot in (1, 2, 3):
+            slot_frame = ttk.Frame(slot_container)
+            slot_frame.pack(side=tk.LEFT, padx=5)
+            ttk.Button(
+                slot_frame,
+                text=f"Save {slot}",
+                command=lambda s=slot: self.quick_save(s),
+                width=12,
+                style="Success.TButton",
+            ).pack(pady=2)
+            ttk.Button(
+                slot_frame,
+                text=f"Load {slot}",
+                command=lambda s=slot: self.quick_load(s),
+                width=12,
+            ).pack(pady=2)
+
+        # Demo command helpers
+        demo_frame = ttk.Frame(frame)
+        demo_frame.pack(fill=tk.X, pady=(0, 10))
+        ttk.Label(demo_frame, text="Demo Commands", style="Subtitle.TLabel").pack(
+            side=tk.LEFT, padx=5
+        )
+
+        demo_values = list(self.demo_scripts.keys())
+        demo_selector = ttk.Combobox(
+            demo_frame,
+            textvariable=self.demo_script_var,
+            values=demo_values,
+            state="readonly",
+            width=30,
+        )
+        demo_selector.pack(side=tk.LEFT, padx=5)
+        if demo_values and not self.demo_script_var.get():
+            self.demo_script_var.set(demo_values[0])
+
+        ttk.Button(demo_frame, text="Run Demo", command=self.run_demo_script).pack(
+            side=tk.LEFT, padx=5
+        )
 
     # Adventure management methods
     def new_adventure(self):
@@ -1002,33 +1918,17 @@ class AdventureIDE:
         if not filename:
             return
 
-        try:
-            with open(filename, "r") as f:
-                self.adventure = json.load(f)
-
-            self.current_file = filename
-            self.modified = False
-            self.load_adventure_to_ui()
-            self.update_status(f"Opened: {os.path.basename(filename)}")
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to open file:\n{e}")
+        self._load_adventure_file(filename)
 
     def save_adventure(self):
         """Save the current adventure"""
         if not self.current_file:
             return self.save_adventure_as()
 
-        try:
-            self.collect_adventure_data()
-            with open(self.current_file, "w") as f:
-                json.dump(self.adventure, f, indent=2)
-
-            self.modified = False
-            self.update_status(f"Saved: {os.path.basename(self.current_file)}")
-            return True
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to save file:\n{e}")
-            return False
+        success = self._write_adventure_to_file(self.current_file)
+        if success:
+            self._remember_recent_file(self.current_file)
+        return success
 
     def save_adventure_as(self):
         """Save adventure with a new name"""
@@ -1045,6 +1945,63 @@ class AdventureIDE:
         self.current_file = filename
         return self.save_adventure()
 
+    def _load_adventure_file(
+        self,
+        filename: str,
+        *,
+        set_current: bool = True,
+        refresh_ui: bool = True,
+        update_recent: bool = True,
+        show_status: bool = True,
+        show_errors: bool = True,
+    ) -> bool:
+        """Load adventure data from disk and optionally refresh the UI."""
+        try:
+            with open(filename, "r", encoding="utf-8") as handle:
+                data = json.load(handle)
+        except (OSError, json.JSONDecodeError) as exc:
+            if show_errors:
+                messagebox.showerror("Error", f"Failed to load file:\n{exc}")
+            else:
+                self.update_status(f"Load failed: {exc}")
+            return False
+
+        self.adventure = data
+        self.adventure.setdefault("mode", "text")
+        scenes = self.adventure.setdefault("scenes", [])
+        for scene in scenes:
+            scene.setdefault("hotspots", [])
+            scene["grid_visible"] = bool(scene.get("grid_visible", False))
+            try:
+                size_value = int(scene.get("grid_size", 64))
+            except (TypeError, ValueError):
+                size_value = 64
+            scene["grid_size"] = max(16, min(256, size_value))
+        if set_current:
+            self.current_file = filename
+        self.modified = False
+        if refresh_ui:
+            self.load_adventure_to_ui()
+        if update_recent:
+            self._remember_recent_file(filename)
+        if show_status:
+            self.update_status(f"Opened: {os.path.basename(filename)}")
+        return True
+
+    def _write_adventure_to_file(self, filename: str) -> bool:
+        """Persist the current adventure to disk."""
+        try:
+            self.collect_adventure_data()
+            with open(filename, "w", encoding="utf-8") as handle:
+                json.dump(self.adventure, handle, indent=2)
+        except (OSError, TypeError) as exc:
+            messagebox.showerror("Error", f"Failed to save file:\n{exc}")
+            return False
+
+        self.modified = False
+        self.update_status(f"Saved: {os.path.basename(filename)}")
+        return True
+
     def load_adventure_to_ui(self):
         """Load adventure data into UI"""
         # Info tab
@@ -1053,6 +2010,11 @@ class AdventureIDE:
         self.start_room_var.set(self.adventure.get("start_room", 1))
         self.intro_text.delete("1.0", tk.END)
         self.intro_text.insert("1.0", self.adventure.get("intro", ""))
+
+        if self.game_mode_var:
+            self._suppress_mode_change = True
+            self.game_mode_var.set(self.adventure.get("mode", "text"))
+            self._suppress_mode_change = False
 
         # Rooms
         self.refresh_rooms_list()
@@ -1063,6 +2025,9 @@ class AdventureIDE:
         # Monsters
         self.refresh_monsters_list()
 
+        # Visual scenes
+        self.refresh_scenes_list()
+
         # Preview
         self.update_preview()
 
@@ -1072,6 +2037,17 @@ class AdventureIDE:
         self.adventure["author"] = self.author_var.get()
         self.adventure["start_room"] = self.start_room_var.get()
         self.adventure["intro"] = self.intro_text.get("1.0", tk.END).strip()
+        if self.game_mode_var:
+            self.adventure["mode"] = self.game_mode_var.get() or "text"
+        self.adventure.setdefault("scenes", [])
+        for scene in self.adventure["scenes"]:
+            scene.setdefault("hotspots", [])
+            scene["grid_visible"] = bool(scene.get("grid_visible", False))
+            try:
+                size_value = int(scene.get("grid_size", 64))
+            except (TypeError, ValueError):
+                size_value = 64
+            scene["grid_size"] = max(16, min(256, size_value))
 
     # Room methods
     def refresh_rooms_list(self):
@@ -1108,7 +2084,7 @@ class AdventureIDE:
             self.refresh_rooms_list()
             self.modified = True
 
-    def select_room(self, event):
+    def select_room(self, _event):
         """Load selected room into editor"""
         selection = self.rooms_listbox.curselection()
         if not selection:
@@ -1149,6 +2125,405 @@ class AdventureIDE:
         self.modified = True
         self.update_status("Adventure info updated")
 
+    def _on_mode_changed(self):
+        """Flag the document dirty when switching between text and visual modes."""
+        if not self.game_mode_var:
+            return
+        if self._suppress_mode_change:
+            return
+        self.modified = True
+        selected = self.game_mode_var.get()
+        label = "Visual" if selected == "visual" else "Text"
+        self.update_status(f"Experience mode set to {label}")
+
+    # Visual scene methods
+    def refresh_scenes_list(self):
+        """Refresh the list of visual scenes."""
+        if not self.scenes_listbox:
+            return
+
+        scenes = self.adventure.get("scenes", []) or []
+        current_selection = self.scenes_listbox.curselection()
+        selected_id = None
+        if current_selection:
+            try:
+                selected_id = scenes[current_selection[0]].get("id")
+            except IndexError:
+                selected_id = None
+
+        self.scenes_listbox.delete(0, tk.END)
+        for idx, scene in enumerate(scenes):
+            scene_id = scene.get("id", idx + 1)
+            name = scene.get("name") or f"Scene {scene_id}"
+            room_id = scene.get("room_id")
+            label = f"#{scene_id}: {name}"
+            if room_id:
+                label += f" (Room {room_id})"
+            self.scenes_listbox.insert(tk.END, label)
+            if selected_id is not None and scene_id == selected_id:
+                self.scenes_listbox.selection_set(idx)
+
+        if scenes and not self.scenes_listbox.curselection():
+            self.scenes_listbox.selection_set(0)
+
+        if self.scenes_listbox.curselection():
+            self.select_scene(None)
+        else:
+            self.clear_scene_editor()
+            self.refresh_hotspots_list(clear_only=True)
+
+    def add_scene(self):
+        """Create a new point-and-click scene."""
+        scenes = self.adventure.setdefault("scenes", [])
+        next_id = max([scene.get("id", 0) for scene in scenes], default=0) + 1
+        scene = {
+            "id": next_id,
+            "name": f"Scene {next_id}",
+            "room_id": self.start_room_var.get() if self.start_room_var else 1,
+            "background": "",
+            "music": "",
+            "narration": "",
+            "grid_visible": False,
+            "grid_size": 64,
+            "hotspots": [],
+        }
+        scenes.append(scene)
+        self.modified = True
+        self.update_status(f"Scene {next_id} added")
+        self.refresh_scenes_list()
+        if self.scenes_listbox.size() > 0:
+            self.scenes_listbox.selection_clear(0, tk.END)
+            self.scenes_listbox.selection_set(tk.END)
+            self.select_scene(None)
+
+    def delete_scene(self):
+        """Remove the selected scene."""
+        if not self.scenes_listbox:
+            return
+        selection_indices = self.scenes_listbox.curselection()
+        if not selection_indices:
+            return
+
+        if not messagebox.askyesno("Confirm", "Delete this scene?"):
+            return
+
+        try:
+            idx = int(selection_indices[0])
+        except (ValueError, TypeError):
+            return
+        try:
+            del self.adventure.setdefault("scenes", [])[idx]
+        except IndexError:
+            return
+
+        self.modified = True
+        self.update_status("Scene deleted")
+        self.refresh_scenes_list()
+
+    def select_scene(self, _event):
+        """Populate the scene editor from the selection."""
+        if not self.scenes_listbox:
+            return
+        selection_indices = self.scenes_listbox.curselection()
+        if not selection_indices:
+            self.clear_scene_editor()
+            self.refresh_hotspots_list(clear_only=True)
+            return
+
+        scenes = self.adventure.get("scenes", [])
+        try:
+            index = int(selection_indices[0])
+            scene = scenes[index]
+        except (IndexError, ValueError):
+            self.clear_scene_editor()
+            self.refresh_hotspots_list(clear_only=True)
+            return
+
+        self.scene_id_var.set(scene.get("id", 0))
+        self.scene_name_var.set(scene.get("name", ""))
+        self.scene_room_var.set(scene.get("room_id", 0))
+        self.scene_background_var.set(scene.get("background", ""))
+        self.scene_music_var.set(scene.get("music", ""))
+        if self.scene_grid_visible_var:
+            self.scene_grid_visible_var.set(bool(scene.get("grid_visible", False)))
+        if self.scene_grid_size_var:
+            try:
+                value = int(scene.get("grid_size", 64) or 64)
+            except (TypeError, ValueError):
+                value = 64
+            self.scene_grid_size_var.set(max(16, min(256, value)))
+        self.scene_narration_text.delete("1.0", tk.END)
+        self.scene_narration_text.insert("1.0", scene.get("narration", ""))
+        self.refresh_hotspots_list(scene=scene)
+
+    def clear_scene_editor(self):
+        """Reset scene editor fields."""
+        if self.scene_id_var:
+            self.scene_id_var.set(0)
+        if self.scene_name_var:
+            self.scene_name_var.set("")
+        if self.scene_room_var:
+            self.scene_room_var.set(0)
+        if self.scene_background_var:
+            self.scene_background_var.set("")
+        if self.scene_music_var:
+            self.scene_music_var.set("")
+        if hasattr(self, "scene_grid_visible_var") and self.scene_grid_visible_var:
+            self.scene_grid_visible_var.set(False)
+        if hasattr(self, "scene_grid_size_var") and self.scene_grid_size_var:
+            self.scene_grid_size_var.set(64)
+        if self.scene_narration_text:
+            self.scene_narration_text.delete("1.0", tk.END)
+
+    def update_scene(self):
+        """Persist changes made to the active scene."""
+        if not self.scenes_listbox:
+            return
+        selection_indices = self.scenes_listbox.curselection()
+        if not selection_indices:
+            return
+
+        scenes = self.adventure.setdefault("scenes", [])
+        try:
+            index = int(selection_indices[0])
+            scene = scenes[index]
+        except (IndexError, ValueError):
+            return
+
+        scene["name"] = self.scene_name_var.get()
+        scene["room_id"] = self.scene_room_var.get()
+        scene["background"] = self.scene_background_var.get()
+        scene["music"] = self.scene_music_var.get()
+        scene["narration"] = self.scene_narration_text.get("1.0", tk.END).strip()
+        grid_visible = False
+        if self.scene_grid_visible_var:
+            grid_visible = bool(self.scene_grid_visible_var.get())
+        try:
+            if self.scene_grid_size_var:
+                grid_size_value = int(self.scene_grid_size_var.get())
+            else:
+                grid_size_value = 64
+        except (TypeError, ValueError, tk.TclError):
+            grid_size_value = 64
+        scene["grid_visible"] = grid_visible
+        scene["grid_size"] = max(16, min(256, grid_size_value))
+
+        self.modified = True
+        self.update_status("Scene updated")
+        self.refresh_scenes_list()
+
+    def browse_scene_background(self):
+        """Choose a background image file for the scene."""
+        filename = filedialog.askopenfilename(
+            title="Select Background Image",
+            initialdir="assets",
+            filetypes=[
+                ("Image Files", "*.png *.gif *.jpg *.jpeg *.bmp"),
+                ("All Files", "*.*"),
+            ],
+        )
+        if filename and self.scene_background_var:
+            self.scene_background_var.set(filename)
+            self.modified = True
+            self.update_status("Background updated")
+
+    def refresh_hotspots_list(self, scene=None, *, clear_only: bool = False):
+        """Refresh the hotspot list for the current scene."""
+        if not self.hotspots_listbox:
+            return
+
+        self.hotspots_listbox.delete(0, tk.END)
+        if clear_only:
+            self.clear_hotspot_editor()
+            return
+
+        if scene is None:
+            selection_indices = (
+                self.scenes_listbox.curselection() if self.scenes_listbox else ()
+            )
+            if not selection_indices:
+                self.clear_hotspot_editor()
+                return
+            scenes = self.adventure.get("scenes", [])
+            try:
+                index = int(selection_indices[0])
+                scene = scenes[index]
+            except (IndexError, ValueError):
+                self.clear_hotspot_editor()
+                return
+
+        hotspots = scene.setdefault("hotspots", [])
+        selected_index = None
+        current_selection = self.hotspots_listbox.curselection()
+        if current_selection:
+            selected_index = current_selection[0]
+
+        for idx, hotspot in enumerate(hotspots):
+            hotspot_id = hotspot.get("id", idx + 1)
+            label = hotspot.get("label", f"Hotspot {hotspot_id}")
+            action = hotspot.get("action", "command")
+            self.hotspots_listbox.insert(tk.END, f"#{hotspot_id}: {label} [{action}]")
+            if selected_index is not None and idx == selected_index:
+                self.hotspots_listbox.selection_set(idx)
+
+        if hotspots and not self.hotspots_listbox.curselection():
+            self.hotspots_listbox.selection_set(0)
+
+        if self.hotspots_listbox.curselection():
+            self.select_hotspot(None)
+        else:
+            self.clear_hotspot_editor()
+
+    def add_hotspot(self):
+        """Add a new hotspot to the selected scene."""
+        if not self.scenes_listbox:
+            return
+        selection_indices = self.scenes_listbox.curselection()
+        if not selection_indices:
+            return
+
+        scenes = self.adventure.setdefault("scenes", [])
+        try:
+            scene_index = int(selection_indices[0])
+            scene = scenes[scene_index]
+        except (IndexError, ValueError):
+            return
+
+        hotspots = scene.setdefault("hotspots", [])
+        next_id = max([hs.get("id", 0) for hs in hotspots], default=0) + 1
+        hotspot = {
+            "id": next_id,
+            "label": f"Hotspot {next_id}",
+            "tooltip": "",
+            "shape": "rectangle",
+            "x": 10,
+            "y": 10,
+            "width": 120,
+            "height": 80,
+            "action": "command",
+            "value": "look",
+        }
+        hotspots.append(hotspot)
+        self.modified = True
+        self.update_status(f"Hotspot {next_id} added")
+        self.refresh_hotspots_list(scene=scene)
+        if self.hotspots_listbox.size() > 0:
+            self.hotspots_listbox.selection_clear(0, tk.END)
+            self.hotspots_listbox.selection_set(tk.END)
+            self.select_hotspot(None)
+
+    def delete_hotspot(self):
+        """Delete the selected hotspot."""
+        if not self.scenes_listbox or not self.hotspots_listbox:
+            return
+        scene_sel = self.scenes_listbox.curselection()
+        hotspot_sel = self.hotspots_listbox.curselection()
+        if not scene_sel or not hotspot_sel:
+            return
+
+        if not messagebox.askyesno("Confirm", "Delete this hotspot?"):
+            return
+
+        scenes = self.adventure.get("scenes", [])
+        try:
+            scene_index = int(scene_sel[0])
+            hotspot_index = int(hotspot_sel[0])
+            scene = scenes[scene_index]
+            hotspots = scene.setdefault("hotspots", [])
+            del hotspots[hotspot_index]
+        except (IndexError, KeyError, ValueError):
+            return
+
+        self.modified = True
+        self.update_status("Hotspot deleted")
+        self.refresh_hotspots_list(scene=scene)
+
+    def select_hotspot(self, _event):
+        """Populate hotspot details from the current selection."""
+        if not self.scenes_listbox or not self.hotspots_listbox:
+            return
+        scene_sel = self.scenes_listbox.curselection()
+        hotspot_sel = self.hotspots_listbox.curselection()
+        if not scene_sel or not hotspot_sel:
+            self.clear_hotspot_editor()
+            return
+
+        scenes = self.adventure.get("scenes", [])
+        try:
+            scene_index = int(scene_sel[0])
+            hotspot_index = int(hotspot_sel[0])
+            scene = scenes[scene_index]
+            hotspot = scene.setdefault("hotspots", [])[hotspot_index]
+        except (IndexError, KeyError, ValueError):
+            self.clear_hotspot_editor()
+            return
+
+        self.hotspot_id_var.set(hotspot.get("id", 0))
+        self.hotspot_label_var.set(hotspot.get("label", ""))
+        self.hotspot_tooltip_var.set(hotspot.get("tooltip", ""))
+        self.hotspot_shape_var.set(hotspot.get("shape", "rectangle"))
+        self.hotspot_x_var.set(hotspot.get("x", 0))
+        self.hotspot_y_var.set(hotspot.get("y", 0))
+        self.hotspot_width_var.set(hotspot.get("width", 100))
+        self.hotspot_height_var.set(hotspot.get("height", 100))
+        self.hotspot_action_var.set(hotspot.get("action", "command"))
+        self.hotspot_value_var.set(hotspot.get("value", ""))
+
+    def clear_hotspot_editor(self):
+        """Reset hotspot editor fields."""
+        if self.hotspot_id_var:
+            self.hotspot_id_var.set(0)
+        if self.hotspot_label_var:
+            self.hotspot_label_var.set("")
+        if self.hotspot_tooltip_var:
+            self.hotspot_tooltip_var.set("")
+        if self.hotspot_shape_var:
+            self.hotspot_shape_var.set("rectangle")
+        if self.hotspot_x_var:
+            self.hotspot_x_var.set(0)
+        if self.hotspot_y_var:
+            self.hotspot_y_var.set(0)
+        if self.hotspot_width_var:
+            self.hotspot_width_var.set(100)
+        if self.hotspot_height_var:
+            self.hotspot_height_var.set(100)
+        if self.hotspot_action_var:
+            self.hotspot_action_var.set("command")
+        if self.hotspot_value_var:
+            self.hotspot_value_var.set("")
+
+    def update_hotspot(self):
+        """Persist hotspot field changes."""
+        if not self.scenes_listbox or not self.hotspots_listbox:
+            return
+        scene_sel = self.scenes_listbox.curselection()
+        hotspot_sel = self.hotspots_listbox.curselection()
+        if not scene_sel or not hotspot_sel:
+            return
+
+        scenes = self.adventure.get("scenes", [])
+        try:
+            scene_index = int(scene_sel[0])
+            hotspot_index = int(hotspot_sel[0])
+            scene = scenes[scene_index]
+            hotspot = scene.setdefault("hotspots", [])[hotspot_index]
+        except (IndexError, KeyError, ValueError):
+            return
+
+        hotspot["label"] = self.hotspot_label_var.get()
+        hotspot["tooltip"] = self.hotspot_tooltip_var.get()
+        hotspot["shape"] = self.hotspot_shape_var.get()
+        hotspot["x"] = self.hotspot_x_var.get()
+        hotspot["y"] = self.hotspot_y_var.get()
+        hotspot["width"] = self.hotspot_width_var.get()
+        hotspot["height"] = self.hotspot_height_var.get()
+        hotspot["action"] = self.hotspot_action_var.get()
+        hotspot["value"] = self.hotspot_value_var.get()
+
+        self.modified = True
+        self.update_status("Hotspot updated")
+        self.refresh_hotspots_list(scene=scene)
+
     # Item methods
     def refresh_items_list(self):
         """Refresh items listbox"""
@@ -1188,7 +2563,7 @@ class AdventureIDE:
             self.refresh_items_list()
             self.modified = True
 
-    def select_item(self, event):
+    def select_item(self, _event):
         """Load selected item into editor"""
         selection = self.items_listbox.curselection()
         if not selection:
@@ -1264,7 +2639,7 @@ class AdventureIDE:
             self.refresh_monsters_list()
             self.modified = True
 
-    def select_monster(self, event):
+    def select_monster(self, _event):
         """Load selected monster into editor"""
         selection = self.monsters_listbox.curselection()
         if not selection:
@@ -1315,32 +2690,68 @@ class AdventureIDE:
         self.root.clipboard_append(self.preview_text.get("1.0", tk.END))
         self.update_status("JSON copied to clipboard")
 
-    # Tool methods
-    def test_adventure(self):
-        """Test the adventure in the game"""
-        # Save to temp file
-        temp_file = "adventures/_temp_test.json"
+    def show_json_diff(self):
+        """Display differences between the current state and last saved file."""
+        if not self.current_file or not Path(self.current_file).exists():
+            messagebox.showinfo(
+                "Diff Unavailable", "Save the adventure to enable diff view."
+            )
+            return
+
         self.collect_adventure_data()
 
         try:
-            with open(temp_file, "w", encoding="utf-8") as f:
-                json.dump(self.adventure, f, indent=2)
+            with open(self.current_file, "r", encoding="utf-8") as handle:
+                saved_data = json.load(handle)
+        except (OSError, json.JSONDecodeError) as exc:
+            messagebox.showerror("Diff Error", f"Unable to read saved file:\n{exc}")
+            return
 
-            # Launch game using the core engine CLI so authors can play the temp build
-            subprocess.Popen(
-                [
-                    sys.executable,
-                    "-m",
-                    "src.acs.core.engine",
-                    temp_file,
-                ]
+        current_lines = json.dumps(self.adventure, indent=2).splitlines()
+        saved_lines = json.dumps(saved_data, indent=2).splitlines()
+        diff_lines = list(
+            difflib.unified_diff(
+                saved_lines,
+                current_lines,
+                fromfile="saved",
+                tofile="current",
+                lineterm="",
             )
-            self.update_status("Testing adventure...")
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to test:\n{e}")
+        )
 
-    def validate_adventure(self):
-        """Validate adventure data"""
+        diff_window = tk.Toplevel(self.root)
+        diff_window.title("Adventure JSON Diff")
+        diff_window.geometry("960x720")
+
+        text_widget = scrolledtext.ScrolledText(
+            diff_window,
+            wrap=tk.NONE,
+            font=("Consolas", 10),
+        )
+        text_widget.pack(fill=tk.BOTH, expand=True)
+
+        if diff_lines:
+            text_widget.insert("1.0", "\n".join(diff_lines))
+        else:
+            text_widget.insert("1.0", "No differences detected.")
+
+        text_widget.config(state=tk.DISABLED)
+
+    # Tool methods
+    def test_adventure(self):
+        """Test the adventure directly in the IDE play tab"""
+        self.collect_adventure_data()
+
+        if hasattr(self, "play_tab"):
+            self.notebook.select(self.play_tab)
+
+        self.test_badge_var.set("Play: Testing")
+        self.start_game()
+        if self.game_running:
+            self.update_status("Testing adventure in IDE play tab")
+
+    def validate_adventure(self, silent: bool = False):
+        """Validate adventure data and update the status badge."""
         self.collect_adventure_data()
         errors = []
 
@@ -1358,16 +2769,41 @@ class AdventureIDE:
         # Check room exits
         room_ids = {r["id"] for r in self.adventure["rooms"]}
         for room in self.adventure["rooms"]:
-            for direction, target in room["exits"].items():
+            for _, target in room["exits"].items():
                 if target not in room_ids and target != 0:
                     errors.append(
-                        f"Room {room['id']} has exit to non-existent " f"room {target}"
+                        f"Room {room['id']} has exit to non-existent room {target}"
                     )
 
+        mode = self.adventure.get("mode", "text")
+        if mode == "visual":
+            scenes = self.adventure.get("scenes", []) or []
+            if not scenes:
+                errors.append("Visual adventures require at least one scene defined")
+            for scene in scenes:
+                scene_id = scene.get("id") or scene.get("name", "(unnamed)")
+                if not scene.get("background"):
+                    errors.append(
+                        f"Scene {scene_id} is missing a background image path"
+                    )
+                for hotspot in scene.get("hotspots", []) or []:
+                    if hotspot.get("action", "command").startswith(
+                        "command"
+                    ) and not hotspot.get("value"):
+                        errors.append(
+                            f"Scene {scene_id} has a hotspot without a command value"
+                        )
+
         if errors:
-            messagebox.showwarning("Validation Issues", "\n".join(errors))
+            self.validation_badge_var.set(f"Validation: ⚠ {len(errors)} issue(s)")
+            if not silent:
+                messagebox.showwarning("Validation Issues", "\n".join(errors))
         else:
-            messagebox.showinfo("Validation", "Adventure is valid!")
+            self.validation_badge_var.set("Validation: ✅ Clean")
+            if not silent:
+                messagebox.showinfo("Validation", "Adventure is valid!")
+
+        return errors
 
     # DSK import functionality removed
 
@@ -1432,6 +2868,16 @@ F5 - Test Adventure
         self.game_output.delete("1.0", tk.END)
         self.game_output.config(state=tk.DISABLED)
 
+    def _fail_play(self, message: str):
+        """Display a play-tab error and reset transient state."""
+        messagebox.showerror("Play Error", message)
+        self.game_running = False
+        self.test_badge_var.set("Play: Error")
+        self.update_status("Play error")
+        if self.point_and_click is not None:
+            self.point_and_click.destroy()
+            self.point_and_click = None
+
     def load_for_play(self):
         """Load an adventure file to play"""
         filename = filedialog.askopenfilename(
@@ -1443,27 +2889,19 @@ F5 - Test Adventure
         if not filename:
             return
 
-        try:
-            with open(filename, "r") as f:
-                self.adventure = json.load(f)
+        loaded = self._load_adventure_file(filename)
+        if not loaded:
+            return
 
-            self.current_file = filename
-            self.modified = False
-            self.load_adventure_to_ui()
-
-            # Show message in game output
-            self.clear_game_output()
-            self.print_game("=" * 60)
-            self.print_game(f"  LOADED: {self.adventure.get('title', 'Untitled')}")
-            self.print_game("=" * 60)
-            self.print_game("")
-            self.print_game("Click '▶ Start Game' to begin playing!")
-            self.print_game("")
-
-            self.update_status(f"Loaded: {os.path.basename(filename)}")
-
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to load:\n{e}")
+        self.clear_game_output()
+        self.print_game("=" * 60)
+        self.print_game(f"  LOADED: {self.adventure.get('title', 'Untitled')}")
+        self.print_game("=" * 60)
+        self.print_game("")
+        self.print_game("Click '▶ Start Game' to begin playing!")
+        self.print_game("")
+        self.test_badge_var.set("Play: Adventure Loaded")
+        self.validation_badge_var.set("Validation: —")
 
     def start_game(self):
         """Start playing the loaded adventure"""
@@ -1471,58 +2909,113 @@ F5 - Test Adventure
         temp_file = "adventures/_temp_play.json"
         self.collect_adventure_data()
 
+        validation_errors = self.validate_adventure(silent=True)
+        if validation_errors:
+            self.validation_badge_var.set(
+                f"Validation: ⚠ {len(validation_errors)} issue(s)"
+            )
+        else:
+            self.validation_badge_var.set("Validation: ✅ Clean")
+
+        Path("adventures").mkdir(parents=True, exist_ok=True)
+        self.test_badge_var.set("Play: Starting...")
+        self.game_instance = None
+        self.game_running = False
+        if self.point_and_click is not None:
+            self.point_and_click.destroy()
+            self.point_and_click = None
+
         try:
-            with open(temp_file, "w") as f:
-                json.dump(self.adventure, f, indent=2)
+            with open(temp_file, "w", encoding="utf-8") as handle:
+                json.dump(self.adventure, handle, indent=2)
+        except (OSError, TypeError) as exc:
+            self._fail_play(f"Failed to prepare adventure file:\n{exc}")
+            return
 
-            # Import and start game engine
-            engine_path = (
-                Path(__file__).parent.parent.parent.parent / "acs_engine_enhanced.py"
-            )
-            spec = importlib.util.spec_from_file_location(
-                "acs_engine_enhanced", engine_path
-            )
-            acs_module = importlib.util.module_from_spec(spec)
+        engine_path = (
+            Path(__file__).parent.parent.parent.parent / "acs_engine_enhanced.py"
+        )
+        spec = importlib.util.spec_from_file_location(
+            "acs_engine_enhanced", engine_path
+        )
+        if spec is None or spec.loader is None:
+            self._fail_play("Unable to load the enhanced game engine module.")
+            return
+
+        acs_module = importlib.util.module_from_spec(spec)
+        try:
             spec.loader.exec_module(acs_module)
+        except (FileNotFoundError, ImportError) as exc:
+            self._fail_play(f"Failed to load game engine:\n{exc}")
+            return
 
-            self.clear_game_output()
+        self.clear_game_output()
+        try:
             self.game_instance = acs_module.EnhancedAdventureGame(temp_file)
             self.game_instance.load_adventure()
-            self.game_running = True
+        except (json.JSONDecodeError, OSError, AttributeError, RuntimeError) as exc:
+            self.game_instance = None
+            self._fail_play(f"Failed to initialize game:\n{exc}")
+            return
 
-            # Print introduction
-            self.print_game("=" * 60)
-            title = self.game_instance.adventure_title.upper()
-            self.print_game(f"  {title}")
-            self.print_game("=" * 60)
-            self.print_game("")
-            self.print_game(self.game_instance.adventure_intro)
-            self.print_game("")
-            self.print_game("=" * 60)
-            self.print_game("")
+        self._clear_mod_console()
+        mod_messages = self._apply_active_mods_to_game()
+        for message in mod_messages:
+            self._log_mod_console(message)
+            self.print_game(f"[Mods] {message}")
 
-            # Show starting room - capture output
-            old_stdout = sys.stdout
-            sys.stdout = StringIO()
+        self.game_running = True
 
+        # Print introduction
+        self.print_game("=" * 60)
+        title = self.game_instance.adventure_title.upper()
+        self.print_game(f"  {title}")
+        self.print_game("=" * 60)
+        self.print_game("")
+        self.print_game(self.game_instance.adventure_intro)
+        self.print_game("")
+        self.print_game("=" * 60)
+        self.print_game("")
+
+        # Show starting room - capture output
+        old_stdout = sys.stdout
+        buffer = StringIO()
+        sys.stdout = buffer
+        try:
             self.game_instance.look()
-
-            output = sys.stdout.getvalue()
+        except (AttributeError, RuntimeError) as exc:
             sys.stdout = old_stdout
+            self._fail_play(f"Failed to render starting room:\n{exc}")
+            return
 
-            if output:
-                self.print_game(output.rstrip())
+        output = buffer.getvalue()
+        sys.stdout = old_stdout
 
+        if output:
+            self.print_game(output.rstrip())
+
+        if (
+            self.adventure.get("mode") == "visual"
+            and self.adventure.get("scenes")
+            and self.game_instance is not None
+        ):
+            try:
+                self._open_visual_window()
+            except (
+                tk.TclError,
+                RuntimeError,
+            ) as exc:  # pragma: no cover - UI safeguard
+                self.print_game(f"[Visual] Unable to open point-and-click view: {exc}")
+
+        if self.command_entry is not None:
             self.command_entry.focus()
-            self.update_status("Game started - enter commands below")
-
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to start game:\n{e}")
-            self.game_running = False
+        self.update_status("Game started - enter commands below")
+        self.test_badge_var.set("Play: Running")
 
     def restart_game(self):
         """Restart the current game"""
         if self.game_running:
+            self.test_badge_var.set("Play: Restarting")
             self.start_game()
         else:
             messagebox.showinfo("No Game", "Please start a game first")
@@ -1539,49 +3032,117 @@ F5 - Test Adventure
         if not command:
             return
 
-        # Display the command
-        self.print_game(f"\n> {command}")
         self.command_entry.delete(0, tk.END)
+        self._process_game_command(command, echo=True)
 
-        # Handle special commands
-        if command.lower() in ["quit", "q", "exit"]:
+    def quick_save(self, slot: int):
+        """Save the active session to a numbered slot."""
+        if not self.game_running or not hasattr(self.game_instance, "save_game"):
+            messagebox.showinfo("No Active Game", "Start the game before saving.")
+            return
+
+        Path("saves").mkdir(parents=True, exist_ok=True)
+        result = self._capture_engine_output(self.game_instance.save_game, slot)
+        if result:
+            self.test_badge_var.set(f"Play: Saved slot {slot}")
+        else:
+            self.test_badge_var.set(f"Play: Save failed (slot {slot})")
+
+    def quick_load(self, slot: int):
+        """Load a numbered save slot into the active session."""
+        if not self.game_running or not hasattr(self.game_instance, "load_game"):
+            messagebox.showinfo("No Active Game", "Start the game before loading.")
+            return
+
+        result = self._capture_engine_output(self.game_instance.load_game, slot)
+        if result:
+            self.test_badge_var.set(f"Play: Loaded slot {slot}")
+            # Automatically show the current room state after loading
+            self._process_game_command("look", echo=True)
+        else:
+            self.test_badge_var.set(f"Play: Load failed (slot {slot})")
+
+    def run_demo_script(self):
+        """Execute a predefined sequence of commands."""
+        if not self.game_running:
+            messagebox.showinfo("No Game", "Start the game before running a demo.")
+            return
+
+        script_name = self.demo_script_var.get()
+        commands = self.demo_scripts.get(script_name, [])
+        if not commands:
+            messagebox.showinfo("Demo", "Select a demo script to run.")
+            return
+
+        self.print_game(f"\n[Demo] Running '{script_name}'...")
+        for cmd in commands:
+            self._process_game_command(cmd, echo=True)
+
+    def _capture_engine_output(self, func, *args, **kwargs):
+        """Capture engine output so it appears in the play console."""
+        old_stdout = sys.stdout
+        buffer = StringIO()
+        sys.stdout = buffer
+        try:
+            result = func(*args, **kwargs)
+        finally:
+            sys.stdout = old_stdout
+
+        output = buffer.getvalue().strip()
+        if output:
+            self.print_game(output)
+        return result
+
+    def _process_game_command(self, command: str, echo: bool = False):
+        """Process a command through the engine with captured output."""
+        if echo:
+            self.print_game(f"\n> {command}")
+
+        lowered = command.lower()
+        if lowered in ["quit", "q", "exit"]:
             self.print_game("\nThanks for playing!")
             self.print_game("=" * 60)
             self.game_running = False
             self.update_status("Game ended")
+            self.test_badge_var.set("Play: Ended")
             return
 
-        # Process command through game engine
+        old_stdout = sys.stdout
+        buffer = StringIO()
+        sys.stdout = buffer
+        error: Exception | None = None
+
         try:
-            # Capture the game's output
-            old_stdout = sys.stdout
-            sys.stdout = StringIO()
-
-            # Process the command
             self.game_instance.process_command(command)
-
-            # Get the output
-            output = sys.stdout.getvalue()
+        except (RuntimeError, ValueError, AttributeError, OSError) as exc:
+            error = exc
+        finally:
+            output = buffer.getvalue()
             sys.stdout = old_stdout
 
-            # Display output
-            if output:
-                self.print_game(output.rstrip())
+        if error is not None:
+            self.print_game(f"\nError: {error}")
+            self.test_badge_var.set("Play: Error")
+            return
 
-            # Check if game is over
-            if (
-                hasattr(self.game_instance, "game_over")
-                and self.game_instance.game_over
-            ):
-                self.print_game("\n" + "=" * 60)
-                self.print_game("GAME OVER")
-                self.print_game("=" * 60)
-                self.game_running = False
-                self.update_status("Game ended")
+        if output:
+            self.print_game(output.rstrip())
 
-        except Exception as e:
-            sys.stdout = old_stdout
-            self.print_game(f"\nError: {e}")
+        if getattr(self.game_instance, "game_over", False):
+            self.print_game("\n" + "=" * 60)
+            self.print_game("GAME OVER")
+            self.print_game("=" * 60)
+            self.game_running = False
+            self.update_status("Game ended")
+            self.test_badge_var.set("Play: Ended")
+
+        if self.point_and_click is not None:
+            if self.game_running and self.game_instance is not None:
+                current_room = getattr(self.game_instance.player, "current_room", 0)
+                self.point_and_click.set_current_room(current_room)
+            else:
+                self.point_and_click.destroy()
+                self.point_and_click = None
 
     def change_theme(self, theme_name):
         """Change the color theme"""
@@ -1591,6 +3152,40 @@ F5 - Test Adventure
             self.setup_styles()
             self.refresh_all_widgets()
             self.update_status(f"Theme changed to: {theme_name}")
+
+    def _open_visual_window(self):
+        """Open the point-and-click helper window."""
+        scenes = self.adventure.get("scenes", []) or []
+        if not scenes:
+            return
+
+        current_room = getattr(self.game_instance.player, "current_room", 0)
+        self.point_and_click = PointAndClickWindow(
+            self.root,
+            scenes,
+            command_callback=self._run_visual_command,
+            on_close=self._on_visual_closed,
+        )
+        self.point_and_click.set_current_room(current_room)
+        self.update_status("Visual play window ready")
+
+    def _run_visual_command(self, commands):
+        """Execute commands triggered from the visual window."""
+        if isinstance(commands, str):
+            sequence = [commands]
+        else:
+            sequence = list(commands)
+
+        for command in sequence:
+            if not command:
+                continue
+            self._process_game_command(command.strip(), echo=True)
+            if not self.game_running:
+                break
+
+    def _on_visual_closed(self):
+        """Reset reference when the visual window is closed."""
+        self.point_and_click = None
 
     def change_font_family(self, font_family):
         """Change the UI font family"""
@@ -1628,6 +3223,9 @@ F5 - Test Adventure
         if hasattr(self, "game_output"):
             self.game_output.config(font=editor_font)
 
+        if self.scene_narration_text is not None:
+            self.scene_narration_text.config(font=editor_font)
+
     def refresh_all_widgets(self):
         """Refresh all widgets to apply new theme"""
         # Re-setup the UI with new colors
@@ -1661,6 +3259,123 @@ F5 - Test Adventure
                 fg=self.colors["fg"],
                 insertbackground=self.colors["fg"],
             )
+
+        if self.scene_narration_text is not None:
+            self.scene_narration_text.config(
+                bg=self.colors["text_bg"],
+                fg=self.colors["fg"],
+                insertbackground=self.colors["fg"],
+            )
+
+        if self.mod_detail_text is not None:
+            self.mod_detail_text.config(
+                bg=self.colors["text_bg"],
+                fg=self.colors["fg"],
+                insertbackground=self.colors["fg"],
+            )
+
+        if self.mod_console is not None:
+            self.mod_console.config(
+                bg=self.colors["text_bg"],
+                fg=self.colors["fg"],
+                insertbackground=self.colors["fg"],
+            )
+
+        if self.mod_tree is not None:
+            self.refresh_mod_catalog_ui()
+
+    # ------------------------------------------------------------------
+    # Recent files and demo support
+    # ------------------------------------------------------------------
+
+    def _recent_files_path(self) -> Path:
+        """Return the path containing the recent adventure list."""
+        return Path("config") / "recent_adventures.json"
+
+    def _load_recent_files(self):
+        """Load a small recent-file list from disk."""
+        path = self._recent_files_path()
+        try:
+            with path.open("r", encoding="utf-8") as handle:
+                data = json.load(handle)
+        except FileNotFoundError:
+            return []
+        except json.JSONDecodeError:
+            return []
+
+        if isinstance(data, list):
+            cleaned = []
+            for entry in data:
+                if isinstance(entry, str) and Path(entry).exists():
+                    cleaned.append(entry)
+            return cleaned[:5]
+        return []
+
+    def _save_recent_files(self):
+        """Persist the current recent file list."""
+        path = self._recent_files_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("w", encoding="utf-8") as handle:
+            json.dump(self.recent_files[:5], handle, indent=2)
+
+    def _remember_recent_file(self, filepath: str):
+        """Insert a file into the MRU list and refresh the display."""
+        if not filepath:
+            return
+
+        resolved = str(Path(filepath).resolve())
+        if resolved in self.recent_files:
+            self.recent_files.remove(resolved)
+        self.recent_files.insert(0, resolved)
+        self.recent_files = self.recent_files[:5]
+        self._save_recent_files()
+        self.refresh_recent_files_ui()
+
+    def refresh_recent_files_ui(self):
+        """Update the recent file buttons in the info tab."""
+        if not self.recent_list_container:
+            return
+
+        for child in self.recent_list_container.winfo_children():
+            child.destroy()
+
+        if not self.recent_files:
+            ttk.Label(
+                self.recent_list_container,
+                text="No recent adventures yet. Open or save a project to populate this list.",
+                style="TLabel",
+            ).pack(anchor=tk.W)
+            return
+
+        for filepath in self.recent_files:
+            display = os.path.basename(filepath)
+            ttk.Button(
+                self.recent_list_container,
+                text=display,
+                command=lambda p=filepath: self.open_recent_file(p),
+                width=40,
+            ).pack(anchor=tk.W, pady=2)
+
+    def open_recent_file(self, filepath: str):
+        """Open a recently-used adventure file."""
+        path = Path(filepath)
+        if not path.exists():
+            messagebox.showwarning("Missing File", f"Cannot find {filepath}.")
+            if filepath in self.recent_files:
+                self.recent_files.remove(filepath)
+                self._save_recent_files()
+                self.refresh_recent_files_ui()
+            return
+
+        self._load_adventure_file(str(path.resolve()))
+
+    def _default_demo_scripts(self):
+        """Provide canned demo command sequences for quick showcasing."""
+        return {
+            "Quest Overview": ["look", "quests"],
+            "Meet Quartermaster": ["east", "talk dex", "trade dex"],
+            "Explore Atrium": ["look", "north", "look"],
+        }
 
     def reset_view_settings(self):
         """Reset theme and font to defaults"""

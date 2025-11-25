@@ -24,6 +24,7 @@ The IDE will open in a new window.
 - Set title, author, and introduction text
 - Configure starting room
 - Edit general adventure properties
+- Launch recently opened adventures directly from the "Recent Adventures" panel
 
 **2. Rooms Tab**
 - Create and edit rooms visually
@@ -48,12 +49,24 @@ The IDE will open in a new window.
 - View complete JSON output
 - Copy to clipboard
 - Verify adventure structure
+- Compare current edits against the last saved version with the built-in diff viewer
 
 **6. Play Adventure Tab** ⭐ NEW!
 - Play your adventure directly in the IDE
 - Test changes without saving
 - Retro terminal-style interface
 - Instant feedback on your design
+- Quick save/load slots for rapid iteration
+- Validation and play-status badges for at-a-glance health checks
+- Demo command scripts to showcase key systems automatically
+- Point & Click helpers (when enabled): quick toggles for **Show Hotspots** and a **Grid Overlay** that respects per-scene defaults
+
+**7. Visual Builder Tab (Point & Click)**
+- Manage visual scenes alongside text content
+- Link backgrounds, narration, and ambient music to specific rooms
+- Define hotspots with labels, tooltips, and command sequences
+- Persist default grid visibility and cell size per scene for consistent layout work
+- Launch the Point & Click preview window directly to validate hotspot targeting
 
 ## Keyboard Shortcuts
 
@@ -175,10 +188,14 @@ The IDE now includes an integrated game player!
 - Retro terminal look (green on black)
 - All standard game commands work
 
-**Control Buttons:**
+**Control Buttons & Helpers:**
+- **📂 Load Adventure** - Load a JSON file straight into the play tab
 - **▶ Start Game** - Begin playing the current adventure
 - **⟳ Restart** - Restart from the beginning
-- **⏸ Clear Output** - Clear the game display
+- **🗑 Clear Output** - Clear the game display
+- **Quick Save Slots (1–3)** - Snapshot or restore progress while testing
+- **Demo Commands** - Auto-run curated command sequences for a fast showcase
+- **Status Badges** - Validation and play-state badges update automatically when you test or start the game
 
 **Why use it:**
 - Faster testing workflow
@@ -313,20 +330,19 @@ sudo pacman -S tk
 - Friendliness: hostile
 - Gold: 15
 
-## Integration with Command Line
+## Testing Adventures
 
-The IDE works seamlessly with command-line tools:
+Use the Play tab to validate your work without leaving the IDE:
 
-```bash
-# Create in IDE, test from command line
-python -m src.acs.core.engine adventures/my_adventure.json
+1. Save or collect the latest changes.
+2. Switch to the **Play** tab.
+3. Click **▶ Start Game** to launch the embedded engine.
+4. Use the command console to explore and verify interactions.
 
-# Launch the IDE directly
-python -m src.acs.ui.ide
-
-# Validate from command line
-python -m json.tool adventures/my_adventure.json
-```
+Enhancements to speed up iteration:
+- Use the **Quick Save Slots** to branch experiments without leaving the IDE.
+- Launch a **Demo Command** script to showcase questing, trading, or exploration.
+- Watch the **Validation** and **Play** badges for instant feedback on data health and play-state.
 
 ## Performance Tips
 

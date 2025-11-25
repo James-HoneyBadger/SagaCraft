@@ -99,7 +99,7 @@ Colossal_StoryWorks/
 ├── plugins/                  # Optional plugin packages
 ├── src/acs/                  # Engine, parser, systems, IDE modules
 ├── tests/                    # Pytest suites covering parser & systems
-├── acs_engine_enhanced.py    # Legacy CLI entry point (kept for playback)
+├── acs_engine_enhanced.py    # Enhanced engine module used by the IDE play tab
 ├── quickstart.sh             # Menu for common launch tasks
 ├── README.md                 # Project overview
 └── START_HERE.md             # Onboarding checklist

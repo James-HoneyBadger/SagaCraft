@@ -19,11 +19,10 @@ CORRECT COMMAND REFERENCES
 ================================================================================
 
 Launch IDE:         python -m src.acs.ui.ide
-Play adventures:    python -m src.acs.ui.ide  
-Legacy CLI:         python acs_engine_enhanced.py
+Play adventures:    python -m src.acs.ui.ide  (Play tab)
 Quick start menu:   ./quickstart.sh
 
-Engine file:        src/acs/core/engine.py (IDE) / acs_engine_enhanced.py (CLI)
+Engine file:        src/acs/core/engine.py (library) / acs_engine_enhanced.py (IDE runtime)
 
 ================================================================================
 FILES UPDATED (11 documentation files)

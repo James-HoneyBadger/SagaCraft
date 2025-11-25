@@ -4,9 +4,10 @@ Colossal StoryWorks - Tutorial & Contextual Help System
 Progressive feature discovery, contextual hints, and example commands
 """
 
-from typing import Dict, List, Optional, Set
+import random
 from dataclasses import dataclass
 from enum import Enum
+from typing import Dict, List, Optional, Set
 
 
 class TutorialStage(Enum):
@@ -174,8 +175,6 @@ class ContextualHintSystem:
         self, context: str, stats: Dict[str, int]
     ) -> Optional[Tutorial]:
         """Check if hint should be shown based on context"""
-        import random
-
         if random.random() > self.hint_frequency:
             return None
 
@@ -238,6 +237,10 @@ class ContextualHintSystem:
             msg += f"  > {cmd}\n"
         msg += f"{'='*50}\n"
         return msg
+
+    def format_tutorial(self, tutorial: Tutorial) -> str:
+        """Public wrapper for formatting tutorial hints."""
+        return self._format_tutorial(tutorial)
 
     def discover_feature(self, feature: str):
         """Mark a feature as discovered"""

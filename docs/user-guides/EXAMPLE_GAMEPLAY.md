@@ -4,11 +4,7 @@ This walkthrough captures a condensed play session inside the Colossal StoryWork
 
 ## Starting the Game
 
-```bash
-$ python -m src.acs.core.engine adventures/colossal_storyworks_showcase.json
-```
-
-You can also launch the IDE with `python -m src.acs.ui.ide`, switch to the **Play** tab, and load the same adventure. The command-line transcript below mirrors what you will see in either interface.
+Launch the IDE with `python -m src.acs.ui.ide`, switch to the **Play** tab, load the showcase adventure, and press **▶ Start Game**. The transcript below mirrors the experience inside the play console.
 
 ## Sample Gameplay
 

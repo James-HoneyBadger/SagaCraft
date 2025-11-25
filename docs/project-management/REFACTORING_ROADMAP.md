@@ -150,9 +150,9 @@ Create a wrapper that makes the new engine compatible with the old `acs_engine_e
    - Translates old method calls to events
 
 2. **Update Entry Points** (1 hour)
-   - `python -m src.acs.ui.ide` - Use new engine
-   - `python -m src.acs.core.engine` - Provide CLI gameplay entry point
-   - Ensure any helper scripts delegate to these modules
+   - `python -m src.acs.ui.ide` - Primary launch target
+   - Retire the standalone CLI path and funnel testing through the IDE play tab
+   - Ensure any helper scripts delegate to the IDE module
 
 3. **Test Backward Compatibility** (1 hour)
    - Load existing adventures

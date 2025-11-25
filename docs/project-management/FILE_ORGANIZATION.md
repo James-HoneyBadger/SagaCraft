@@ -20,7 +20,7 @@ Colossal_StoryWorks/
 │   ├── tools/           # Author utilities (command helpers, modding support)
 │   └── ui/              # Tk-based IDE and accessibility modules
 ├── tests/               # Pytest suites covering parser and systems
-├── acs_engine_enhanced.py  # Legacy CLI entry preserved for compatibility
+├── acs_engine_enhanced.py  # Enhanced engine module leveraged by the IDE play tab
 ├── quickstart.sh           # Menu-based launcher script
 ├── README.md               # Project overview
 └── START_HERE.md           # Onboarding checklist
@@ -38,9 +38,8 @@ from acs.core.parser import NaturalLanguageParser
 ## Running the Application
 
 ```bash
-./quickstart.sh        # Guided launcher
+./quickstart.sh           # Guided launcher
 python -m src.acs.ui.ide  # Launch the Colossal StoryWorks IDE
-python acs_engine_enhanced.py  # Legacy CLI (still supported)
 ```
 
 ## Benefits of the Current Layout

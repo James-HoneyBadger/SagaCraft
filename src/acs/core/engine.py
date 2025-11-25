@@ -5,10 +5,11 @@ A Python implementation of classic text adventure game mechanics
 For creating and playing interactive fiction adventures
 """
 
+# pylint: disable=too-many-lines
+
 import json
 import random
-import sys
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional, Set
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -21,7 +22,7 @@ try:
     from acs.systems.achievements import AchievementSystem
     from acs.systems.journal import AdventureJournal
     from acs.systems.tutorial import ContextualHintSystem
-    from acs.tools.modding import ModdingSystem
+    from acs.tools.modding import ModdingSystem, EventType
     from acs.ui.accessibility import AccessibilitySystem
 
     ENHANCED_PARSER_AVAILABLE = True
@@ -35,10 +36,18 @@ except ImportError:
     AdventureJournal = None
     ContextualHintSystem = None
     ModdingSystem = None
+    EventType = None
     AccessibilitySystem = None
+
+try:
+    from acs.core.parser import CompanionStance
+except ImportError:
+    CompanionStance = None
 
 
 class ItemType(Enum):
+    """Item categories represented in the engine."""
+
     WEAPON = "weapon"
     ARMOR = "armor"
     TREASURE = "treasure"
@@ -50,6 +59,8 @@ class ItemType(Enum):
 
 
 class MonsterStatus(Enum):
+    """Disposition states used for creature behavior."""
+
     FRIENDLY = "friendly"
     NEUTRAL = "neutral"
     HOSTILE = "hostile"
@@ -186,12 +197,80 @@ class AdventureGame:
             self.use_enhanced_parser = False
 
         self.effects: List[Dict[str, Any]] = []
+        self.equipped_items: Set[Any] = set()
+        self._mod_last_room_id: Optional[int] = None
+
+    def _fire_mod_event(
+        self,
+        event,
+        payload: Optional[Dict[str, Any]] = None,
+        *,
+        echo: bool = True,
+    ) -> tuple[Dict[str, Any], List[str]]:
+        """Trigger a mod event and optionally echo resulting output."""
+        if payload is None:
+            payload = {}
+
+        if not self.modding or EventType is None or event is None:
+            return payload, []
+
+        if not isinstance(event, EventType):
+            try:
+                event = EventType(event)
+            except ValueError:
+                return payload, []
+
+        outputs = self.modding.trigger_event(event, payload) or []
+        if echo:
+            for line in outputs:
+                print(line)
+        return payload, outputs
+
+    def notify_room_entry(
+        self, room: Optional["Room"], previous_room: Optional["Room"] = None
+    ):
+        """Inform mods that the player has entered a room."""
+        if not room:
+            return
+
+        payload = {
+            "player": self.player,
+            "room": room,
+            "room_id": getattr(room, "id", None),
+            "previous_room": previous_room,
+            "previous_room_id": getattr(previous_room, "id", None),
+        }
+        self._fire_mod_event(EventType.ON_ENTER_ROOM, payload)
+        self._mod_last_room_id = getattr(room, "id", None)
+
+    def _notify_room_exit(
+        self, room: Optional["Room"], direction: str
+    ) -> Dict[str, Any]:
+        """Fire the exit-room event and allow scripts to cancel movement."""
+        payload = {
+            "player": self.player,
+            "room": room,
+            "room_id": getattr(room, "id", None),
+            "direction": direction,
+            "cancel": False,
+        }
+        payload, _ = self._fire_mod_event(EventType.ON_EXIT_ROOM, payload)
+        return payload
+
+    def on_mods_loaded(self):
+        """Called after external systems finish loading mods for this engine."""
+        if not self.modding or EventType is None:
+            return
+
+        payload = {"player": self.player, "adventure": self}
+        self._fire_mod_event(EventType.ON_LOAD, payload)
+        self.notify_room_entry(self.get_current_room(), previous_room=None)
 
     def load_adventure(self):
         """Load adventure data from JSON file"""
         try:
-            with open(self.adventure_file, "r") as f:
-                data = json.load(f)
+            with open(self.adventure_file, "r", encoding="utf-8") as handle:
+                data = json.load(handle)
 
             self.adventure_title = data.get("title", "Untitled Adventure")
             self.adventure_intro = data.get("intro", "")
@@ -257,12 +336,14 @@ class AdventureGame:
                 print(self.adventure_intro)
                 print()
 
-        except FileNotFoundError:
-            print(f"Error: Adventure file '{self.adventure_file}' not found!")
-            sys.exit(1)
-        except json.JSONDecodeError as e:
-            print(f"Error: Invalid JSON in adventure file: {e}")
-            sys.exit(1)
+        except FileNotFoundError as exc:
+            raise FileNotFoundError(
+                f"Adventure file '{self.adventure_file}' not found"
+            ) from exc
+        except json.JSONDecodeError as exc:
+            raise ValueError(
+                f"Invalid JSON in adventure file '{self.adventure_file}': {exc}"
+            ) from exc
 
     def get_current_room(self) -> Room:
         """Get the room the player is currently in"""
@@ -341,12 +422,24 @@ class AdventureGame:
     def move(self, direction: str):
         """Move player in a direction"""
         room = self.get_current_room()
-        next_room_id = room.get_exit(direction)
+        if not room:
+            print("You feel disoriented and cannot move.")
+            return
+
+        normalized_direction = direction.lower()
+        exit_payload = self._notify_room_exit(room, normalized_direction)
+        if exit_payload.get("cancel"):
+            if exit_payload.get("message"):
+                print(exit_payload["message"])
+            return
+
+        next_room_id = room.get_exit(normalized_direction)
 
         if next_room_id is None:
             print("You can't go that way.")
             return
 
+        previous_room = room
         self.player.current_room = next_room_id
         self.turn_count += 1
 
@@ -357,8 +450,9 @@ class AdventureGame:
             self.achievements.check_achievements()
 
         # Log to journal
+        new_room = self.rooms[next_room_id]
+
         if self.journal and self.journal.auto_log_enabled:
-            new_room = self.rooms[next_room_id]
             self.journal.log_event(
                 title="Room Entered",
                 content=f"Entered {new_room.name}",
@@ -369,6 +463,8 @@ class AdventureGame:
         if self.environment:
             self.environment.advance_time()
 
+        self.notify_room_entry(new_room, previous_room=previous_room)
+
         self.look()
 
         # Show tutorial hint
@@ -376,7 +472,7 @@ class AdventureGame:
             stats = self.achievements.statistics.to_dict() if self.achievements else {}
             hint = self.tutorial.check_and_show_hint("moved", stats)
             if hint:
-                print(self.tutorial._format_tutorial(hint))
+                print(self.tutorial.format_tutorial(hint))
 
     def get_item(self, item_name: str):
         """Pick up an item"""
@@ -398,8 +494,26 @@ class AdventureGame:
             print(f"You can't take the {item.name}.")
             return
 
+        take_payload = {
+            "player": self.player,
+            "room": room,
+            "room_id": room.id,
+            "item": item,
+            "item_id": item.id,
+            "item_name": item.name,
+            "cancel": False,
+        }
+        take_payload, _ = self._fire_mod_event(EventType.ON_TAKE_ITEM, take_payload)
+        if take_payload.get("cancel"):
+            message = take_payload.get("message")
+            if message:
+                print(message)
+            return
+
+        item = take_payload.get("item", item)
         item.location = 0  # Move to inventory
-        self.player.inventory.append(item.id)
+        if item.id not in self.player.inventory:
+            self.player.inventory.append(item.id)
         print(f"You take the {item.name}.")
 
     def drop_item(self, item_name: str):
@@ -415,7 +529,25 @@ class AdventureGame:
             print(f"You don't have a {item_name}.")
             return
 
-        item.location = self.player.current_room
+        drop_payload = {
+            "player": self.player,
+            "room": self.get_current_room(),
+            "room_id": self.player.current_room,
+            "item": item,
+            "item_id": item.id,
+            "item_name": item.name,
+            "cancel": False,
+        }
+        drop_payload, _ = self._fire_mod_event(EventType.ON_DROP_ITEM, drop_payload)
+        if drop_payload.get("cancel"):
+            message = drop_payload.get("message")
+            if message:
+                print(message)
+            return
+
+        room_id = drop_payload.get("room_id", self.player.current_room)
+        item = drop_payload.get("item", item)
+        item.location = room_id
         self.player.inventory.remove(item.id)
         print(f"You drop the {item.name}.")
 
@@ -460,6 +592,9 @@ class AdventureGame:
     def attack(self, target_name: str):
         """Attack a monster"""
         room = self.get_current_room()
+        if not room:
+            print("There's nothing to attack here.")
+            return
         monsters = self.get_monsters_in_room(room.id)
 
         target = None
@@ -476,12 +611,31 @@ class AdventureGame:
         target.friendliness = MonsterStatus.HOSTILE
 
         # Player attacks
-        damage = 0
+        weapon = None
         if self.player.equipped_weapon:
-            weapon = self.items[self.player.equipped_weapon]
-            damage = weapon.get_damage()
-        else:
-            damage = random.randint(1, 3)  # Bare hands
+            weapon = self.items.get(self.player.equipped_weapon)
+
+        base_damage = weapon.get_damage() if weapon else random.randint(1, 3)
+        attack_payload = {
+            "player": self.player,
+            "room": room,
+            "weapon": weapon,
+            "target": target,
+            "damage": base_damage,
+            "cancel": False,
+        }
+        attack_payload, _ = self._fire_mod_event(EventType.ON_ATTACK, attack_payload)
+        if attack_payload.get("cancel"):
+            message = attack_payload.get("message")
+            if message:
+                print(message)
+            return
+
+        damage = attack_payload.get("damage", base_damage)
+        target = attack_payload.get("target", target)
+        if target is None:
+            print("Your attack fizzles before it lands.")
+            return
 
         print(f"\nYou attack the {target.name}!")
         target.current_health -= damage
@@ -490,6 +644,14 @@ class AdventureGame:
         if target.current_health <= 0:
             target.is_dead = True
             print(f"The {target.name} is dead!")
+            kill_payload = {
+                "player": self.player,
+                "room": room,
+                "monster": target,
+                "weapon": weapon,
+                "damage": damage,
+            }
+            self._fire_mod_event(EventType.ON_KILL, kill_payload)
             if target.gold > 0:
                 self.player.gold += target.gold
                 print(f"You found {target.gold} gold pieces!")
@@ -502,6 +664,12 @@ class AdventureGame:
 
         if self.player.current_health <= 0:
             print("\nYou have died!")
+            death_payload = {
+                "player": self.player,
+                "room": room,
+                "killer": target,
+            }
+            self._fire_mod_event(EventType.ON_DEATH, death_payload)
             self.game_over = True
 
     # NPC Interaction & Context Methods
@@ -519,6 +687,26 @@ class AdventureGame:
 
         if npc is None:
             print(f"You don't see {npc_name} here.")
+            return
+
+        talk_payload = {
+            "player": self.player,
+            "room": room,
+            "npc": npc,
+            "topic": topic,
+            "cancel": False,
+        }
+        talk_payload, _ = self._fire_mod_event(EventType.ON_TALK, talk_payload)
+        if talk_payload.get("cancel"):
+            message = talk_payload.get("message")
+            if message:
+                print(message)
+            return
+
+        npc = talk_payload.get("npc", npc)
+        topic = talk_payload.get("topic", topic)
+        if npc is None:
+            print("There is no one left to talk to.")
             return
 
         # Get or create NPC context
@@ -573,6 +761,27 @@ class AdventureGame:
             print(f"You don't see {npc_name} here.")
             return
 
+        examine_payload = {
+            "player": self.player,
+            "room": room,
+            "npc": npc,
+            "target_type": "npc",
+            "target_name": npc_name,
+            "cancel": False,
+        }
+        examine_payload, _ = self._fire_mod_event(EventType.ON_EXAMINE, examine_payload)
+        if examine_payload.get("cancel"):
+            message = examine_payload.get("message")
+            if message:
+                print(message)
+            return
+        if examine_payload.get("handled"):
+            return
+
+        npc = examine_payload.get("npc", npc)
+        if npc is None:
+            return
+
         print(f"\n{npc.description}")
 
         # Show context-aware details
@@ -595,6 +804,25 @@ class AdventureGame:
 
         room = self.get_current_room()
         obj = self.environment.find_object_by_keyword(room.id, object_name)
+
+        examine_payload = {
+            "player": self.player,
+            "room": room,
+            "object": obj,
+            "object_name": object_name,
+            "target_type": "object",
+            "cancel": False,
+        }
+        examine_payload, _ = self._fire_mod_event(EventType.ON_EXAMINE, examine_payload)
+        if examine_payload.get("cancel"):
+            message = examine_payload.get("message")
+            if message:
+                print(message)
+            return
+        if examine_payload.get("handled"):
+            return
+
+        obj = examine_payload.get("object", obj)
 
         if obj:
             print(f"\n{obj.long_desc}")
@@ -716,24 +944,16 @@ class AdventureGame:
         elif "follow" in order or "come" in order:
             companion.tell_to_follow()
             print(f"{companion.name} resumes following you.")
-        elif "aggressive" in order or "attack" in order:
-            from acs_parser import CompanionStance
-
+        elif CompanionStance and ("aggressive" in order or "attack" in order):
             companion.set_stance(CompanionStance.AGGRESSIVE)
             print(f"{companion.name} will fight aggressively.")
-        elif "defensive" in order or "defend" in order:
-            from acs_parser import CompanionStance
-
+        elif CompanionStance and ("defensive" in order or "defend" in order):
             companion.set_stance(CompanionStance.DEFENSIVE)
             print(f"{companion.name} will focus on defense.")
-        elif "support" in order or "help" in order:
-            from acs_parser import CompanionStance
-
+        elif CompanionStance and ("support" in order or "help" in order):
             companion.set_stance(CompanionStance.SUPPORT)
             print(f"{companion.name} will support the party.")
-        elif "passive" in order or "rest" in order:
-            from acs_parser import CompanionStance
-
+        elif CompanionStance and ("passive" in order or "rest" in order):
             companion.set_stance(CompanionStance.PASSIVE)
             print(f"{companion.name} will avoid combat.")
         else:
@@ -765,6 +985,52 @@ class AdventureGame:
             command = self.command_system.process_input(command)
             # Add to history
             self.command_system.add_to_history(command)
+
+        room = self.get_current_room()
+        verb_initial, _, args_initial = command.partition(" ")
+        command_payload = {
+            "player": self.player,
+            "room": room,
+            "command": command,
+            "verb": verb_initial,
+            "args": args_initial.strip(),
+            "handled": False,
+            "cancel": False,
+        }
+        command_payload, _ = self._fire_mod_event(EventType.ON_COMMAND, command_payload)
+        if command_payload.get("cancel"):
+            message = command_payload.get("message")
+            if message:
+                print(message)
+            return
+        if command_payload.get("handled"):
+            return
+
+        command = command_payload.get("command", command) or ""
+        verb = command_payload.get("verb", verb_initial) or ""
+        args_text = command_payload.get("args", args_initial.strip()) or ""
+
+        if not verb and command:
+            verb, _, remainder = command.partition(" ")
+            args_text = remainder.strip()
+
+        if self.modding and not command_payload.get("skip_custom") and command.strip():
+            verb_candidates = []
+            if verb:
+                verb_candidates.append(verb)
+                verb_lower = verb.lower()
+                if verb_lower != verb:
+                    verb_candidates.append(verb_lower)
+
+            for candidate in verb_candidates:
+                custom_output = self.modding.execute_custom_command(
+                    candidate,
+                    args_text or "",
+                )
+                if custom_output is not None:
+                    for line in custom_output:
+                        print(line)
+                    return
 
         # Try enhanced parser first
         if self.use_enhanced_parser and self.parser:
@@ -853,12 +1119,16 @@ class AdventureGame:
                             print(f"You {action} the {item.name}.")
                             # Apply any effects (healing, etc)
                             if hasattr(item, "heal_amount") and item.heal_amount > 0:
-                                old_health = self.player.health
-                                new_health = min(
-                                    self.player.max_health,
-                                    old_health + item.heal_amount,
+                                old_health = getattr(
+                                    self.player, "current_health", self.player.hardiness
                                 )
-                                self.player.health = new_health
+                                max_health = getattr(
+                                    self.player, "hardiness", old_health
+                                )
+                                new_health = min(
+                                    max_health, old_health + item.heal_amount
+                                )
+                                self.player.current_health = new_health
                                 heal_msg = (
                                     f"You feel refreshed! "
                                     f"Health restored by "
@@ -990,14 +1260,40 @@ class AdventureGame:
                 if target:
                     # Find item in inventory
                     item = None
-                    for i in self.player.inventory:
-                        if target.lower() in i.name.lower():
-                            item = i
+                    target_lower = target.lower()
+                    for inv_entry in self.player.inventory:
+                        if isinstance(inv_entry, int):
+                            candidate = self.items.get(inv_entry)
+                        else:
+                            candidate = inv_entry
+
+                        if candidate and target_lower in candidate.name.lower():
+                            item = candidate
                             break
 
                     if item:
+                        use_payload = {
+                            "player": self.player,
+                            "room": self.get_current_room(),
+                            "item": item,
+                            "item_name": item.name,
+                            "cancel": False,
+                        }
+                        use_payload, _ = self._fire_mod_event(
+                            EventType.ON_USE_ITEM, use_payload
+                        )
+                        if use_payload.get("cancel"):
+                            message = use_payload.get("message")
+                            if message:
+                                print(message)
+                            return
+                        if use_payload.get("handled"):
+                            return
+
+                        item = use_payload.get("item", item)
+
                         # Check for usable attribute
-                        if hasattr(item, "usable") and item.usable:
+                        if hasattr(item, "usable") and getattr(item, "usable"):
                             print(f"You use the {item.name}.")
                             # Apply effects if any
                             if hasattr(item, "on_use"):
@@ -1042,24 +1338,22 @@ class AdventureGame:
                         if item:
                             equippable = hasattr(item, "equippable") and item.equippable
                             if equippable:
-                                # Add to equipped set
-                                if not hasattr(self.player, "equipped"):
-                                    self.player.equipped = set()
-                                self.player.equipped.add(item)
+                                # Track equipped items locally
+                                self.equipped_items.add(item)
                                 print(f"You equip the {item.name}.")
                             else:
                                 print(f"You can't equip the {item.name}.")
                         else:
                             print(f"You don't have any {target}.")
                     else:  # unequip
-                        if hasattr(self.player, "equipped"):
-                            for i in self.player.equipped:
+                        if self.equipped_items:
+                            for equipped_item in list(self.equipped_items):
                                 if target.lower() in i.name.lower():
-                                    item = i
+                                    item = equipped_item
                                     break
 
                             if item:
-                                self.player.equipped.remove(item)
+                                self.equipped_items.discard(item)
                                 print(f"You unequip the {item.name}.")
                             else:
                                 print(f"You don't have {target} equipped.")
@@ -1070,13 +1364,12 @@ class AdventureGame:
                 return
             elif action == "flee":
                 # Try to escape from combat or dangerous situation
-                if hasattr(self, "combat") and self.combat.in_combat:
+                combat_system = getattr(self, "combat", None)
+                if combat_system and getattr(combat_system, "in_combat", False):
                     print("You attempt to flee from combat!")
                     # Simple flee logic
-                    import random
-
                     if random.random() > 0.5:
-                        self.combat.in_combat = False
+                        combat_system.in_combat = False
                         print("You successfully escaped!")
                     else:
                         print("You couldn't get away!")
@@ -1084,8 +1377,6 @@ class AdventureGame:
                     # Not in combat, just move to random exit
                     room = self.get_current_room()
                     if room.exits:
-                        import random
-
                         direction = random.choice(list(room.exits.keys()))
                         print(f"You flee {direction}!")
                         self.move(direction)
@@ -1127,9 +1418,10 @@ class AdventureGame:
                 return
             elif action == "quests":
                 # Show active quests
-                if hasattr(self.player, "quests") and self.player.quests:
+                quests = list(getattr(self.player, "quests", []) or [])
+                if quests:
                     print("\n=== Active Quests ===")
-                    for quest in self.player.quests:
+                    for quest in quests:
                         status = "Complete" if quest.completed else "Active"
                         print(f"[{status}] {quest.name}")
                         print(f"  {quest.description}")
@@ -1282,7 +1574,25 @@ class AdventureGame:
             else:
                 print("Settings not available.")
         else:
-            print(f"I don't understand '{command}'. Type 'help' for commands.")
+            unknown_payload = {
+                "player": self.player,
+                "room": self.get_current_room(),
+                "command": command,
+                "verb": cmd,
+                "args": args,
+                "handled": False,
+            }
+            unknown_payload, _ = self._fire_mod_event(
+                EventType.ON_UNKNOWN_COMMAND, unknown_payload
+            )
+            if unknown_payload.get("handled"):
+                return
+
+            message = unknown_payload.get("message")
+            if message:
+                print(message)
+            else:
+                print(f"I don't understand '{command}'. Type 'help' for commands.")
 
     def show_help(self):
         """Display help text"""
@@ -1327,15 +1637,8 @@ class AdventureGame:
                 break
 
 
-def main():
-    """Entry point"""
-    if len(sys.argv) < 2:
-        print("Usage: adventure_engine.py <adventure_file.json>")
-        sys.exit(1)
-
-    game = AdventureGame(sys.argv[1])
-    game.run()
-
-
 if __name__ == "__main__":
-    main()
+    raise SystemExit(
+        "The command-line engine has been retired. Launch the IDE with "
+        "`python -m src.acs.ui.ide`."
+    )

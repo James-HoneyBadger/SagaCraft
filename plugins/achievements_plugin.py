@@ -5,11 +5,12 @@ Tracks player progress and unlocks achievements based on game events.
 This is a refactored, plugin-based version of the original achievement system.
 """
 
-from typing import Any, Dict
+from datetime import datetime
 import logging
+from typing import Any, Dict
 
-from core.base_plugin import BasePlugin, PluginMetadata, PluginPriority
-from core.event_bus import Event
+from src.acs.core.base_plugin import BasePlugin, PluginMetadata, PluginPriority
+from src.acs.core.event_bus import Event
 
 # Import the original achievement classes (we're reusing the data structures)
 # In a full refactor, these would also be moved to this module
@@ -139,7 +140,7 @@ class AchievementsPlugin(BasePlugin):
         self._check_achievements()
         self._emit_stats_update()
 
-    def on_player_death(self, event: Event):
+    def on_player_death(self, _event: Event):
         """Handle player death"""
         if not self.statistics:
             return
@@ -182,7 +183,7 @@ class AchievementsPlugin(BasePlugin):
         self._check_achievements()
         self._emit_stats_update()
 
-    def on_command(self, event: Event):
+    def on_command(self, _event: Event):
         """Track command usage"""
         if not self.statistics:
             return
@@ -195,7 +196,7 @@ class AchievementsPlugin(BasePlugin):
     def register_achievement(self, achievement: Achievement):
         """Register a new achievement"""
         self.achievements[achievement.id] = achievement
-        self.logger.debug(f"Registered achievement: {achievement.name}")
+        self.logger.debug("Registered achievement: %s", achievement.name)
 
     def unlock_achievement(self, achievement_id: str) -> bool:
         """
@@ -215,7 +216,6 @@ class AchievementsPlugin(BasePlugin):
             return False
 
         achievement.unlocked = True
-        from datetime import datetime
 
         achievement.unlock_time = datetime.now()
 
@@ -229,7 +229,7 @@ class AchievementsPlugin(BasePlugin):
             },
         )
 
-        self.logger.info(f"Achievement unlocked: {achievement.name}")
+        self.logger.info("Achievement unlocked: %s", achievement.name)
         return True
 
     def _check_achievements(self):

@@ -102,15 +102,12 @@ class BasePlugin(ABC):
 
     def on_enable(self):
         """Called when plugin is enabled (override if needed)"""
-        pass
 
     def on_disable(self):
         """Called when plugin is disabled (override if needed)"""
-        pass
 
     def shutdown(self):
         """Cleanup resources before engine stops (override if needed)"""
-        pass
 
     @property
     def is_initialized(self) -> bool:

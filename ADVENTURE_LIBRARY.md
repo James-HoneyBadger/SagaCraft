@@ -1,8 +1,18 @@
 # Colossal StoryWorks - Game Library
 
-## 🎉 Flagship Adventure Available
+## 🎉 Featured Adventures Available
 
-Colossal StoryWorks now ships with a single, fully realized sample adventure built expressly to demonstrate every subsystem in the toolkit.
+Colossal StoryWorks now ships with two curated sample adventures: one that exercises every narrative and systems feature, and a compact visual builder demo that spotlights the new point-and-click workflow.
+
+### **Visual Builder Sample Adventure**
+- **File**: `adventures/visual_builder_sample.json`
+- **Setting**: A compact three-room studio tour that highlights how visual scenes map to classic parser commands
+- **Scope**: 3 rooms, 2 items, 9 hotspots, and fully authored grid presets for each scene
+- **Systems Spotlighted**:
+	- Visual Builder workflow with per-scene grid visibility and cell sizing
+	- Hotspot command sequences (`look workbench; get lab keycard`) feeding into the standard parser
+	- Lightweight data model ideal for experimentation or tutorials
+- **Ideal For**: Designers new to visual adventures who want a minimal, readable example that pairs Tkinter scenes with adventure data.
 
 ### **Colossal StoryWorks Showcase Adventure**
 - **File**: `adventures/colossal_storyworks_showcase.json`

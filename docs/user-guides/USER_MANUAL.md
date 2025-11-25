@@ -571,16 +571,13 @@ Configure in Room properties:
 2. Go to **Play** tab
 3. Click **Start/Resume Adventure**
 
-**From terminal**:
+**Launch the IDE from terminal**:
 ```bash
 python -m src.acs.ui.ide
 # Select adventure from the launcher menu
 ```
 
-**Direct Play**:
-```bash
-python -m src.acs.core.engine adventures/my_adventure.json
-```
+> Legacy note: the standalone command-line engine has been retired. Use the IDE play tab for testing and gameplay.
 
 ### Game Interface
 

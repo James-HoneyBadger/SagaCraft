@@ -7,7 +7,7 @@ Extended features for rich interactive fiction experiences
 import json
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from dataclasses import dataclass, field, asdict
 from enum import Enum
 from datetime import datetime
@@ -95,7 +95,8 @@ class EnhancedItem(Item):
         # Handle original Item fields
         item_type = ItemType(data.get("type", "normal"))
 
-        # Create with all fields, using defaults for missing enhanced fields
+        # Create with all fields, using defaults for missing enhanced fields.
+        # pylint: disable=unexpected-keyword-arg
         return cls(
             id=data["id"],
             name=data["name"],
@@ -112,7 +113,6 @@ class EnhancedItem(Item):
             is_takeable=data.get("is_takeable", True),
             is_wearable=data.get("is_wearable", False),
             location=data.get("location", 0),
-            # Enhanced fields (optional)
             durability=data.get("durability", 100),
             max_durability=data.get("max_durability", 100),
             magical_bonus=data.get("magical_bonus", 0),
@@ -156,6 +156,7 @@ class EnhancedMonster(Monster):
         """Create EnhancedMonster from dict"""
         friendliness = MonsterStatus(data.get("friendliness", "neutral"))
 
+        # pylint: disable=unexpected-keyword-arg
         return cls(
             id=data["id"],
             name=data["name"],
@@ -206,6 +207,7 @@ class EnhancedRoom(Room):
     @classmethod
     def from_dict(cls, data: dict):
         """Create EnhancedRoom from dict"""
+        # pylint: disable=unexpected-keyword-arg
         return cls(
             id=data["id"],
             name=data["name"],
@@ -334,6 +336,7 @@ class QuestObjective:
     description: str = ""
 
     def is_complete(self) -> bool:
+        """Return True when the objective has met its required quantity."""
         return self.current_progress >= self.quantity
 
 
@@ -366,6 +369,7 @@ class Quest:
             for obj in data.get("objectives", [])
         ]
 
+        # pylint: disable=unexpected-keyword-arg
         return cls(
             id=data["id"],
             title=data["title"],
@@ -397,6 +401,13 @@ class EnhancedPlayer(Player):
     discovered_rooms: List[int] = field(default_factory=list)
     # For conditional events
     flags: Dict[str, bool] = field(default_factory=dict)
+    max_hardiness: int = 12
+
+    def __post_init__(self):
+        # pylint: disable=no-member
+        super().__post_init__()
+        if self.max_hardiness < self.hardiness:
+            self.max_hardiness = self.hardiness
 
     def add_experience(self, amount: int):
         """Add experience and handle leveling up"""
@@ -406,6 +417,7 @@ class EnhancedPlayer(Player):
 
     def level_up(self):
         """Level up the player"""
+        # pylint: disable=no-member
         self.experience -= self.experience_to_next_level
         self.level += 1
         self.experience_to_next_level = int(self.experience_to_next_level * 1.5)
@@ -415,12 +427,28 @@ class EnhancedPlayer(Player):
         self.max_hardiness += 5
         self.agility += 2
 
+    def apply_save_state(self, snapshot: Dict[str, Any]):
+        """Update primary stats from a saved snapshot."""
+        # pylint: disable=no-member,attribute-defined-outside-init
+        self.current_room = snapshot.get("current_room", self.current_room)
+        self.gold = snapshot.get("gold", self.gold)
+        self.inventory = snapshot.get("inventory", self.inventory)
+        self.current_health = snapshot.get("current_health", self.current_health)
+
 
 class EnhancedAdventureGame(AdventureGame):
     """Enhanced game engine with extended features"""
 
     def __init__(self, adventure_file: str):
         super().__init__(adventure_file)
+        self.player = EnhancedPlayer()
+        self.allow_save = True
+        self.has_puzzles = False
+        self.has_dialogues = False
+        self.has_quests = False
+        self.adventure_title = ""
+        self.adventure_intro = ""
+        self.turn_count = 0
         self.puzzles: Dict[int, Puzzle] = {}
         self.dialogues: Dict[int, Dialogue] = {}
         self.quests: Dict[int, Quest] = {}
@@ -428,60 +456,60 @@ class EnhancedAdventureGame(AdventureGame):
     def load_adventure(self):
         """Load adventure with enhanced features"""
         try:
-            with open(self.adventure_file, "r") as f:
-                data = json.load(f)
-
-            self.adventure_title = data.get("title", "Untitled Adventure")
-            self.adventure_intro = data.get("intro", "")
-
-            # Load enhanced settings if present
-            settings = data.get("settings", {})
-            self.allow_save = settings.get("allow_save", True)
-
-            # Load rooms (enhanced or original)
-            for room_data in data.get("rooms", []):
-                room = EnhancedRoom.from_dict(room_data)
-                self.rooms[room.id] = room
-
-            # Load items (enhanced or original)
-            for item_data in data.get("items", []):
-                item = EnhancedItem.from_dict(item_data)
-                self.items[item.id] = item
-
-            # Load monsters (enhanced or original)
-            for mon_data in data.get("monsters", []):
-                monster = EnhancedMonster.from_dict(mon_data)
-                self.monsters[monster.id] = monster
-
-            # Load puzzles if present
-            if "puzzles" in data:
-                self.has_puzzles = True
-                for puzzle_data in data["puzzles"]:
-                    puzzle = Puzzle.from_dict(puzzle_data)
-                    self.puzzles[puzzle.id] = puzzle
-
-            # Load dialogues if present
-            if "dialogues" in data:
-                self.has_dialogues = True
-                for dialogue_data in data["dialogues"]:
-                    dialogue = Dialogue.from_dict(dialogue_data)
-                    self.dialogues[dialogue.npc_id] = dialogue
-
-            # Load quests if present
-            if "quests" in data:
-                self.has_quests = True
-                for quest_data in data["quests"]:
-                    quest = Quest.from_dict(quest_data)
-                    self.quests[quest.id] = quest
-
-            # Set player starting position
-            self.player.current_room = data.get("start_room", 1)
-
-            return True
-
-        except Exception as e:
-            print(f"Error loading adventure: {e}")
+            with open(self.adventure_file, "r", encoding="utf-8") as handle:
+                data = json.load(handle)
+        except (OSError, json.JSONDecodeError) as exc:
+            print(f"Error loading adventure: {exc}")
             return False
+
+        self.adventure_title = data.get("title", "Untitled Adventure")
+        self.adventure_intro = data.get("intro", "")
+
+        # Load enhanced settings if present
+        settings = data.get("settings", {})
+        self.allow_save = settings.get("allow_save", True)
+
+        # Load rooms (enhanced or original)
+        for room_data in data.get("rooms", []):
+            room = EnhancedRoom.from_dict(room_data)
+            self.rooms[room.id] = room
+
+        # Load items (enhanced or original)
+        for item_data in data.get("items", []):
+            item = EnhancedItem.from_dict(item_data)
+            self.items[item.id] = item
+
+        # Load monsters (enhanced or original)
+        for mon_data in data.get("monsters", []):
+            monster = EnhancedMonster.from_dict(mon_data)
+            self.monsters[monster.id] = monster
+
+        # Load puzzles if present
+        if "puzzles" in data:
+            self.has_puzzles = True
+            for puzzle_data in data["puzzles"]:
+                puzzle = Puzzle.from_dict(puzzle_data)
+                self.puzzles[puzzle.id] = puzzle
+
+        # Load dialogues if present
+        if "dialogues" in data:
+            self.has_dialogues = True
+            for dialogue_data in data["dialogues"]:
+                dialogue = Dialogue.from_dict(dialogue_data)
+                self.dialogues[dialogue.npc_id] = dialogue
+
+        # Load quests if present
+        if "quests" in data:
+            self.has_quests = True
+            for quest_data in data["quests"]:
+                quest = Quest.from_dict(quest_data)
+                self.quests[quest.id] = quest
+
+        # Set player starting position
+        # pylint: disable=attribute-defined-outside-init
+        self.player.current_room = data.get("start_room", 1)
+
+        return True
 
     def save_game(self, slot: int = 1) -> bool:
         """Save current game state"""
@@ -502,32 +530,38 @@ class EnhancedAdventureGame(AdventureGame):
         }
 
         try:
+            Path("saves").mkdir(parents=True, exist_ok=True)
             save_file = f"saves/save_slot_{slot}.json"
-            with open(save_file, "w") as f:
-                json.dump(save_data, f, indent=2)
-            print(f"\n✓ Game saved to slot {slot}")
-            return True
-        except Exception as e:
-            print(f"\n✗ Error saving game: {e}")
+            with open(save_file, "w", encoding="utf-8") as handle:
+                json.dump(save_data, handle, indent=2)
+        except (OSError, TypeError) as exc:
+            print(f"\n✗ Error saving game: {exc}")
             return False
+
+        print(f"\n✓ Game saved to slot {slot}")
+        return True
 
     def load_game(self, slot: int = 1) -> bool:
         """Load saved game state"""
+        save_file = f"saves/save_slot_{slot}.json"
         try:
-            save_file = f"saves/save_slot_{slot}.json"
-            with open(save_file, "r") as f:
-                json.load(f)  # TODO: implement save data restoration
-
-            # Restore game state
-            # (Implementation would restore all objects)
-            print(f"\n✓ Game loaded from slot {slot}")
-            return True
+            with open(save_file, "r", encoding="utf-8") as handle:
+                save_data = json.load(handle)
         except FileNotFoundError:
             print(f"\n✗ No save file found in slot {slot}")
             return False
-        except Exception as e:
-            print(f"\n✗ Error loading game: {e}")
+        except (OSError, json.JSONDecodeError) as exc:
+            print(f"\n✗ Error loading game: {exc}")
             return False
+
+        # Minimal restoration to keep feature usable without full state clone.
+        player_data = save_data.get("player", {})
+        if player_data:
+            self.player.apply_save_state(player_data)
+
+        self.turn_count = save_data.get("turn_count", self.turn_count)
+        print(f"\n✓ Game loaded from slot {slot}")
+        return True
 
     # Additional enhanced methods would go here
     # These would extend the original game engine methods
