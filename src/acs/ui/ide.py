@@ -510,7 +510,6 @@ class AdventureIDE:
         self.create_rooms_tab()
         self.create_items_tab()
         self.create_monsters_tab()
-        self.create_visual_tab()
         self.create_modding_tab()
         self.create_preview_tab()
 
@@ -977,236 +976,8 @@ class AdventureIDE:
         ).grid(row=row, column=1, sticky=tk.E, pady=10)
 
     def create_visual_tab(self):
-        """Graphical scene builder for point-and-click adventures."""
-        frame = ttk.Frame(self.notebook, padding="10")
-        self.notebook.add(frame, text="🖼️ Visual Builder")
-
-        frame.columnconfigure(1, weight=1)
-        frame.rowconfigure(0, weight=1)
-
-        # Scene list on the left
-        left_panel = ttk.Frame(frame)
-        left_panel.grid(row=0, column=0, sticky=(tk.N, tk.S), padx=(0, 10))
-        ttk.Label(left_panel, text="Scenes:").pack(anchor=tk.W)
-
-        self.scenes_listbox = tk.Listbox(left_panel, width=32, height=18)
-        self.scenes_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        self.scenes_listbox.bind("<<ListboxSelect>>", self.select_scene)
-
-        scene_scroll = ttk.Scrollbar(
-            left_panel, orient=tk.VERTICAL, command=self.scenes_listbox.yview
-        )
-        scene_scroll.pack(side=tk.RIGHT, fill=tk.Y)
-        self.scenes_listbox.config(yscrollcommand=scene_scroll.set)
-
-        scene_buttons = ttk.Frame(left_panel)
-        scene_buttons.pack(pady=5)
-        ttk.Button(scene_buttons, text="Add Scene", command=self.add_scene).pack(
-            side=tk.LEFT, padx=2
-        )
-        ttk.Button(scene_buttons, text="Delete", command=self.delete_scene).pack(
-            side=tk.LEFT, padx=2
-        )
-
-        # Scene detail and hotspots on the right
-        right_panel = ttk.Frame(frame)
-        right_panel.grid(row=0, column=1, sticky=(tk.N, tk.S, tk.E, tk.W))
-        right_panel.columnconfigure(0, weight=1)
-
-        scene_frame = ttk.Frame(right_panel, padding=10, style="Panel.TFrame")
-        scene_frame.grid(row=0, column=0, sticky=(tk.W, tk.E))
-        scene_frame.columnconfigure(1, weight=1)
-
-        ttk.Label(scene_frame, text="Scene ID:").grid(row=0, column=0, sticky=tk.W)
-        self.scene_id_var = tk.IntVar(value=0)
-        ttk.Label(scene_frame, textvariable=self.scene_id_var).grid(
-            row=0, column=1, sticky=tk.W
-        )
-
-        ttk.Label(scene_frame, text="Name:").grid(row=1, column=0, sticky=tk.W)
-        self.scene_name_var = tk.StringVar()
-        ttk.Entry(scene_frame, textvariable=self.scene_name_var, width=40).grid(
-            row=1, column=1, sticky=(tk.W, tk.E), pady=4
-        )
-
-        ttk.Label(scene_frame, text="Linked Room ID:").grid(
-            row=2, column=0, sticky=tk.W
-        )
-        self.scene_room_var = tk.IntVar(value=0)
-        ttk.Spinbox(
-            scene_frame,
-            from_=0,
-            to=999,
-            textvariable=self.scene_room_var,
-            width=12,
-        ).grid(row=2, column=1, sticky=tk.W, pady=4)
-
-        ttk.Label(scene_frame, text="Background Image:").grid(
-            row=3, column=0, sticky=tk.W
-        )
-        self.scene_background_var = tk.StringVar()
-        background_frame = ttk.Frame(scene_frame)
-        background_frame.grid(row=3, column=1, sticky=(tk.W, tk.E), pady=4)
-        background_frame.columnconfigure(0, weight=1)
-        ttk.Entry(
-            background_frame,
-            textvariable=self.scene_background_var,
-        ).grid(row=0, column=0, sticky=(tk.W, tk.E))
-        ttk.Button(
-            background_frame,
-            text="Browse",
-            command=self.browse_scene_background,
-        ).grid(row=0, column=1, padx=5)
-
-        ttk.Label(scene_frame, text="Ambient Music (optional):").grid(
-            row=4, column=0, sticky=tk.W
-        )
-        self.scene_music_var = tk.StringVar()
-        ttk.Entry(scene_frame, textvariable=self.scene_music_var).grid(
-            row=4, column=1, sticky=(tk.W, tk.E), pady=4
-        )
-
-        self.scene_grid_visible_var = tk.BooleanVar(value=False)
-        self.scene_grid_size_var = tk.IntVar(value=64)
-        ttk.Label(scene_frame, text="Grid Overlay:").grid(row=5, column=0, sticky=tk.W)
-        grid_controls = ttk.Frame(scene_frame)
-        grid_controls.grid(row=5, column=1, sticky=(tk.W, tk.E), pady=4)
-        ttk.Checkbutton(
-            grid_controls,
-            text="Enabled",
-            variable=self.scene_grid_visible_var,
-        ).pack(side=tk.LEFT)
-        ttk.Label(grid_controls, text="Cell Size:").pack(side=tk.LEFT, padx=(12, 4))
-        ttk.Spinbox(
-            grid_controls,
-            from_=16,
-            to=256,
-            increment=8,
-            textvariable=self.scene_grid_size_var,
-            width=6,
-        ).pack(side=tk.LEFT)
-
-        ttk.Label(scene_frame, text="Narration / Notes:").grid(
-            row=6, column=0, sticky=tk.NW
-        )
-        self.scene_narration_text = scrolledtext.ScrolledText(
-            scene_frame, width=45, height=5, wrap=tk.WORD
-        )
-        self.scene_narration_text.grid(row=6, column=1, sticky=(tk.W, tk.E), pady=4)
-
-        ttk.Button(scene_frame, text="Update Scene", command=self.update_scene).grid(
-            row=7, column=1, sticky=tk.E, pady=(10, 0)
-        )
-
-        # Hotspot editor
-        hotspot_frame = ttk.Frame(right_panel, padding=10, style="Panel.TFrame")
-        hotspot_frame.grid(
-            row=1, column=0, sticky=(tk.N, tk.S, tk.E, tk.W), pady=(10, 0)
-        )
-        hotspot_frame.columnconfigure(1, weight=1)
-        right_panel.rowconfigure(1, weight=1)
-
-        ttk.Label(hotspot_frame, text="Hotspots", style="Subtitle.TLabel").grid(
-            row=0, column=0, columnspan=2, sticky=tk.W
-        )
-
-        list_container = ttk.Frame(hotspot_frame)
-        list_container.grid(row=1, column=0, columnspan=2, sticky=(tk.W, tk.E))
-
-        self.hotspots_listbox = tk.Listbox(list_container, height=8)
-        self.hotspots_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        self.hotspots_listbox.bind("<<ListboxSelect>>", self.select_hotspot)
-
-        hotspot_scroll = ttk.Scrollbar(
-            list_container, orient=tk.VERTICAL, command=self.hotspots_listbox.yview
-        )
-        hotspot_scroll.pack(side=tk.RIGHT, fill=tk.Y)
-        self.hotspots_listbox.config(yscrollcommand=hotspot_scroll.set)
-
-        hotspot_btns = ttk.Frame(hotspot_frame)
-        hotspot_btns.grid(row=2, column=0, columnspan=2, sticky=tk.W, pady=5)
-        ttk.Button(hotspot_btns, text="Add Hotspot", command=self.add_hotspot).pack(
-            side=tk.LEFT, padx=2
-        )
-        ttk.Button(hotspot_btns, text="Delete", command=self.delete_hotspot).pack(
-            side=tk.LEFT, padx=2
-        )
-
-        ttk.Label(hotspot_frame, text="Hotspot ID:").grid(row=3, column=0, sticky=tk.W)
-        self.hotspot_id_var = tk.IntVar(value=0)
-        ttk.Label(hotspot_frame, textvariable=self.hotspot_id_var).grid(
-            row=3, column=1, sticky=tk.W
-        )
-
-        ttk.Label(hotspot_frame, text="Label:").grid(row=4, column=0, sticky=tk.W)
-        self.hotspot_label_var = tk.StringVar()
-        ttk.Entry(hotspot_frame, textvariable=self.hotspot_label_var).grid(
-            row=4, column=1, sticky=(tk.W, tk.E), pady=2
-        )
-
-        ttk.Label(hotspot_frame, text="Tooltip:").grid(row=5, column=0, sticky=tk.W)
-        self.hotspot_tooltip_var = tk.StringVar()
-        ttk.Entry(hotspot_frame, textvariable=self.hotspot_tooltip_var).grid(
-            row=5, column=1, sticky=(tk.W, tk.E), pady=2
-        )
-
-        ttk.Label(hotspot_frame, text="Shape:").grid(row=6, column=0, sticky=tk.W)
-        self.hotspot_shape_var = tk.StringVar(value="rectangle")
-        ttk.Combobox(
-            hotspot_frame,
-            textvariable=self.hotspot_shape_var,
-            values=["rectangle", "circle"],
-            state="readonly",
-            width=12,
-        ).grid(row=6, column=1, sticky=tk.W, pady=2)
-
-        coord_labels = ["X", "Y", "Width", "Height"]
-        coord_vars = []
-        self.hotspot_x_var = tk.IntVar(value=0)
-        self.hotspot_y_var = tk.IntVar(value=0)
-        self.hotspot_width_var = tk.IntVar(value=100)
-        self.hotspot_height_var = tk.IntVar(value=100)
-        coord_vars.extend(
-            [
-                self.hotspot_x_var,
-                self.hotspot_y_var,
-                self.hotspot_width_var,
-                self.hotspot_height_var,
-            ]
-        )
-        for idx, (label, var) in enumerate(zip(coord_labels, coord_vars), start=7):
-            ttk.Label(hotspot_frame, text=f"{label}:").grid(
-                row=idx, column=0, sticky=tk.W
-            )
-            ttk.Spinbox(
-                hotspot_frame,
-                from_=-9999,
-                to=9999,
-                textvariable=var,
-                width=10,
-            ).grid(row=idx, column=1, sticky=tk.W, pady=2)
-
-        ttk.Label(hotspot_frame, text="Action:").grid(row=11, column=0, sticky=tk.W)
-        self.hotspot_action_var = tk.StringVar(value="command")
-        ttk.Combobox(
-            hotspot_frame,
-            textvariable=self.hotspot_action_var,
-            values=["command", "command_sequence"],
-            state="readonly",
-            width=20,
-        ).grid(row=11, column=1, sticky=tk.W, pady=2)
-
-        ttk.Label(hotspot_frame, text="Command / Value:").grid(
-            row=12, column=0, sticky=tk.W
-        )
-        self.hotspot_value_var = tk.StringVar()
-        ttk.Entry(hotspot_frame, textvariable=self.hotspot_value_var).grid(
-            row=12, column=1, sticky=(tk.W, tk.E), pady=2
-        )
-
-        ttk.Button(
-            hotspot_frame, text="Update Hotspot", command=self.update_hotspot
-        ).grid(row=13, column=1, sticky=tk.E, pady=(10, 0))
+        """Visual Builder has been removed; SagaCraft is text-only."""
+        pass
 
     def create_modding_tab(self):
         """Modding management tab"""
@@ -2135,393 +1906,58 @@ class AdventureIDE:
         label = "Visual" if selected == "visual" else "Text"
         self.update_status(f"Experience mode set to {label}")
 
-    # Visual scene methods
+    # Visual scene methods - removed (SagaCraft is text-only)
     def refresh_scenes_list(self):
-        """Refresh the list of visual scenes."""
-        if not self.scenes_listbox:
-            return
-
-        scenes = self.adventure.get("scenes", []) or []
-        current_selection = self.scenes_listbox.curselection()
-        selected_id = None
-        if current_selection:
-            try:
-                selected_id = scenes[current_selection[0]].get("id")
-            except IndexError:
-                selected_id = None
-
-        self.scenes_listbox.delete(0, tk.END)
-        for idx, scene in enumerate(scenes):
-            scene_id = scene.get("id", idx + 1)
-            name = scene.get("name") or f"Scene {scene_id}"
-            room_id = scene.get("room_id")
-            label = f"#{scene_id}: {name}"
-            if room_id:
-                label += f" (Room {room_id})"
-            self.scenes_listbox.insert(tk.END, label)
-            if selected_id is not None and scene_id == selected_id:
-                self.scenes_listbox.selection_set(idx)
-
-        if scenes and not self.scenes_listbox.curselection():
-            self.scenes_listbox.selection_set(0)
-
-        if self.scenes_listbox.curselection():
-            self.select_scene(None)
-        else:
-            self.clear_scene_editor()
-            self.refresh_hotspots_list(clear_only=True)
+        """Removed - SagaCraft is text-only."""
+        pass
 
     def add_scene(self):
-        """Create a new point-and-click scene."""
-        scenes = self.adventure.setdefault("scenes", [])
-        next_id = max([scene.get("id", 0) for scene in scenes], default=0) + 1
-        scene = {
-            "id": next_id,
-            "name": f"Scene {next_id}",
-            "room_id": self.start_room_var.get() if self.start_room_var else 1,
-            "background": "",
-            "music": "",
-            "narration": "",
-            "grid_visible": False,
-            "grid_size": 64,
-            "hotspots": [],
-        }
-        scenes.append(scene)
-        self.modified = True
-        self.update_status(f"Scene {next_id} added")
-        self.refresh_scenes_list()
-        if self.scenes_listbox.size() > 0:
-            self.scenes_listbox.selection_clear(0, tk.END)
-            self.scenes_listbox.selection_set(tk.END)
-            self.select_scene(None)
+        """Removed - SagaCraft is text-only."""
+        pass
 
     def delete_scene(self):
-        """Remove the selected scene."""
-        if not self.scenes_listbox:
-            return
-        selection_indices = self.scenes_listbox.curselection()
-        if not selection_indices:
-            return
-
-        if not messagebox.askyesno("Confirm", "Delete this scene?"):
-            return
-
-        try:
-            idx = int(selection_indices[0])
-        except (ValueError, TypeError):
-            return
-        try:
-            del self.adventure.setdefault("scenes", [])[idx]
-        except IndexError:
-            return
-
-        self.modified = True
-        self.update_status("Scene deleted")
-        self.refresh_scenes_list()
+        """Removed - SagaCraft is text-only."""
+        pass
 
     def select_scene(self, _event):
-        """Populate the scene editor from the selection."""
-        if not self.scenes_listbox:
-            return
-        selection_indices = self.scenes_listbox.curselection()
-        if not selection_indices:
-            self.clear_scene_editor()
-            self.refresh_hotspots_list(clear_only=True)
-            return
-
-        scenes = self.adventure.get("scenes", [])
-        try:
-            index = int(selection_indices[0])
-            scene = scenes[index]
-        except (IndexError, ValueError):
-            self.clear_scene_editor()
-            self.refresh_hotspots_list(clear_only=True)
-            return
-
-        self.scene_id_var.set(scene.get("id", 0))
-        self.scene_name_var.set(scene.get("name", ""))
-        self.scene_room_var.set(scene.get("room_id", 0))
-        self.scene_background_var.set(scene.get("background", ""))
-        self.scene_music_var.set(scene.get("music", ""))
-        if self.scene_grid_visible_var:
-            self.scene_grid_visible_var.set(bool(scene.get("grid_visible", False)))
-        if self.scene_grid_size_var:
-            try:
-                value = int(scene.get("grid_size", 64) or 64)
-            except (TypeError, ValueError):
-                value = 64
-            self.scene_grid_size_var.set(max(16, min(256, value)))
-        self.scene_narration_text.delete("1.0", tk.END)
-        self.scene_narration_text.insert("1.0", scene.get("narration", ""))
-        self.refresh_hotspots_list(scene=scene)
+        """Removed - SagaCraft is text-only."""
+        pass
 
     def clear_scene_editor(self):
-        """Reset scene editor fields."""
-        if self.scene_id_var:
-            self.scene_id_var.set(0)
-        if self.scene_name_var:
-            self.scene_name_var.set("")
-        if self.scene_room_var:
-            self.scene_room_var.set(0)
-        if self.scene_background_var:
-            self.scene_background_var.set("")
-        if self.scene_music_var:
-            self.scene_music_var.set("")
-        if hasattr(self, "scene_grid_visible_var") and self.scene_grid_visible_var:
-            self.scene_grid_visible_var.set(False)
-        if hasattr(self, "scene_grid_size_var") and self.scene_grid_size_var:
-            self.scene_grid_size_var.set(64)
-        if self.scene_narration_text:
-            self.scene_narration_text.delete("1.0", tk.END)
+        """Removed - SagaCraft is text-only."""
+        pass
 
     def update_scene(self):
-        """Persist changes made to the active scene."""
-        if not self.scenes_listbox:
-            return
-        selection_indices = self.scenes_listbox.curselection()
-        if not selection_indices:
-            return
-
-        scenes = self.adventure.setdefault("scenes", [])
-        try:
-            index = int(selection_indices[0])
-            scene = scenes[index]
-        except (IndexError, ValueError):
-            return
-
-        scene["name"] = self.scene_name_var.get()
-        scene["room_id"] = self.scene_room_var.get()
-        scene["background"] = self.scene_background_var.get()
-        scene["music"] = self.scene_music_var.get()
-        scene["narration"] = self.scene_narration_text.get("1.0", tk.END).strip()
-        grid_visible = False
-        if self.scene_grid_visible_var:
-            grid_visible = bool(self.scene_grid_visible_var.get())
-        try:
-            if self.scene_grid_size_var:
-                grid_size_value = int(self.scene_grid_size_var.get())
-            else:
-                grid_size_value = 64
-        except (TypeError, ValueError, tk.TclError):
-            grid_size_value = 64
-        scene["grid_visible"] = grid_visible
-        scene["grid_size"] = max(16, min(256, grid_size_value))
-
-        self.modified = True
-        self.update_status("Scene updated")
-        self.refresh_scenes_list()
+        """Removed - SagaCraft is text-only."""
+        pass
 
     def browse_scene_background(self):
-        """Choose a background image file for the scene."""
-        filename = filedialog.askopenfilename(
-            title="Select Background Image",
-            initialdir="assets",
-            filetypes=[
-                ("Image Files", "*.png *.gif *.jpg *.jpeg *.bmp"),
-                ("All Files", "*.*"),
-            ],
-        )
-        if filename and self.scene_background_var:
-            self.scene_background_var.set(filename)
-            self.modified = True
-            self.update_status("Background updated")
+        """Removed - SagaCraft is text-only."""
+        pass
 
     def refresh_hotspots_list(self, scene=None, *, clear_only: bool = False):
-        """Refresh the hotspot list for the current scene."""
-        if not self.hotspots_listbox:
-            return
-
-        self.hotspots_listbox.delete(0, tk.END)
-        if clear_only:
-            self.clear_hotspot_editor()
-            return
-
-        if scene is None:
-            selection_indices = (
-                self.scenes_listbox.curselection() if self.scenes_listbox else ()
-            )
-            if not selection_indices:
-                self.clear_hotspot_editor()
-                return
-            scenes = self.adventure.get("scenes", [])
-            try:
-                index = int(selection_indices[0])
-                scene = scenes[index]
-            except (IndexError, ValueError):
-                self.clear_hotspot_editor()
-                return
-
-        hotspots = scene.setdefault("hotspots", [])
-        selected_index = None
-        current_selection = self.hotspots_listbox.curselection()
-        if current_selection:
-            selected_index = current_selection[0]
-
-        for idx, hotspot in enumerate(hotspots):
-            hotspot_id = hotspot.get("id", idx + 1)
-            label = hotspot.get("label", f"Hotspot {hotspot_id}")
-            action = hotspot.get("action", "command")
-            self.hotspots_listbox.insert(tk.END, f"#{hotspot_id}: {label} [{action}]")
-            if selected_index is not None and idx == selected_index:
-                self.hotspots_listbox.selection_set(idx)
-
-        if hotspots and not self.hotspots_listbox.curselection():
-            self.hotspots_listbox.selection_set(0)
-
-        if self.hotspots_listbox.curselection():
-            self.select_hotspot(None)
-        else:
-            self.clear_hotspot_editor()
+        """Removed - SagaCraft is text-only."""
+        pass
 
     def add_hotspot(self):
-        """Add a new hotspot to the selected scene."""
-        if not self.scenes_listbox:
-            return
-        selection_indices = self.scenes_listbox.curselection()
-        if not selection_indices:
-            return
-
-        scenes = self.adventure.setdefault("scenes", [])
-        try:
-            scene_index = int(selection_indices[0])
-            scene = scenes[scene_index]
-        except (IndexError, ValueError):
-            return
-
-        hotspots = scene.setdefault("hotspots", [])
-        next_id = max([hs.get("id", 0) for hs in hotspots], default=0) + 1
-        hotspot = {
-            "id": next_id,
-            "label": f"Hotspot {next_id}",
-            "tooltip": "",
-            "shape": "rectangle",
-            "x": 10,
-            "y": 10,
-            "width": 120,
-            "height": 80,
-            "action": "command",
-            "value": "look",
-        }
-        hotspots.append(hotspot)
-        self.modified = True
-        self.update_status(f"Hotspot {next_id} added")
-        self.refresh_hotspots_list(scene=scene)
-        if self.hotspots_listbox.size() > 0:
-            self.hotspots_listbox.selection_clear(0, tk.END)
-            self.hotspots_listbox.selection_set(tk.END)
-            self.select_hotspot(None)
+        """Removed - SagaCraft is text-only."""
+        pass
 
     def delete_hotspot(self):
-        """Delete the selected hotspot."""
-        if not self.scenes_listbox or not self.hotspots_listbox:
-            return
-        scene_sel = self.scenes_listbox.curselection()
-        hotspot_sel = self.hotspots_listbox.curselection()
-        if not scene_sel or not hotspot_sel:
-            return
-
-        if not messagebox.askyesno("Confirm", "Delete this hotspot?"):
-            return
-
-        scenes = self.adventure.get("scenes", [])
-        try:
-            scene_index = int(scene_sel[0])
-            hotspot_index = int(hotspot_sel[0])
-            scene = scenes[scene_index]
-            hotspots = scene.setdefault("hotspots", [])
-            del hotspots[hotspot_index]
-        except (IndexError, KeyError, ValueError):
-            return
-
-        self.modified = True
-        self.update_status("Hotspot deleted")
-        self.refresh_hotspots_list(scene=scene)
+        """Removed - SagaCraft is text-only."""
+        pass
 
     def select_hotspot(self, _event):
-        """Populate hotspot details from the current selection."""
-        if not self.scenes_listbox or not self.hotspots_listbox:
-            return
-        scene_sel = self.scenes_listbox.curselection()
-        hotspot_sel = self.hotspots_listbox.curselection()
-        if not scene_sel or not hotspot_sel:
-            self.clear_hotspot_editor()
-            return
-
-        scenes = self.adventure.get("scenes", [])
-        try:
-            scene_index = int(scene_sel[0])
-            hotspot_index = int(hotspot_sel[0])
-            scene = scenes[scene_index]
-            hotspot = scene.setdefault("hotspots", [])[hotspot_index]
-        except (IndexError, KeyError, ValueError):
-            self.clear_hotspot_editor()
-            return
-
-        self.hotspot_id_var.set(hotspot.get("id", 0))
-        self.hotspot_label_var.set(hotspot.get("label", ""))
-        self.hotspot_tooltip_var.set(hotspot.get("tooltip", ""))
-        self.hotspot_shape_var.set(hotspot.get("shape", "rectangle"))
-        self.hotspot_x_var.set(hotspot.get("x", 0))
-        self.hotspot_y_var.set(hotspot.get("y", 0))
-        self.hotspot_width_var.set(hotspot.get("width", 100))
-        self.hotspot_height_var.set(hotspot.get("height", 100))
-        self.hotspot_action_var.set(hotspot.get("action", "command"))
-        self.hotspot_value_var.set(hotspot.get("value", ""))
+        """Removed - SagaCraft is text-only."""
+        pass
 
     def clear_hotspot_editor(self):
-        """Reset hotspot editor fields."""
-        if self.hotspot_id_var:
-            self.hotspot_id_var.set(0)
-        if self.hotspot_label_var:
-            self.hotspot_label_var.set("")
-        if self.hotspot_tooltip_var:
-            self.hotspot_tooltip_var.set("")
-        if self.hotspot_shape_var:
-            self.hotspot_shape_var.set("rectangle")
-        if self.hotspot_x_var:
-            self.hotspot_x_var.set(0)
-        if self.hotspot_y_var:
-            self.hotspot_y_var.set(0)
-        if self.hotspot_width_var:
-            self.hotspot_width_var.set(100)
-        if self.hotspot_height_var:
-            self.hotspot_height_var.set(100)
-        if self.hotspot_action_var:
-            self.hotspot_action_var.set("command")
-        if self.hotspot_value_var:
-            self.hotspot_value_var.set("")
+        """Removed - SagaCraft is text-only."""
+        pass
 
     def update_hotspot(self):
-        """Persist hotspot field changes."""
-        if not self.scenes_listbox or not self.hotspots_listbox:
-            return
-        scene_sel = self.scenes_listbox.curselection()
-        hotspot_sel = self.hotspots_listbox.curselection()
-        if not scene_sel or not hotspot_sel:
-            return
-
-        scenes = self.adventure.get("scenes", [])
-        try:
-            scene_index = int(scene_sel[0])
-            hotspot_index = int(hotspot_sel[0])
-            scene = scenes[scene_index]
-            hotspot = scene.setdefault("hotspots", [])[hotspot_index]
-        except (IndexError, KeyError, ValueError):
-            return
-
-        hotspot["label"] = self.hotspot_label_var.get()
-        hotspot["tooltip"] = self.hotspot_tooltip_var.get()
-        hotspot["shape"] = self.hotspot_shape_var.get()
-        hotspot["x"] = self.hotspot_x_var.get()
-        hotspot["y"] = self.hotspot_y_var.get()
-        hotspot["width"] = self.hotspot_width_var.get()
-        hotspot["height"] = self.hotspot_height_var.get()
-        hotspot["action"] = self.hotspot_action_var.get()
-        hotspot["value"] = self.hotspot_value_var.get()
-
-        self.modified = True
-        self.update_status("Hotspot updated")
-        self.refresh_hotspots_list(scene=scene)
+        """Removed - SagaCraft is text-only."""
+        pass
 
     # Item methods
     def refresh_items_list(self):
