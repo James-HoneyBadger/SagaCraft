@@ -18,7 +18,6 @@ from pathlib import Path
 from io import StringIO
 
 from acs.tools.modding import ModdingSystem
-from acs.ui.visual_player import PointAndClickWindow
 
 
 class AdventureIDE:
@@ -3154,38 +3153,16 @@ F5 - Test Adventure
             self.update_status(f"Theme changed to: {theme_name}")
 
     def _open_visual_window(self):
-        """Open the point-and-click helper window."""
-        scenes = self.adventure.get("scenes", []) or []
-        if not scenes:
-            return
-
-        current_room = getattr(self.game_instance.player, "current_room", 0)
-        self.point_and_click = PointAndClickWindow(
-            self.root,
-            scenes,
-            command_callback=self._run_visual_command,
-            on_close=self._on_visual_closed,
-        )
-        self.point_and_click.set_current_room(current_room)
-        self.update_status("Visual play window ready")
+        """Visual builder removed; no-op."""
+        self.update_status("Visual builder is no longer available.")
 
     def _run_visual_command(self, commands):
-        """Execute commands triggered from the visual window."""
-        if isinstance(commands, str):
-            sequence = [commands]
-        else:
-            sequence = list(commands)
-
-        for command in sequence:
-            if not command:
-                continue
-            self._process_game_command(command.strip(), echo=True)
-            if not self.game_running:
-                break
+        """Visual builder removed; no-op."""
+        return
 
     def _on_visual_closed(self):
-        """Reset reference when the visual window is closed."""
-        self.point_and_click = None
+        """Visual builder removed; no-op."""
+        return
 
     def change_font_family(self, font_family):
         """Change the UI font family"""
