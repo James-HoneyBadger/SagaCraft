@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Colossal StoryWorks includes powerful features for creating rich interactive fiction experiences.
+SagaCraft includes powerful features for creating rich interactive fiction experiences.
 
 ## What's New?
 

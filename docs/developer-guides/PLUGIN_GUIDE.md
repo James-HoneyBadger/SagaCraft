@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This guide shows you how to create plugins for the Colossal StoryWorks engine. Plugins allow you to add new features, modify game behavior, and extend functionality without changing the core engine code.
+This guide shows you how to create plugins for the SagaCraft engine. Plugins allow you to add new features, modify game behavior, and extend functionality without changing the core engine code.
 
 ## Quick Start
 

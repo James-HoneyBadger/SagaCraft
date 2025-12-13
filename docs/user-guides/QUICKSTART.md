@@ -11,11 +11,11 @@ License: MIT
 
 ```bash
 # Requirements: Python 3.10+
-cd Colossal_StoryWorks
+cd SagaCraft
 python -m src.acs.ui.ide
 ```
 
-- Colossal StoryWorks ships with batteries included—no mandatory dependencies.
+- SagaCraft ships with batteries included—no mandatory dependencies.
 - Optional: run `./quickstart.sh` for a menu of launch shortcuts.
 
 ---

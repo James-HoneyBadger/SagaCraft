@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""
-Colossal StoryWorks - Accessibility Features
-Difficulty settings, display options, and inclusive design
+"""SagaCraft - Accessibility Features
+
+Difficulty settings, display options, and inclusive design.
 """
 
 from typing import Dict, List, Optional

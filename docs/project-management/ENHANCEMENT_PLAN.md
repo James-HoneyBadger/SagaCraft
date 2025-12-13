@@ -1,4 +1,4 @@
-# Colossal StoryWorks - Enhancement Plan
+# SagaCraft - Enhancement Plan
 
 ## Overview
 Expand the game system with modern features for creating rich interactive fiction experiences.
@@ -335,7 +335,7 @@ Expand the game system with modern features for creating rich interactive fictio
 ## File Structure
 
 ```
-Colossal_StoryWorks/
+SagaCraft/
 ├── acs_engine_enhanced.py    # Enhanced engine
 ├── src/acs/
 │   ├── core/

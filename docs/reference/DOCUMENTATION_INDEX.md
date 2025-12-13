@@ -1,4 +1,4 @@
-# 📚 Colossal StoryWorks - Documentation Index
+# 📚 SagaCraft - Documentation Index
 
 **Complete guide to all documentation**
 
@@ -63,7 +63,7 @@ License: MIT
 
 ## 📁 All Documentation Files
 
-### Main Guides (★ New in v2.0)
+### Main Guides (★ New in v3.0.0)
 - ★ **USER_MANUAL.md** - Comprehensive user guide
 - ★ **TECHNICAL_REFERENCE.md** - Developer documentation  
 - ★ **CONTRIBUTING.md** - Contribution guidelines
@@ -100,7 +100,7 @@ License: MIT
 ## 📊 Documentation Stats
 
 - **Total Documents**: 30+
-- **New in v2.0**: 4 major guides (1500+ lines)
+- **New in v3.0.0**: 4 major guides (1500+ lines)
 - **Coverage**: Installation, usage, development, contribution
 - **Languages**: English
 - **License**: MIT

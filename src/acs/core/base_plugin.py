@@ -32,7 +32,7 @@ class PluginMetadata:
 
     name: str
     version: str
-    author: str = "Colossal StoryWorks Team"
+    author: str = "SagaCraft Team"
     description: str = ""
     dependencies: List[str] = None
     priority: PluginPriority = PluginPriority.NORMAL

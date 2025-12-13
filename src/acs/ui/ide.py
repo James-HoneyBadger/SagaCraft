@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""
-Colossal StoryWorks - Graphical Adventure Editor
-A complete IDE for creating, editing, and playing text adventures
+"""SagaCraft - Graphical Adventure Editor
+
+A complete IDE for creating, editing, and playing text adventures.
 """
 
 # pylint: disable=too-many-lines
@@ -22,11 +22,11 @@ from acs.ui.visual_player import PointAndClickWindow
 
 
 class AdventureIDE:
-    """Main IDE window for Colossal StoryWorks"""
+    """Main IDE window for SagaCraft"""
 
     def __init__(self, root):
         self.root = root
-        self.root.title("🎮 Colossal StoryWorks - IDE")
+        self.root.title("🎮 SagaCraft - IDE")
         self.root.geometry("1400x900")
 
         # Theme definitions
@@ -2809,7 +2809,7 @@ class AdventureIDE:
 
     def show_help(self):
         """Show help dialog"""
-        help_text = """Colossal StoryWorks - Quick Start
+        help_text = """SagaCraft - Quick Start
 
 Creating Adventures:
 1. Fill in Adventure Info (title, author, intro)
@@ -2838,7 +2838,7 @@ F5 - Test Adventure
         """Show about dialog"""
         messagebox.showinfo(
             "About",
-            "🎮 Colossal StoryWorks v2.0\n\n"
+            "🎮 SagaCraft v3.0.0\n\n"
             "A complete IDE for creating text adventures\n\n"
             "Features:\n"
             "• Visual room editor\n"
@@ -2847,7 +2847,7 @@ F5 - Test Adventure
             "• 5 beautiful themes (Dark, Light, Dracula, Nord, Monokai)\n"
             "• Customizable fonts\n"
             "• 30 natural language commands\n\n"
-            "Version 2.0 - Enhanced Edition",
+            "Version 3.0.0",
         )
 
     def update_status(self, message):

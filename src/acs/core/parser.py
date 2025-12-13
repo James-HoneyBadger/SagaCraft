@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""
-Colossal StoryWorks - Enhanced Natural Language Parser
-Provides improved command parsing with better sentence understanding
-and support for party/companion system
+"""SagaCraft - Enhanced Natural Language Parser
+
+Provides improved command parsing with better sentence understanding and support
+for party/companion system.
 """
 
 import re
@@ -345,7 +345,7 @@ class NaturalLanguageParser:
     def get_help_text(self) -> str:
         """Generate comprehensive help text"""
         return """
-COLOSSAL STORYWORKS - COMMANDS
+SAGACRAFT - COMMANDS
 
 You can type natural language! Examples:
   "go north" or "walk to the north" or just "north"

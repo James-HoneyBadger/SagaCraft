@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""
-Colossal StoryWorks - Inform 7 Integration
-Integrates Inform 7-style natural language understanding into Colossal StoryWorks engine.
+"""SagaCraft - Inform 7 Integration
+
+Integrates Inform 7-style natural language understanding into the SagaCraft engine.
 """
 
 from typing import List, Optional, Tuple
@@ -14,7 +14,7 @@ from acs.core.natural_language import (
 
 class InformEnhancedEngine:
     """
-    Mixin class that adds Inform 7 capabilities to Colossal StoryWorks engine.
+    Mixin class that adds Inform 7 capabilities to SagaCraft engine.
 
     This provides:
     - Natural language command understanding
@@ -122,7 +122,7 @@ class InformEnhancedEngine:
         Process natural language command and return
         (verb, direct_object, indirect_object).
 
-        This bridges the Inform 7 parser to the existing Colossal StoryWorks command
+        This bridges the Inform 7 parser to the existing SagaCraft command
         system.
         """
         parsed = self.parse_inform_command(command)
@@ -131,7 +131,7 @@ class InformEnhancedEngine:
         if not parsed.verb or parsed.confidence < 0.5:
             return ("unknown", None, None)
 
-        # Convert parsed command to Colossal StoryWorks format
+        # Convert parsed command to SagaCraft format
         verb = parsed.verb
         direct_obj = parsed.direct_object
         indirect_obj = parsed.indirect_object
@@ -280,7 +280,7 @@ def create_inform_enhanced_engine(base_engine_class):
 # Convenience function for quick testing
 def demo_inform_integration():
     """Demonstrate Inform 7 integration"""
-    print("=== Colossal StoryWorks + Inform 7 Integration ===\n")
+    print("=== SagaCraft + Inform 7 Integration ===\n")
 
     # Create enhanced engine (would use real GameEngine in production)
     class DummyEngine:

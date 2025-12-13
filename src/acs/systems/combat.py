@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""
-Colossal StoryWorks - Enhanced Combat System
-Provides tactical combat, status effects, and intelligent enemy AI
+"""SagaCraft - Enhanced Combat System
+
+Provides tactical combat, status effects, and intelligent enemy AI.
 """
 
 from typing import Dict, List, Optional

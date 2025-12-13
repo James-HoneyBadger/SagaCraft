@@ -1,6 +1,6 @@
-# Colossal StoryWorks - Technical Reference
+# SagaCraft - Technical Reference
 
-**Version 2.0**  
+**Version 3.0.0**  
 **Copyright © 2025 Honey Badger Universe**  
 **License: MIT**
 
@@ -25,7 +25,7 @@
 
 ### System Design
 
-Colossal StoryWorks follows a modular, event-driven architecture:
+SagaCraft follows a modular, event-driven architecture:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -62,7 +62,7 @@ Colossal StoryWorks follows a modular, event-driven architecture:
 ### Directory Structure
 
 ```
-Colossal_StoryWorks/
+SagaCraft/
 ├── src/acs/                # Application source code (package)
 │   ├── core/               # Engine, parser, state, event infrastructure
 │   ├── data/               # Config/data services (IO, persistence)

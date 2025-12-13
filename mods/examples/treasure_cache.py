@@ -1,7 +1,7 @@
 """
 name: Treasure Cache
 version: 1.0
-author: Colossal StoryWorks Team
+author: SagaCraft Team
 summary: Spawns a bonus treasure chest after defeating a hostile monster.
 """
 

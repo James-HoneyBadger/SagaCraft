@@ -360,7 +360,7 @@ def demo_state_management():
 def main():
     """Run all demos"""
     print("\n" + "🎮 " * 30)
-    print("Colossal StoryWorks - Modular Architecture Demo")
+    print("SagaCraft - Modular Architecture Demo")
     print("🎮 " * 30)
 
     try:

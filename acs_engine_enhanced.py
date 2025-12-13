@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""
-Colossal StoryWorks - Enhanced Game Engine
-Extended features for rich interactive fiction experiences
+"""SagaCraft - Enhanced Game Engine
+
+Extended features for rich interactive fiction experiences.
 """
 
 import json

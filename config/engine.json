@@ -1,7 +1,7 @@
 {
   "engine": {
-    "name": "Colossal StoryWorks",
-    "version": "2.0",
+    "name": "SagaCraft",
+    "version": "3.0.0",
     "enable_event_history": false
   },
   "gameplay": {

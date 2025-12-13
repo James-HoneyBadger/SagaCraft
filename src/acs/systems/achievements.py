@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""
-Colossal StoryWorks - Achievement & Statistics System
-Tracks player progress, unlocks achievements, and maintains statistics
+"""SagaCraft - Achievement & Statistics System
+
+Tracks player progress, unlocks achievements, and maintains statistics.
 """
 
 from typing import Dict, List, Optional, Any

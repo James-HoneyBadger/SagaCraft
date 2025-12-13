@@ -1,11 +1,11 @@
-# Colossal StoryWorks
+# SagaCraft
 
 **Modern toolkit for building and playing rich text adventures**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 
-Colossal StoryWorks combines a desktop IDE, a natural language parser, and a rules-driven engine so that authors can craft adventures without writing code while power users extend the simulation through Python modules. The Python package namespace remains `src.acs` for backward compatibility, even as the project brand has shifted to Colossal StoryWorks.
+SagaCraft combines a desktop IDE, a natural language parser, and a rules-driven engine so that authors can craft adventures without writing code while power users extend the simulation through Python modules. The Python package namespace remains `src.acs` for backward compatibility.
 
 ---
 
@@ -23,8 +23,8 @@ Colossal StoryWorks combines a desktop IDE, a natural language parser, and a rul
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/James-HoneyBadger/Colossal_StoryWorks.git
-   cd Colossal_StoryWorks
+   git clone https://github.com/James-HoneyBadger/SagaCraft.git
+   cd SagaCraft
    ```
 2. **(Optional) Create a virtual environment**
    ```bash
@@ -91,7 +91,7 @@ Colossal StoryWorks combines a desktop IDE, a natural language parser, and a rul
 ## 📂 Project Layout
 
 ```
-Colossal_StoryWorks/
+SagaCraft/
 ├── adventures/               # Bundled flagship adventure JSON
 ├── archive/                  # Legacy engine snapshots and assets
 ├── config/                   # Engine & plugin configuration (JSON)
@@ -145,5 +145,5 @@ Pull requests are welcome! Review the coding standards, testing expectations, an
 
 ## 📜 License
 
-Distributed under the [MIT License](LICENSE). Crafted with ❤️ by Honey Badger Universe.
+Distributed under the [MIT License](LICENSE).
 

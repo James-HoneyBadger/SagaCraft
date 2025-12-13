@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""
-Colossal StoryWorks - Environmental Storytelling System
-Adds dynamic room states, inspectable objects, time/weather effects
+"""SagaCraft - Environmental Storytelling System
+
+Adds dynamic room states, inspectable objects, time/weather effects.
 """
 
 from typing import Dict, List, Optional, Any

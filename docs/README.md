@@ -1,12 +1,12 @@
-# Colossal StoryWorks - Documentation
+# SagaCraft - Documentation
 
-**Complete documentation for the Colossal StoryWorks**
+**Complete documentation for SagaCraft**
 
 ---
 
 ## 📖 Quick Navigation
 
-### New to Colossal StoryWorks?
+### New to SagaCraft?
 👉 Start here: [User Guides → Quick Start](user-guides/QUICKSTART.md)
 
 ### Want to play adventures?

@@ -1,19 +1,19 @@
-# Colossal StoryWorks — File Organization
+# SagaCraft — File Organization
 
 ## Overview
 
-Colossal StoryWorks now uses a lean, role-focused directory layout. Documentation, configuration, plugins, and the flagship adventure sit alongside the modular Python package that powers the engine and IDE.
+SagaCraft now uses a lean, role-focused directory layout. Documentation, configuration, plugins, and the flagship adventure sit alongside the modular Python package that powers the engine and IDE.
 
 ## Directory Structure
 
 ```
-Colossal_StoryWorks/
+SagaCraft/
 ├── adventures/          # Bundled flagship adventure JSON (colossal_storyworks_showcase.json)
 ├── archive/             # Legacy engine code and historical assets
 ├── config/              # Engine defaults and plugin configuration
 ├── docs/                # User guides, developer docs, references, project planning
 ├── plugins/             # Optional plugin modules (e.g., achievements)
-├── src/acs/             # Colossal StoryWorks Python package
+├── src/acs/             # SagaCraft Python package
 │   ├── core/            # Engine, parser, state, event bus, services
 │   ├── data/            # Configuration and data access services
 │   ├── systems/         # Gameplay systems (combat, journal, tutorial, etc.)
@@ -39,12 +39,12 @@ from acs.core.parser import NaturalLanguageParser
 
 ```bash
 ./quickstart.sh           # Guided launcher
-python -m src.acs.ui.ide  # Launch the Colossal StoryWorks IDE
+python -m src.acs.ui.ide  # Launch the SagaCraft IDE
 ```
 
 ## Benefits of the Current Layout
 
-1. **Brand-aligned structure** – All documentation and assets reference Colossal StoryWorks.
+1. **Brand-aligned structure** – All documentation and assets reference SagaCraft.
 2. **Clear separation of concerns** – Engine code, data services, systems, and UI live in dedicated modules.
 3. **Testability** – Pytest suites live at the top level and mirror package structure.
 4. **Extensibility** – Plugins and configuration overrides sit outside the core package.
@@ -53,7 +53,7 @@ python -m src.acs.ui.ide  # Launch the Colossal StoryWorks IDE
 ## Migration Notes
 
 - Legacy scripts, examples, and multiple bundled adventures were retired in favor of the comprehensive `colossal_storyworks_showcase.json`.
-- All legacy branding references have been updated to Colossal StoryWorks across documentation and code comments.
+- All legacy branding references have been updated to SagaCraft across documentation and code comments.
 - Module paths continue to use `src.acs` until a future namespace migration is scheduled.
 
 ## Next Steps

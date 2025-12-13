@@ -1,4 +1,4 @@
-# Contributing to Colossal StoryWorks
+# Contributing to SagaCraft
 
 **Thank you for your interest in contributing!**
 
@@ -66,8 +66,8 @@ Violations may be reported to: support@honeybadgeruniverse.com
 2. **Fork and Clone**
    ```bash
    # Fork the repository on GitHub
-   git clone https://github.com/YOUR_USERNAME/Colossal_StoryWorks.git
-   cd Colossal_StoryWorks
+    git clone https://github.com/YOUR_USERNAME/SagaCraft.git
+    cd SagaCraft
    ```
 
 3. **Create Branch**
@@ -93,8 +93,8 @@ Violations may be reported to: support@honeybadgeruniverse.com
 
 ```bash
 # Clone repository
-git clone https://github.com/James-HoneyBadger/Colossal_StoryWorks.git
-cd Colossal_StoryWorks
+git clone https://github.com/James-HoneyBadger/SagaCraft.git
+cd SagaCraft
 
 # (Optional) Create a virtual environment
 python3 -m venv .venv
@@ -689,4 +689,4 @@ See [LICENSE](../LICENSE) for full text.
 - Join our Discord
 - Email: support@honeybadgeruniverse.com
 
-**Thank you for contributing to Colossal StoryWorks!** 🎮
+**Thank you for contributing to SagaCraft!** 🎮

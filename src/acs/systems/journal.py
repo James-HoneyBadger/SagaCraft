@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""
-Colossal StoryWorks - Journal & Note-Taking System
-Automatic event logging, manual notes, quest tracking, and map annotations
+"""SagaCraft - Journal & Note-Taking System
+
+Automatic event logging, manual notes, quest tracking, and map annotations.
 """
 
 from typing import Dict, List, Optional, Any

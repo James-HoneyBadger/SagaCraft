@@ -1,4 +1,4 @@
-# Colossal StoryWorks - Project Summary
+# SagaCraft - Project Summary
 
 ## What Was Created
 
@@ -7,7 +7,7 @@ A complete, working adventure game creation and gameplay system.
 ## Project Structure
 
 ```
-Colossal_StoryWorks/
+SagaCraft/
 ├── acs_engine_enhanced.py   # Enhanced game engine
 ├── src/acs/
 │   ├── core/                # Core game systems

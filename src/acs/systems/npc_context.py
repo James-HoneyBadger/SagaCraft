@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""
-Colossal StoryWorks - NPC Memory & Context System
-Provides NPCs with memory, emotional states, and relationship tracking
+"""SagaCraft - NPC Memory & Context System
+
+Provides NPCs with memory, emotional states, and relationship tracking.
 """
 
 from typing import Dict, List, Set, Optional, Any

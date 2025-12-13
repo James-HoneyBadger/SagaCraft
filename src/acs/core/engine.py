@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""
-Colossal StoryWorks - Game Engine
-A Python implementation of classic text adventure game mechanics
-For creating and playing interactive fiction adventures
+"""SagaCraft - Game Engine
+
+A Python implementation of classic text adventure game mechanics for creating and
+playing interactive fiction adventures.
 """
 
 # pylint: disable=too-many-lines

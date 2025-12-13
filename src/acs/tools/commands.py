@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""
-Colossal StoryWorks - Command History & Prediction System
-Provides auto-complete, command history, and smart suggestions
+"""SagaCraft - Command History & Prediction System
+
+Provides auto-complete, command history, and smart suggestions.
 """
 
 from typing import Dict, List, Optional

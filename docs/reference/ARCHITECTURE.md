@@ -2,7 +2,7 @@
 
 ## Overview
 
-Colossal StoryWorks is built around a **modular, data-driven engine** that keeps authoring tools, runtime systems, and extension points cleanly separated. Core design goals:
+SagaCraft is built around a **modular, data-driven engine** that keeps authoring tools, runtime systems, and extension points cleanly separated. Core design goals:
 
 - **Loose coupling** through a service registry and event bus hooks
 - **Extensibility** via plugins and drop-in gameplay systems
@@ -35,7 +35,7 @@ Colossal StoryWorks is built around a **modular, data-driven engine** that keeps
 ## Directory Map
 
 ```
-Colossal_StoryWorks/
+SagaCraft/
 ├── adventures/               # Bundled adventure JSON scenarios
 ├── config/                   # Engine defaults + per-plugin settings
 ├── docs/                     # Guides, references, manuals

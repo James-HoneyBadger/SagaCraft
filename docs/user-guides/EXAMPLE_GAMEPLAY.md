@@ -1,6 +1,6 @@
 # Example Gameplay Session
 
-This walkthrough captures a condensed play session inside the Colossal StoryWorks Showcase adventure. It illustrates how exploration, quest pickup, and NPC conversations flow with the enhanced systems.
+This walkthrough captures a condensed play session inside the SagaCraft Showcase adventure. It illustrates how exploration, quest pickup, and NPC conversations flow with the enhanced systems.
 
 ## Starting the Game
 
@@ -12,7 +12,7 @@ Launch the IDE with `python -m src.acs.ui.ide`, switch to the **Play** tab, load
 
 ```
 ============================================================
-            Colossal StoryWorks Showcase Adventure
+            SagaCraft Showcase Adventure
 ============================================================
 
 Grand Concourse

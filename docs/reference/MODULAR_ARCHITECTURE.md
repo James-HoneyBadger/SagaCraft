@@ -272,7 +272,7 @@ room = data.get_room(room_id)
 
 ### Import Errors
 **Problem:** `ModuleNotFoundError: No module named 'core'`
-**Solution:** Run from project root: `cd /home/james/Colossal_StoryWorks`
+**Solution:** Run from project root: `cd /home/james/SagaCraft`
 
 ### Plugin Not Working
 **Problem:** Event handler not called

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""
-Colossal StoryWorks - Tutorial & Contextual Help System
-Progressive feature discovery, contextual hints, and example commands
+"""SagaCraft - Tutorial & Contextual Help System
+
+Progressive feature discovery, contextual hints, and example commands.
 """
 
 import random

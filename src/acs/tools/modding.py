@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""
-Colossal StoryWorks - Modding & Scripting Support
-Allow adventure creators to extend functionality with Python scripts
+"""SagaCraft - Modding & Scripting Support
+
+Allow adventure creators to extend functionality with Python scripts.
 """
 
 import copy
@@ -660,7 +660,7 @@ class ModdingSystem:
 
 
 # Example mod file format:
-# example_mod.py - Example mod for Colossal StoryWorks
+# example_mod.py - Example mod for SagaCraft
 #
 # hook = ScriptHook(
 #     event=EventType.ON_ENTER_ROOM,

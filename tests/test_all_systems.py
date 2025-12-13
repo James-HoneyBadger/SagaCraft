@@ -147,7 +147,7 @@ def test_basic_functionality():
 def main():
     """Run all tests"""
     print("=" * 60)
-    print("Colossal StoryWorks - System Verification")
+    print("SagaCraft - System Verification")
     print("=" * 60)
     print()
 

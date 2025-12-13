@@ -1,7 +1,7 @@
 {
-  "title": "Colossal StoryWorks Showcase Adventure",
-  "author": "Colossal StoryWorks Team",
-  "intro": "Welcome to the flagship adventure for Colossal StoryWorks!\n\nYour mission is to explore the creative campus, master each gameplay pillar, and prove you can wield narrative, systems, and combat in harmony. This scenario highlights every hallmark of the engine: trading, dialogue, puzzles, combat, dynamic lighting, achievements, and multi-step quests.\n\nTake your time, experiment, and enjoy the tour--it's a full adventure, not just a tutorial.",
+  "title": "SagaCraft Showcase Adventure",
+  "author": "SagaCraft Team",
+  "intro": "Welcome to the flagship adventure for SagaCraft!\n\nYour mission is to explore the creative campus, master each gameplay pillar, and prove you can wield narrative, systems, and combat in harmony. This scenario highlights every hallmark of the engine: trading, dialogue, puzzles, combat, dynamic lighting, achievements, and multi-step quests.\n\nTake your time, experiment, and enjoy the tour--it's a full adventure, not just a tutorial.",
   "start_room": 1,
   "settings": {
     "allow_save": true,
@@ -176,7 +176,7 @@
     {
       "id": 20,
       "name": "Architect's Sanctum",
-      "description": "The heart of Colossal StoryWorks. Holographic blueprints rotate above a command dais guarded by the Architect Avatar.",
+      "description": "The heart of SagaCraft. Holographic blueprints rotate above a command dais guarded by the Architect Avatar.",
       "exits": {"south": 16, "west": 18, "north": 14, "east": 21},
       "light_level": "bright",
       "environmental_effects": ["reality_warp"]
@@ -326,7 +326,7 @@
     {
       "id": 11,
       "name": "architect badge",
-      "description": "Awarded for mastering every pillar of Colossal StoryWorks.",
+      "description": "Awarded for mastering every pillar of SagaCraft.",
       "type": "treasure",
       "weight": 1,
       "value": 1000,
@@ -688,7 +688,7 @@
         },
         {
           "keyword": "history",
-          "response": "Colossal StoryWorks honors classics while forging new sagas. The Legacy Vault next door chronicle our roots.",
+          "response": "SagaCraft honors classics while forging new sagas. The Legacy Vault next door chronicle our roots.",
           "changes_reaction": 5
         },
         {

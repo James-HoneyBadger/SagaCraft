@@ -1,8 +1,8 @@
-# Colossal StoryWorks - Game Library
+# SagaCraft - Game Library
 
 ## 🎉 Featured Adventures Available
 
-Colossal StoryWorks now ships with two curated sample adventures: one that exercises every narrative and systems feature, and a compact visual builder demo that spotlights the new point-and-click workflow.
+SagaCraft now ships with two curated sample adventures: one that exercises every narrative and systems feature, and a compact visual builder demo that spotlights the new point-and-click workflow.
 
 ### **Visual Builder Sample Adventure**
 - **File**: `adventures/visual_builder_sample.json`
@@ -14,7 +14,7 @@ Colossal StoryWorks now ships with two curated sample adventures: one that exerc
 	- Lightweight data model ideal for experimentation or tutorials
 - **Ideal For**: Designers new to visual adventures who want a minimal, readable example that pairs Tkinter scenes with adventure data.
 
-### **Colossal StoryWorks Showcase Adventure**
+### **SagaCraft Showcase Adventure**
 - **File**: `adventures/colossal_storyworks_showcase.json`
 - **Setting**: A living creative campus that fuses retro arcades, neon skylines, and wizard towers
 - **Scope**: 22 interconnected rooms, 24 items, 8 unique NPCs, 5 bespoke puzzles, 3 multi-stage quests, and a reality-bending boss encounter
@@ -26,7 +26,7 @@ Colossal StoryWorks now ships with two curated sample adventures: one that exerc
 	- Dynamic lighting, hidden items, traps, environmental effects, and dark-room navigation using light sources
 - **Ideal For**: New authors exploring the IDE, experienced designers looking for reference patterns, and anyone who wants a single adventure that exercises every major feature.
 
-> Tip: Load the adventure in the IDE (`python -m src.acs.ui.ide`), open the **Adventure Browser**, and select “Colossal StoryWorks Showcase Adventure” to explore or extend it.
+> Tip: Load the adventure in the IDE (`python -m src.acs.ui.ide`), open the **Adventure Browser**, and select “SagaCraft Showcase Adventure” to explore or extend it.
 
 ---
 

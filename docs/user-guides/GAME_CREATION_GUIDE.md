@@ -1,8 +1,8 @@
 # 🎮 Game Creation Guide
 
-**Colossal StoryWorks - Complete Creator's Guide**
+**SagaCraft - Complete Creator's Guide**
 
-Learn how to create your own text adventures from scratch using the Colossal StoryWorks toolset.
+Learn how to create your own text adventures from scratch using the SagaCraft toolset.
 
 ---
 

@@ -1,6 +1,6 @@
 # 📋 File Organization Summary
 
-**Colossal StoryWorks v2.0**
+**SagaCraft v3.0.0**
 Date: February 2025
 
 ---
@@ -15,7 +15,7 @@ The project has been reorganized with a **consistent, hierarchical structure** t
 
 ### **Root Level**
 ```
-Colossal_StoryWorks/
+SagaCraft/
 ├── adventures/           # Bundled showcase adventure content
 ├── archive/              # Historical code and classic game assets
 ├── config/               # Engine and plugin configuration files

@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Quick start script for Colossal StoryWorks
+# Quick start script for SagaCraft
 
 cat << 'EOF'
 ╔═══════════════════════════════════════════════════════════╗
 ║                                                           ║
-║                 COLOSSAL STORYWORKS                       ║
+║                       SAGACRAFT                            ║
 ║                    QUICK START                            ║
 ║                                                           ║
 ╚═══════════════════════════════════════════════════════════╝

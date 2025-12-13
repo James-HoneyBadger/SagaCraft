@@ -53,8 +53,8 @@ class AchievementsPlugin(BasePlugin):
     def __init__(self):
         metadata = PluginMetadata(
             name="achievements",
-            version="2.0",
-            author="Colossal StoryWorks Team",
+            version="3.0.0",
+            author="SagaCraft Team",
             description="Achievement and statistics tracking system",
             dependencies=[],
             priority=PluginPriority.NORMAL,

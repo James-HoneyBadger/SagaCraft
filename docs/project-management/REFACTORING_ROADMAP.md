@@ -2,7 +2,7 @@
 
 ## Mission
 
-Transform the Colossal StoryWorks from a monolithic architecture to a fully modular, plugin-based system that is easy to maintain, extend, and adapt for future features.
+Transform SagaCraft from a monolithic architecture to a fully modular, plugin-based system that is easy to maintain, extend, and adapt for future features.
 
 ## Progress Overview
 
@@ -437,7 +437,7 @@ tests/
 
 ## Resources
 
-- **Code:** `/home/james/Colossal_StoryWorks/`
+- **Code:** `/home/james/SagaCraft/`
 - **Docs:** `ARCHITECTURE.md`, `PLUGIN_GUIDE.md`
 - **Demo:** `demo_architecture.py`
 - **Original:** `acs_*.py` files (reference)

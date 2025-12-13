@@ -1,6 +1,6 @@
-# Colossal StoryWorks - User Manual
+# SagaCraft - User Manual
 
-**Version 2.0**  
+**Version 3.0.0**  
 **Copyright © 2025 Honey Badger Universe**  
 **License: MIT**
 
@@ -23,9 +23,9 @@
 
 ## Introduction
 
-### What is the Colossal StoryWorks?
+### What is SagaCraft?
 
-Colossal StoryWorks is a powerful, modern system for creating and playing text adventures with:
+SagaCraft is a powerful, modern system for creating and playing text adventures with:
 
 - **Modern Python Implementation** - Clean, maintainable code
 - **Graphical IDE** - Create adventures without programming
@@ -57,7 +57,7 @@ Colossal StoryWorks is a powerful, modern system for creating and playing text a
 
 ```bash
 # Clone or download the repository
-cd Colossal_StoryWorks
+cd SagaCraft
 
 # (Optional) Create a virtual environment and install tooling
 python3 -m venv .venv
@@ -72,7 +72,7 @@ Want shortcuts? Run `./quickstart.sh` and choose **Launch IDE**.
 
 ### Manual Setup
 
-1. **Download** the Colossal_StoryWorks directory
+1. **Download** the SagaCraft directory
 2. **Open** a terminal in that directory
 3. **Run** `python -m src.acs.ui.ide`
 
@@ -804,7 +804,7 @@ Add custom features via plugins:
 
 **Contact**:
 - Email: support@honeybadgeruniverse.com
-- GitHub: github.com/James-HoneyBadger/Colossal_StoryWorks
+- GitHub: github.com/James-HoneyBadger/SagaCraft
 
 ---
 

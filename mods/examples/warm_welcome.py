@@ -1,7 +1,7 @@
 """
 name: Warm Welcome
 version: 1.0
-author: Colossal StoryWorks Team
+author: SagaCraft Team
 summary: Adds a friendly greeting when the player enters the starting room.
 """
 

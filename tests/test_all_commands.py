@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""
-Comprehensive command test script for the Colossal StoryWorks game engine.
+"""Comprehensive command test script for the SagaCraft game engine.
+
 Tests all parser verbs against engine handlers.
 """
 
@@ -352,7 +352,7 @@ def generate_coverage_report():
 def main():
     """Run all tests"""
     print("\n" + "=" * 70)
-    print("Colossal StoryWorks COMMAND VERIFICATION TEST SUITE")
+    print("SagaCraft COMMAND VERIFICATION TEST SUITE")
     print("=" * 70)
 
     # Run all tests

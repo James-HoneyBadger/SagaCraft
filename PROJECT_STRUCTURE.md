@@ -1,16 +1,16 @@
 # 📁 Project Structure
 
-**Colossal StoryWorks v2.0**
+**SagaCraft v3.0.0**
 Last Updated: February 2025
 
 ---
 
 ## 🗂️ Directory Organization
 
-> The repository root currently lives at `Adventure_Construction_Set/`; diagrams below use the branded name for clarity.
+> Diagrams below use the branded name for clarity.
 
 ```
-Colossal_StoryWorks/
+SagaCraft/
 ├── adventures/           # Bundled flagship adventure JSON
 ├── archive/              # Historical engines and Apple II assets
 ├── config/               # Engine defaults (e.g., engine.json)
@@ -182,6 +182,6 @@ Refer to `START_HERE.md` for onboarding and setup guidance.
 
 ---
 
-**Organizational Scheme**: User-facing content (adventures, user guides) is separated from engine code (`src/`), optional extensions (`plugins/`), and governance (`docs/project-management/`). This clarity keeps the Colossal StoryWorks engine approachable for players, creators, and contributors alike.
+**Organizational Scheme**: User-facing content (adventures, user guides) is separated from engine code (`src/`), optional extensions (`plugins/`), and governance (`docs/project-management/`). This clarity keeps the SagaCraft engine approachable for players, creators, and contributors alike.
 
 Copyright © 2025 Honey Badger Universe | MIT License

@@ -2,7 +2,7 @@
 
 ## Natural Language Understanding
 
-The Colossal StoryWorks now includes an enhanced parser that understands natural language commands!
+SagaCraft now includes an enhanced parser that understands natural language commands!
 
 ### Examples of Natural Language:
 

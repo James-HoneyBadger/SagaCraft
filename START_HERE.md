@@ -1,6 +1,6 @@
-# 🚀 START HERE - Colossal StoryWorks
+# 🚀 START HERE - SagaCraft
 
-**Welcome!** You've found the Colossal StoryWorks v2.0
+**Welcome!** You've found SagaCraft v3.0.0
 
 Copyright © 2025 Honey Badger Universe | MIT License
 

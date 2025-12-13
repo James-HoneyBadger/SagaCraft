@@ -9,7 +9,7 @@
 ## New Directory Structure
 
 ```
-Colossal_StoryWorks/
+SagaCraft/
 ├── adventures/               # Bundled showcase adventure JSON
 │   └── colossal_storyworks_showcase.json
 ├── archive/                  # Legacy engine snapshots and Apple II disks
@@ -129,7 +129,7 @@ Colossal_StoryWorks/
 | **Python Modules** | 15+ | Core system files |
 | **Helper Scripts** | 1 | `quickstart.sh` convenience menu |
 | **Tests** | 7 | Comprehensive test suite |
-| **Adventures** | 1 | Colossal StoryWorks Showcase adventure |
+| **Adventures** | 1 | SagaCraft Showcase adventure |
 
 ---
 
