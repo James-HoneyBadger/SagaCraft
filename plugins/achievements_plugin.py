@@ -7,7 +7,7 @@ This is a refactored, plugin-based version of the original achievement system.
 
 from datetime import datetime
 import logging
-from typing import Any, Dict
+from typing import Any, Callable, Dict
 
 from src.sagacraft.core.base_plugin import BasePlugin, PluginMetadata, PluginPriority
 from src.sagacraft.core.event_bus import Event
@@ -79,17 +79,22 @@ class AchievementsPlugin(BasePlugin):
         # Register default achievements
         self._register_default_achievements()
 
+        # Register event subscriptions with the event bus
+        if event_bus:
+            for event_name, handler in self.get_event_subscriptions().items():
+                event_bus.subscribe(event_name, handler, plugin_name=self.metadata.name)
+
         self.logger.info("Achievement system initialized")
 
-    def get_event_subscriptions(self) -> Dict[str, callable]:
+    def get_event_subscriptions(self) -> Dict[str, Callable]:
         """Subscribe to game events"""
         return {
-            "game.move": self.on_move,
+            "on_enter_room": self.on_move,
             "combat.victory": self.on_combat_victory,
-            "combat.defeat": self.on_player_death,
-            "item.pickup": self.on_item_pickup,
-            "npc.interaction": self.on_npc_interaction,
-            "command.input": self.on_command,
+            "on_death": self.on_player_death,
+            "on_take_item": self.on_item_pickup,
+            "on_talk": self.on_npc_interaction,
+            "on_command": self.on_command,
         }
 
     def on_enable(self):

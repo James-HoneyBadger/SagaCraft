@@ -42,8 +42,6 @@ class InformEnhancedEngine:
         # "contains" relation (containers -> items)
         # "supports" relation (surfaces -> items)
 
-        pass  # Will be filled in during game load
-
     def parse_inform_command(self, command: str) -> ParsedCommand:
         """
         Parse command using Inform 7 style natural language.

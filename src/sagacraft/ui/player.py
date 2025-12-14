@@ -15,7 +15,7 @@ from io import StringIO
 from pathlib import Path
 from typing import Optional
 import tkinter as tk
-from tkinter import filedialog, messagebox, scrolledtext, ttk
+from tkinter import filedialog, scrolledtext, ttk
 
 
 CONFIG_PATH = Path(__file__).resolve().parents[3] / "config" / "engine.json"
@@ -344,7 +344,11 @@ class SagaCraftPlayer:
             return
 
         try:
-            instance = engine_module.EnhancedAdventureGame(str(path))
+            game_cls = getattr(engine_module, 'ExtendedAdventureGame', None) or getattr(engine_module, 'EnhancedAdventureGame', None)
+            if game_cls is None:
+                self._set_status("Engine missing game class.")
+                return
+            instance = game_cls(str(path))
             instance.load_adventure()
             self.game_instance = instance
         except Exception as exc:  # pragma: no cover - UI feedback
@@ -557,6 +561,7 @@ def main() -> None:
                     transcript_out = Path(sys.argv[tidx + 1]) if tidx + 1 < len(sys.argv) else None
                 except (ValueError, IndexError):
                     transcript_out = None
+
             def _print(text: str):
                 print(text)
                 if transcript_out:

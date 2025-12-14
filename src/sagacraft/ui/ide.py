@@ -610,7 +610,6 @@ class AdventureIDE:
             row=row + 1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 20)
         )
         form_frame.rowconfigure(row + 1, weight=1)
-
         self.intro_text = scrolledtext.ScrolledText(
             text_frame,
             width=70,
@@ -623,6 +622,7 @@ class AdventureIDE:
             relief=tk.FLAT,
             bd=5,
         )
+        self.intro_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
     def create_rooms_tab(self):
         """Rooms editor tab"""
@@ -1833,34 +1833,26 @@ class AdventureIDE:
         self.modified = True
         self.update_status("Adventure info updated")
 
-
     def browse_scene_background(self):
         """Removed - SagaCraft is text-only."""
-        pass
 
     def refresh_hotspots_list(self, scene=None, *, clear_only: bool = False):
         """Removed - SagaCraft is text-only."""
-        pass
 
     def add_hotspot(self):
         """Removed - SagaCraft is text-only."""
-        pass
 
     def delete_hotspot(self):
         """Removed - SagaCraft is text-only."""
-        pass
 
     def select_hotspot(self, _event):
         """Removed - SagaCraft is text-only."""
-        pass
 
     def clear_hotspot_editor(self):
         """Removed - SagaCraft is text-only."""
-        pass
 
     def update_hotspot(self):
         """Removed - SagaCraft is text-only."""
-        pass
 
     # Item methods
     def refresh_items_list(self):
@@ -2269,7 +2261,7 @@ F5 - Test Adventure
 
         self.clear_game_output()
         try:
-            self.game_instance = acs_module.EnhancedAdventureGame(temp_file)
+            self.game_instance = acs_module.ExtendedAdventureGame(temp_file)
             self.game_instance.load_adventure()
         except (json.JSONDecodeError, OSError, AttributeError, RuntimeError) as exc:
             self.game_instance = None

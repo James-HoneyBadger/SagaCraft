@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# pyright: reportGeneralTypeIssues=false, reportMissingImports=false
 """SagaCraft - Game Engine
 
 A Python implementation of classic text adventure game mechanics for creating and
@@ -9,40 +10,50 @@ playing interactive fiction adventures.
 
 import json
 import random
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set, cast
 from dataclasses import dataclass, field
 from enum import Enum
 
 # Import natural language parser if available
 try:
-    from sagacraft.core.parser import NaturalLanguageParser, Companion
-    from sagacraft.systems.npc_context import NPCContextManager
-    from sagacraft.systems.environment import EnvironmentalSystem
-    from sagacraft.tools.commands import SmartCommandSystem
-    from sagacraft.systems.achievements import AchievementSystem
-    from sagacraft.systems.journal import AdventureJournal
-    from sagacraft.systems.tutorial import ContextualHintSystem
-    from sagacraft.tools.modding import ModdingSystem, EventType
-    from sagacraft.ui.accessibility import AccessibilitySystem
+    from sagacraft.core import parser as parser_module
+    from sagacraft.systems import npc_context as npc_context_module
+    from sagacraft.systems import environment as environment_module
+    from sagacraft.tools import commands as commands_module
+    from sagacraft.systems import achievements as achievements_module
+    from sagacraft.systems import journal as journal_module
+    from sagacraft.systems import tutorial as tutorial_module
+    from sagacraft.tools import modding as modding_module
+    from sagacraft.ui import accessibility as accessibility_module
+
+    NaturalLanguageParser = parser_module.NaturalLanguageParser
+    Companion = parser_module.Companion
+    CompanionStance = getattr(parser_module, "CompanionStance", None)
+    NPCContextManager = npc_context_module.NPCContextManager
+    EnvironmentalSystem = environment_module.EnvironmentalSystem
+    SmartCommandSystem = commands_module.SmartCommandSystem
+    AchievementSystem = achievements_module.AchievementSystem
+    AdventureJournal = journal_module.AdventureJournal
+    ContextualHintSystem = tutorial_module.ContextualHintSystem
+    ModdingSystem = modding_module.ModdingSystem
+    EventType = modding_module.EventType
+    AccessibilitySystem = accessibility_module.AccessibilitySystem
 
     ENHANCED_PARSER_AVAILABLE = True
 except ImportError:
     ENHANCED_PARSER_AVAILABLE = False
-    Companion = None
-    NPCContextManager = None
-    EnvironmentalSystem = None
-    SmartCommandSystem = None
-    AchievementSystem = None
-    AdventureJournal = None
-    ContextualHintSystem = None
-    ModdingSystem = None
-    EventType = None
-    AccessibilitySystem = None
-
-try:
-    from sagacraft.core.parser import CompanionStance
-except ImportError:
+    NaturalLanguageParser = cast(Any, None)
+    Companion = cast(Any, None)
     CompanionStance = None
+    NPCContextManager = cast(Any, None)
+    EnvironmentalSystem = cast(Any, None)
+    SmartCommandSystem = cast(Any, None)
+    AchievementSystem = cast(Any, None)
+    AdventureJournal = cast(Any, None)
+    ContextualHintSystem = cast(Any, None)
+    ModdingSystem = cast(Any, None)
+    EventType = cast(Any, None)
+    AccessibilitySystem = cast(Any, None)
 
 
 class ItemType(Enum):
@@ -148,7 +159,7 @@ class Player:
     gold: int = 200
     current_room: int = 1
     current_health: Optional[int] = None
-    inventory: List[int] = field(default_factory=list)  # item IDs
+    inventory: List[Any] = field(default_factory=list)  # item IDs or objects from mods
     equipped_weapon: Optional[int] = None
     equipped_armor: Optional[int] = None
 
@@ -172,6 +183,17 @@ class AdventureGame:
         self.adventure_title = ""
         self.adventure_intro = ""
 
+        # Optional subsystems initialized below
+        self.parser: Optional[Any] = None
+        self.npc_context_manager: Optional[Any] = None
+        self.environment: Optional[Any] = None
+        self.command_system: Optional[Any] = None
+        self.achievements: Optional[Any] = None
+        self.journal: Optional[Any] = None
+        self.tutorial: Optional[Any] = None
+        self.modding: Optional[Any] = None
+        self.accessibility: Optional[Any] = None
+
         # Initialize natural language parser if available
         if ENHANCED_PARSER_AVAILABLE:
             self.parser = NaturalLanguageParser()
@@ -185,20 +207,46 @@ class AdventureGame:
             self.accessibility = AccessibilitySystem()
             self.use_enhanced_parser = True
         else:
-            self.parser = None
-            self.npc_context_manager = None
-            self.environment = None
-            self.command_system = None
-            self.achievements = None
-            self.journal = None
-            self.tutorial = None
-            self.modding = None
-            self.accessibility = None
             self.use_enhanced_parser = False
 
         self.effects: List[Dict[str, Any]] = []
         self.equipped_items: Set[Any] = set()
         self._mod_last_room_id: Optional[int] = None
+
+    @staticmethod
+    def _safe_int(value: Any, default: int) -> int:
+        """Convert value to int, returning default on failure."""
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return default
+
+    def _iter_inventory_items(self):
+        """Yield Item objects from inventory entries (ids or objects)."""
+        for entry in list(self.player.inventory):
+            if isinstance(entry, int):
+                item_obj = self.items.get(entry)
+            else:
+                item_obj = entry if isinstance(entry, Item) else None
+            if item_obj:
+                yield item_obj
+
+    def _find_inventory_item(self, name: str) -> Optional[Item]:
+        target_lower = name.lower()
+        for item_obj in self._iter_inventory_items():
+            if target_lower in item_obj.name.lower():
+                return item_obj
+        return None
+
+    def _add_inventory_item(self, item: Item):
+        if item.id not in self.player.inventory and item not in self.player.inventory:
+            self.player.inventory.append(item.id)
+
+    def _remove_inventory_item(self, item: Item):
+        if item.id in self.player.inventory:
+            self.player.inventory.remove(item.id)
+        elif item in self.player.inventory:
+            self.player.inventory.remove(item)
 
     def _fire_mod_event(
         self,
@@ -345,7 +393,7 @@ class AdventureGame:
                 f"Invalid JSON in adventure file '{self.adventure_file}': {exc}"
             ) from exc
 
-    def get_current_room(self) -> Room:
+    def get_current_room(self) -> Optional[Room]:
         """Get the room the player is currently in"""
         return self.rooms.get(self.player.current_room)
 
@@ -362,6 +410,9 @@ class AdventureGame:
     def look(self):
         """Display current room description"""
         room = self.get_current_room()
+        if not room:
+            print("You are in a void.")
+            return
         print(f"\n{room.name}")
         print("-" * len(room.name))
         print(room.description)
@@ -477,12 +528,16 @@ class AdventureGame:
     def get_item(self, item_name: str):
         """Pick up an item"""
         room = self.get_current_room()
+        if not room:
+            print("There's nothing to pick up here.")
+            return
         items = self.get_items_in_room(room.id)
 
         # Find matching item
         item = None
+        search = item_name.lower()
         for i in items:
-            if item_name.lower() in i.name.lower():
+            if search in i.name.lower():
                 item = i
                 break
 
@@ -510,20 +565,21 @@ class AdventureGame:
                 print(message)
             return
 
-        item = take_payload.get("item", item)
+        payload_item = take_payload.get("item", item)
+        if isinstance(payload_item, Item):
+            item = payload_item
         item.location = 0  # Move to inventory
-        if item.id not in self.player.inventory:
-            self.player.inventory.append(item.id)
+        self._add_inventory_item(item)
         print(f"You take the {item.name}.")
 
     def drop_item(self, item_name: str):
         """Drop an item"""
-        item = None
-        for item_id in self.player.inventory:
-            i = self.items[item_id]
-            if item_name.lower() in i.name.lower():
-                item = i
-                break
+        room = self.get_current_room()
+        if not room:
+            print("You are nowhere. You can't drop anything.")
+            return
+
+        item = self._find_inventory_item(item_name)
 
         if item is None:
             print(f"You don't have a {item_name}.")
@@ -531,7 +587,7 @@ class AdventureGame:
 
         drop_payload = {
             "player": self.player,
-            "room": self.get_current_room(),
+            "room": room,
             "room_id": self.player.current_room,
             "item": item,
             "item_id": item.id,
@@ -545,10 +601,15 @@ class AdventureGame:
                 print(message)
             return
 
-        room_id = drop_payload.get("room_id", self.player.current_room)
-        item = drop_payload.get("item", item)
+        room_id = self._safe_int(
+            drop_payload.get("room_id", self.player.current_room),
+            self.player.current_room,
+        )
+        payload_item = drop_payload.get("item", item)
+        if isinstance(payload_item, Item):
+            item = payload_item
         item.location = room_id
-        self.player.inventory.remove(item.id)
+        self._remove_inventory_item(item)
         print(f"You drop the {item.name}.")
 
     def show_inventory(self):
@@ -631,11 +692,17 @@ class AdventureGame:
                 print(message)
             return
 
-        damage = attack_payload.get("damage", base_damage)
-        target = attack_payload.get("target", target)
+        raw_damage = attack_payload.get("damage", base_damage)
+        damage = self._safe_int(raw_damage, base_damage)
+        payload_target = attack_payload.get("target", target)
+        if isinstance(payload_target, Monster):
+            target = payload_target
         if target is None:
             print("Your attack fizzles before it lands.")
             return
+
+        if target.current_health is None:
+            target.current_health = target.hardiness
 
         print(f"\nYou attack the {target.name}!")
         target.current_health -= damage
@@ -659,6 +726,8 @@ class AdventureGame:
 
         # Monster counter-attacks
         mon_damage = random.randint(1, 6)
+        if self.player.current_health is None:
+            self.player.current_health = self.player.hardiness
         self.player.current_health -= mon_damage
         print(f"The {target.name} hits you for {mon_damage} damage!")
 
@@ -673,9 +742,12 @@ class AdventureGame:
             self.game_over = True
 
     # NPC Interaction & Context Methods
-    def talk_to_npc(self, npc_name: str, topic: str = None):
+    def talk_to_npc(self, npc_name: str, topic: Optional[str] = None):
         """Enhanced NPC interaction with memory and emotions"""
         room = self.get_current_room()
+        if not room:
+            print("No one is here to talk to.")
+            return
         monsters = self.get_monsters_in_room(room.id)
 
         # Find the NPC
@@ -703,8 +775,13 @@ class AdventureGame:
                 print(message)
             return
 
-        npc = talk_payload.get("npc", npc)
-        topic = talk_payload.get("topic", topic)
+        payload_npc = talk_payload.get("npc", npc)
+        if isinstance(payload_npc, Monster):
+            npc = payload_npc
+        topic_val = talk_payload.get("topic", topic)
+        if isinstance(topic_val, str):
+            topic = topic_val
+
         if npc is None:
             print("There is no one left to talk to.")
             return
@@ -749,6 +826,9 @@ class AdventureGame:
     def examine_npc(self, npc_name: str):
         """Examine an NPC to learn about them"""
         room = self.get_current_room()
+        if not room:
+            print("No one is here to examine.")
+            return
         monsters = self.get_monsters_in_room(room.id)
 
         npc = None
@@ -778,7 +858,9 @@ class AdventureGame:
         if examine_payload.get("handled"):
             return
 
-        npc = examine_payload.get("npc", npc)
+        payload_npc = examine_payload.get("npc", npc)
+        if isinstance(payload_npc, Monster):
+            npc = payload_npc
         if npc is None:
             return
 
@@ -803,6 +885,9 @@ class AdventureGame:
             return
 
         room = self.get_current_room()
+        if not room:
+            print("You are nowhere. There's nothing to examine.")
+            return
         obj = self.environment.find_object_by_keyword(room.id, object_name)
 
         examine_payload = {
@@ -822,7 +907,9 @@ class AdventureGame:
         if examine_payload.get("handled"):
             return
 
-        obj = examine_payload.get("object", obj)
+        payload_object = examine_payload.get("object", obj)
+        if payload_object is not None:
+            obj = payload_object
 
         if obj:
             print(f"\n{obj.long_desc}")
@@ -843,6 +930,9 @@ class AdventureGame:
             return
 
         room = self.get_current_room()
+        if not room:
+            print("You are nowhere. There's nothing to search.")
+            return
         found = self.environment.search_room(room.id)
 
         if found:
@@ -860,6 +950,9 @@ class AdventureGame:
             return
 
         room = self.get_current_room()
+        if not room:
+            print("No one is here to recruit.")
+            return
         monsters = self.get_monsters_in_room(room.id)
 
         # Find NPC
@@ -890,7 +983,7 @@ class AdventureGame:
 
         # Create companion
         companion = Companion(npc.id, npc.name, role)
-        companion.current_health = npc.current_health
+        companion.current_health = npc.current_health or npc.hardiness
         companion.max_health = npc.hardiness
 
         self.companions.append(companion)
@@ -944,16 +1037,16 @@ class AdventureGame:
         elif "follow" in order or "come" in order:
             companion.tell_to_follow()
             print(f"{companion.name} resumes following you.")
-        elif CompanionStance and ("aggressive" in order or "attack" in order):
+        elif CompanionStance is not None and ("aggressive" in order or "attack" in order):
             companion.set_stance(CompanionStance.AGGRESSIVE)
             print(f"{companion.name} will fight aggressively.")
-        elif CompanionStance and ("defensive" in order or "defend" in order):
+        elif CompanionStance is not None and ("defensive" in order or "defend" in order):
             companion.set_stance(CompanionStance.DEFENSIVE)
             print(f"{companion.name} will focus on defense.")
-        elif CompanionStance and ("support" in order or "help" in order):
+        elif CompanionStance is not None and ("support" in order or "help" in order):
             companion.set_stance(CompanionStance.SUPPORT)
             print(f"{companion.name} will support the party.")
-        elif CompanionStance and ("passive" in order or "rest" in order):
+        elif CompanionStance is not None and ("passive" in order or "rest" in order):
             companion.set_stance(CompanionStance.PASSIVE)
             print(f"{companion.name} will avoid combat.")
         else:
@@ -988,7 +1081,7 @@ class AdventureGame:
 
         room = self.get_current_room()
         verb_initial, _, args_initial = command.partition(" ")
-        command_payload = {
+        command_payload: Dict[str, Any] = {
             "player": self.player,
             "room": room,
             "command": command,
@@ -1006,9 +1099,9 @@ class AdventureGame:
         if command_payload.get("handled"):
             return
 
-        command = command_payload.get("command", command) or ""
-        verb = command_payload.get("verb", verb_initial) or ""
-        args_text = command_payload.get("args", args_initial.strip()) or ""
+        command = str(command_payload.get("command", command) or "")
+        verb = str(command_payload.get("verb", verb_initial) or "")
+        args_text = str(command_payload.get("args", args_initial.strip()) or "")
 
         if not verb and command:
             verb, _, remainder = command.partition(" ")
@@ -1105,12 +1198,7 @@ class AdventureGame:
             elif action == "eat" or action == "drink":
                 target = parsed.get("target", "")
                 if target:
-                    # Try to find the item in inventory
-                    item = None
-                    for i in self.player.inventory:
-                        if target.lower() in i.name.lower():
-                            item = i
-                            break
+                    item = self._find_inventory_item(target)
 
                     if item:
                         # Check if it's consumable
@@ -1135,7 +1223,7 @@ class AdventureGame:
                                     f"{item.heal_amount}."
                                 )
                                 print(heal_msg)
-                            self.player.inventory.remove(item)
+                            self._remove_inventory_item(item)
                         else:
                             print(f"You can't {action} that.")
                     else:
@@ -1148,6 +1236,9 @@ class AdventureGame:
                 if target:
                     # Find NPC to trade with
                     room = self.get_current_room()
+                    if not room:
+                        print("You are nowhere. Trading is impossible.")
+                        return
                     monsters = self.get_monsters_in_room(room.id)
                     npc = None
                     for m in monsters:
@@ -1163,9 +1254,11 @@ class AdventureGame:
                             # Show merchant inventory if available
                             if hasattr(npc, "inventory") and npc.inventory:
                                 print("\nAvailable items:")
-                                for item in npc.inventory:
-                                    price = item.value if hasattr(item, "value") else 10
-                                    print(f"  - {item.name} ({price} gold)")
+                                for inv_item in npc.inventory:
+                                    if not isinstance(inv_item, Item):
+                                        continue
+                                    price = inv_item.value if hasattr(inv_item, "value") else 10
+                                    print(f"  - {inv_item.name} ({price} gold)")
                                 print("\nUse 'buy [item]' or 'sell [item]'")
                             else:
                                 print(f"{npc.name} has nothing to trade.")
@@ -1181,6 +1274,9 @@ class AdventureGame:
                 if target:
                     # Find merchant NPC in current room
                     room = self.get_current_room()
+                    if not room:
+                        print("There's no one here to buy from.")
+                        return
                     monsters = self.get_monsters_in_room(room.id)
                     merchant = None
                     for m in monsters:
@@ -1193,9 +1289,11 @@ class AdventureGame:
                         # Find item in merchant's inventory
                         item = None
                         if hasattr(merchant, "inventory"):
-                            for i in merchant.inventory:
-                                if target.lower() in i.name.lower():
-                                    item = i
+                            for inv_entry in merchant.inventory:
+                                if not isinstance(inv_entry, Item):
+                                    continue
+                                if target.lower() in inv_entry.name.lower():
+                                    item = inv_entry
                                     break
 
                         if item:
@@ -1205,8 +1303,12 @@ class AdventureGame:
                             )
                             if player_gold >= price:
                                 self.player.gold -= price
-                                self.player.inventory.append(item)
-                                merchant.inventory.remove(item)
+                                self._add_inventory_item(item)
+                                if hasattr(merchant, "inventory"):
+                                    try:
+                                        merchant.inventory.remove(item)
+                                    except ValueError:
+                                        pass
                                 print(f"You bought {item.name} for " f"{price} gold.")
                             else:
                                 print(f"You need {price} gold to buy that.")
@@ -1222,6 +1324,9 @@ class AdventureGame:
                 if target:
                     # Find merchant NPC in current room
                     room = self.get_current_room()
+                    if not room:
+                        print("There's no one here to sell to.")
+                        return
                     monsters = self.get_monsters_in_room(room.id)
                     merchant = None
                     for m in monsters:
@@ -1232,11 +1337,7 @@ class AdventureGame:
 
                     if merchant:
                         # Find item in player's inventory
-                        item = None
-                        for i in self.player.inventory:
-                            if target.lower() in i.name.lower():
-                                item = i
-                                break
+                        item = self._find_inventory_item(target)
 
                         if item:
                             price = item.value if hasattr(item, "value") else 5
@@ -1244,7 +1345,7 @@ class AdventureGame:
                             if not hasattr(self.player, "gold"):
                                 self.player.gold = 0
                             self.player.gold += sell_price
-                            self.player.inventory.remove(item)
+                            self._remove_inventory_item(item)
                             if hasattr(merchant, "inventory"):
                                 merchant.inventory.append(item)
                             print(f"You sold {item.name} for " f"{sell_price} gold.")
@@ -1259,17 +1360,7 @@ class AdventureGame:
                 target = parsed.get("target", "")
                 if target:
                     # Find item in inventory
-                    item = None
-                    target_lower = target.lower()
-                    for inv_entry in self.player.inventory:
-                        if isinstance(inv_entry, int):
-                            candidate = self.items.get(inv_entry)
-                        else:
-                            candidate = inv_entry
-
-                        if candidate and target_lower in candidate.name.lower():
-                            item = candidate
-                            break
+                    item = self._find_inventory_item(target)
 
                     if item:
                         use_payload = {
@@ -1290,7 +1381,9 @@ class AdventureGame:
                         if use_payload.get("handled"):
                             return
 
-                        item = use_payload.get("item", item)
+                        payload_item = use_payload.get("item", item)
+                        if isinstance(payload_item, Item):
+                            item = payload_item
 
                         # Check for usable attribute
                         if hasattr(item, "usable") and getattr(item, "usable"):
@@ -1309,6 +1402,9 @@ class AdventureGame:
                 target = parsed.get("target", "")
                 if target:
                     room = self.get_current_room()
+                    if not room:
+                        print("You are nowhere. There is nothing to interact with.")
+                        return
                     # Check if target is in room
                     found = False
                     if hasattr(room, "features"):
@@ -1330,10 +1426,7 @@ class AdventureGame:
                     item = None
                     if action == "equip":
                         # Find in inventory
-                        for i in self.player.inventory:
-                            if target.lower() in i.name.lower():
-                                item = i
-                                break
+                        item = self._find_inventory_item(target)
 
                         if item:
                             equippable = hasattr(item, "equippable") and item.equippable
@@ -1348,7 +1441,7 @@ class AdventureGame:
                     else:  # unequip
                         if self.equipped_items:
                             for equipped_item in list(self.equipped_items):
-                                if target.lower() in i.name.lower():
+                                if target.lower() in equipped_item.name.lower():
                                     item = equipped_item
                                     break
 
@@ -1376,7 +1469,7 @@ class AdventureGame:
                 else:
                     # Not in combat, just move to random exit
                     room = self.get_current_room()
-                    if room.exits:
+                    if room and room.exits:
                         direction = random.choice(list(room.exits.keys()))
                         print(f"You flee {direction}!")
                         self.move(direction)
@@ -1388,15 +1481,14 @@ class AdventureGame:
                 recipient = parsed.get("recipient", "")
                 if target and recipient:
                     # Find item in inventory
-                    item = None
-                    for i in self.player.inventory:
-                        if target.lower() in i.name.lower():
-                            item = i
-                            break
+                    item = self._find_inventory_item(target)
 
                     if item:
                         # Find NPC
                         room = self.get_current_room()
+                        if not room:
+                            print("You are nowhere. There's no one to give items to.")
+                            return
                         monsters = self.get_monsters_in_room(room.id)
                         npc = None
                         for m in monsters:
@@ -1405,7 +1497,7 @@ class AdventureGame:
                                 break
 
                         if npc:
-                            self.player.inventory.remove(item)
+                            self._remove_inventory_item(item)
                             if hasattr(npc, "inventory"):
                                 npc.inventory.append(item)
                             print(f"You give the {item.name} to {npc.name}.")
@@ -1453,6 +1545,9 @@ class AdventureGame:
                 if target:
                     # Check if examining an NPC
                     room = self.get_current_room()
+                    if not room:
+                        print("You are nowhere. There's nothing to examine.")
+                        return
                     monsters = self.get_monsters_in_room(room.id)
                     is_npc = any(target.lower() in m.name.lower() for m in monsters)
                     if is_npc:
