@@ -1,0 +1,85 @@
+===========================================================
+  SAGACRAFT: THE INFINITE ARCHIVE
+===========================================================
+
+You arrive at the Infinite Archive, a living library that binds every story ever told. Vaults, workshops, and hidden gardens weave together in impossible geometry. Archivists whisper of a sealed sanctum where the master codex lies. Can you restore the Archive and claim the codex before its memory fades?
+
+==========================================================
+Starlit Landing
+---------------
+A glass platform hangs over a sea of stars. A maintenance lift hums softly while a friendly scout waits by a supply crate.
+
+Obvious exits: north, east
+
+It's a fresh morning.
+The sky is clear.
+
+You see:
+  - field satchel
+  - archive map
+
+Present:
+  - Scout Zira (friendly)
+CMDS: running 5 commands from commands_demo.txt
+> look
+Starlit Landing
+---------------
+A glass platform hangs over a sea of stars. A maintenance lift hums softly while a friendly scout waits by a supply crate.
+
+Obvious exits: north, east
+
+You see:
+  - field satchel
+  - archive map
+
+Present:
+  - Scout Zira (friendly)
+> take field satchel
+You take the field satchel.
+> inventory
+You are carrying:
+  - field satchel
+
+Total weight: 2
+Gold: 200
+> north
+Grand Rotunda
+-------------
+A circular hall of polished obsidian. Murals depict legendary quests and branching timelines.
+
+Obvious exits: south, east, north, west
+
+It's a fresh morning.
+The sky is clear.
+
+You see:
+  - cipher tablet
+
+Present:
+  - Archivist Lyra (friendly)
+> look
+Grand Rotunda
+-------------
+A circular hall of polished obsidian. Murals depict legendary quests and branching timelines.
+
+Obvious exits: south, east, north, west
+
+You see:
+  - cipher tablet
+
+Present:
+  - Archivist Lyra (friendly)
+✓ Game saved to slot 1
+✓ Game loaded from slot 1
+
+Grand Rotunda
+-------------
+A circular hall of polished obsidian. Murals depict legendary quests and branching timelines.
+
+Obvious exits: south, east, north, west
+
+You see:
+  - cipher tablet
+
+Present:
+  - Archivist Lyra (friendly)

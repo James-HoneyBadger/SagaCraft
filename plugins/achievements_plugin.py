@@ -9,8 +9,8 @@ from datetime import datetime
 import logging
 from typing import Any, Dict
 
-from src.acs.core.base_plugin import BasePlugin, PluginMetadata, PluginPriority
-from src.acs.core.event_bus import Event
+from src.sagacraft.core.base_plugin import BasePlugin, PluginMetadata, PluginPriority
+from src.sagacraft.core.event_bus import Event
 
 # Import the original achievement classes (we're reusing the data structures)
 # In a full refactor, these would also be moved to this module

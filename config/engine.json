@@ -10,8 +10,9 @@
     "difficulty": "normal"
   },
   "ui": {
-    "theme": "dark",
+    "theme": "Light",
     "font_size": 12,
-    "color_enabled": true
+    "color_enabled": true,
+    "font_family": "Calibri"
   }
 }

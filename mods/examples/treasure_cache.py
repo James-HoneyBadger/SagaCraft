@@ -6,7 +6,7 @@ summary: Spawns a bonus treasure chest after defeating a hostile monster.
 """
 
 # pylint: disable=import-error
-from acs.tools.modding import EventType, ScriptHook
+from sagacraft.tools.modding import EventType, ScriptHook
 
 if "register_hook" not in globals():  # pragma: no cover
 
