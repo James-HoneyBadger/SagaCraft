@@ -17,8 +17,6 @@ import importlib.util
 from pathlib import Path
 from io import StringIO
 
-from sagacraft.tools.modding import ModdingSystem
-
 
 class AdventureIDE:
     """Main IDE window for SagaCraft"""
@@ -1254,6 +1252,7 @@ class AdventureIDE:
         if cache_entry and cache_entry["mtime"] == mod["mtime"]:
             return cache_entry["data"]
 
+        from sagacraft.tools.modding import ModdingSystem
         summary = {"hooks": [], "commands": [], "error": None}
         sandbox = ModdingSystem()
         try:
@@ -1418,6 +1417,7 @@ class AdventureIDE:
             messages.append("Modding system not available for this adventure.")
             return messages
 
+        from sagacraft.tools.modding import ModdingSystem
         self.game_instance.modding = ModdingSystem(engine=self.game_instance)
 
         for relative_path in sorted(self.enabled_mods):

@@ -23,7 +23,6 @@ try:
     from sagacraft.systems import achievements as achievements_module
     from sagacraft.systems import journal as journal_module
     from sagacraft.systems import tutorial as tutorial_module
-    from sagacraft.tools import modding as modding_module
     from sagacraft.ui import accessibility as accessibility_module
 
     NaturalLanguageParser = parser_module.NaturalLanguageParser
@@ -35,9 +34,10 @@ try:
     AchievementSystem = achievements_module.AchievementSystem
     AdventureJournal = journal_module.AdventureJournal
     ContextualHintSystem = tutorial_module.ContextualHintSystem
-    ModdingSystem = modding_module.ModdingSystem
-    EventType = modding_module.EventType
     AccessibilitySystem = accessibility_module.AccessibilitySystem
+    # Defer modding import to avoid circular dependency
+    ModdingSystem = None
+    EventType = None
 
     ENHANCED_PARSER_AVAILABLE = True
 except ImportError:
@@ -203,7 +203,8 @@ class AdventureGame:
             self.achievements = AchievementSystem()
             self.journal = AdventureJournal()
             self.tutorial = ContextualHintSystem()
-            self.modding = ModdingSystem(engine=self)
+            # Lazy load ModdingSystem to avoid circular import
+            self._init_modding()
             self.accessibility = AccessibilitySystem()
             self.use_enhanced_parser = True
         else:
@@ -212,6 +213,22 @@ class AdventureGame:
         self.effects: List[Dict[str, Any]] = []
         self.equipped_items: Set[Any] = set()
         self._mod_last_room_id: Optional[int] = None
+
+    def _init_modding(self):
+        """Lazy load ModdingSystem and EventType to break circular import."""
+        try:
+            import sys
+            from sagacraft.tools.modding import (
+                EventType as _EventType,
+                ModdingSystem as _ModdingSystem,
+            )
+
+            # Update both module-level and instance-level EventType
+            globals()["EventType"] = _EventType
+            sys.modules[__name__].EventType = _EventType
+            self.modding = _ModdingSystem(engine=self)
+        except ImportError:
+            self.modding = None
 
     @staticmethod
     def _safe_int(value: Any, default: int) -> int:
