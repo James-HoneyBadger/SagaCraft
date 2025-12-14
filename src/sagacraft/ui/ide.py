@@ -2166,6 +2166,9 @@ class AdventureIDE:
     def verify_game(self):
         """Run a comprehensive verification and show a detailed report."""
         report = self._analyze_adventure()
+        # Add simulated playthrough section
+        play = self._simulate_playthrough(max_steps=200)
+        report["playthrough"] = play
         errors = report.get("errors", [])
         warnings = report.get("warnings", [])
 
@@ -2206,6 +2209,19 @@ class AdventureIDE:
         warnings: list[str] = []
         suggestions: list[str] = []
 
+        # --- Top-level schema/type checks ---
+        if not isinstance(rooms, list):
+            errors.append("'rooms' must be a list")
+            rooms = []
+        if not isinstance(items, list):
+            errors.append("'items' must be a list")
+            items = []
+        if not isinstance(monsters, list):
+            errors.append("'monsters' must be a list")
+            monsters = []
+        if not (isinstance(start_room, int) or start_room is None):
+            warnings.append("'start_room' should be an integer room id")
+
         # Basic structure
         title = adv.get("title") or ""
         if not title.strip():
@@ -2217,9 +2233,14 @@ class AdventureIDE:
         # Room id integrity and duplicates
         room_ids = []
         for r in rooms:
+            if not isinstance(r, dict):
+                errors.append("Encountered non-object in rooms list")
+                continue
             rid = r.get("id")
             if rid is None:
                 errors.append("A room is missing an 'id'")
+            elif not isinstance(rid, int):
+                errors.append("Room 'id' must be an integer")
             else:
                 room_ids.append(rid)
         seen: set[int] = set()
@@ -2236,26 +2257,36 @@ class AdventureIDE:
         # Exit targets and reciprocity
         total_exits = 0
         missing_reverse = 0
+        unknown_directions = 0
         for r in rooms:
             rid = r.get("id")
-            exits = dict(r.get("exits", {}))
+            exits = r.get("exits", {})
             # Type sanity
             if not isinstance(exits, dict):
                 errors.append(f"Room {rid} has invalid 'exits' (must be object/dict)")
                 continue
             for direction, target in exits.items():
                 total_exits += 1
+                if not isinstance(direction, str):
+                    warnings.append(f"Room {rid} has a non-string exit key: {direction}")
+                    continue
                 if target not in room_id_set and target != 0:
                     errors.append(
                         f"Room {rid} has exit '{direction}' to non-existent room {target}"
                     )
                 # Reciprocity check (warning-level)
                 rev = self._reverse_direction(direction)
+                if rev is None:
+                    unknown_directions += 1
+                    warnings.append(f"Room {rid} has exit with unknown direction '{direction}'")
                 if rev and target in room_id_set:
                     # Find target room
                     tr = next((x for x in rooms if x.get("id") == target), None)
                     if tr is not None:
-                        trexits = dict(tr.get("exits", {}))
+                        trexits = tr.get("exits", {})
+                        if not isinstance(trexits, dict):
+                            warnings.append(f"Room {target} exits not a dict; skipping reciprocity check")
+                            continue
                         if trexits.get(rev) != rid:
                             missing_reverse += 1
                             warnings.append(
@@ -2291,20 +2322,70 @@ class AdventureIDE:
                 warnings.append(f"Room {rid} is missing a name")
             if not desc:
                 warnings.append(f"Room {rid} is missing a description")
+            # Dead-ends and isolation
+            exits = r.get("exits", {})
+            if isinstance(exits, dict):
+                degree = len([t for t in exits.values() if isinstance(t, int) and t in room_id_set])
+                if degree == 0:
+                    warnings.append(f"Room {rid} is isolated (no exits)")
+                elif degree == 1 and rid != start_room:
+                    suggestions.append(f"Room {rid} is a dead-end; consider adding a branch or a clue")
 
         # Item placement sanity
+        item_ids = []
         for it in items:
+            if not isinstance(it, dict):
+                errors.append("Encountered non-object in items list")
+                continue
             loc = it.get("location")
             label = it.get("id", it.get("name", "<unnamed item>"))
+            iid = it.get("id")
+            if iid is not None:
+                item_ids.append(iid)
+            nm = (it.get("name") or "").strip()
+            if not nm:
+                warnings.append(f"Item {label} is missing a name")
+            desc = (it.get("description") or "").strip()
+            if not desc:
+                warnings.append(f"Item {label} is missing a description")
             if isinstance(loc, int) and loc not in room_id_set:
                 errors.append(f"Item {label} references missing room {loc}")
+        # Duplicate item ids (only check when ids present and hashable)
+        try:
+            seen_i = set()
+            dupe_items = sorted({x for x in item_ids if x in seen_i or seen_i.add(x)})
+            if dupe_items:
+                errors.append(f"Duplicate item id(s): {dupe_items}")
+        except Exception:
+            pass
 
         # Monster placement sanity
+        monster_ids = []
         for mon in monsters:
+            if not isinstance(mon, dict):
+                errors.append("Encountered non-object in monsters list")
+                continue
             mroom = mon.get("room")
             label = mon.get("id", mon.get("name", "<unnamed monster>"))
+            mid = mon.get("id")
+            if mid is not None:
+                monster_ids.append(mid)
+            nm = (mon.get("name") or "").strip()
+            if not nm:
+                warnings.append(f"Monster {label} is missing a name")
+            desc = (mon.get("description") or "").strip()
+            if not desc:
+                warnings.append(f"Monster {label} is missing a description")
             if isinstance(mroom, int) and mroom not in room_id_set:
                 errors.append(f"Monster {label} references missing room {mroom}")
+        # Duplicate monster ids (only check when ids present and hashable)
+        try:
+            seen_m = set()
+            dupe_mon = sorted({x for x in monster_ids if x in seen_m or seen_m.add(x)})
+            if dupe_mon:
+                errors.append(f"Duplicate monster id(s): {dupe_mon}")
+        except Exception:
+            pass
 
         # Duplicate names (soft uniqueness suggestion)
         room_names = [ (r.get("id"), (r.get("name") or "").strip()) for r in rooms ]
@@ -2325,7 +2406,12 @@ class AdventureIDE:
             "reachable_rooms": len(reachable),
             "unreachable_rooms": len(unreachable),
             "missing_reverse_links": missing_reverse,
+            "unknown_direction_exits": unknown_directions,
         }
+
+        # Engine dry-run to catch runtime loader issues
+        engine_errors, engine_info = self._engine_dry_run()
+        errors.extend(engine_errors)
 
         return {
             "title": title or "(untitled)",
@@ -2333,6 +2419,7 @@ class AdventureIDE:
             "warnings": warnings,
             "suggestions": suggestions,
             "stats": stats,
+            "engine_info": engine_info,
         }
 
     def _format_verification_report(self, report: dict) -> str:
@@ -2347,6 +2434,54 @@ class AdventureIDE:
         lines.append(f"GAME VERIFICATION: {title}")
         lines.append("=" * 60)
         lines.append("")
+        # Engine dry-run details
+        engine_info = report.get("engine_info", {})
+        if engine_info:
+            lines.append("Engine Dry-Run")
+            lines.append("-" * 60)
+            path = engine_info.get("engine_path")
+            lines.append(f"Engine path: {path}")
+            status = engine_info.get("status")
+            lines.append(f"Status: {status}")
+            if engine_info.get("details"):
+                lines.append(f"Details: {engine_info.get('details')}")
+            lines.append("")
+
+        # Simulated playthrough details
+        play = report.get("playthrough", {})
+        if play:
+            lines.append("Playthrough Simulation")
+            lines.append("-" * 60)
+            lines.append(f"Status: {play.get('status')}")
+            visited = play.get("visited", [])
+            if visited:
+                lines.append(f"Visited rooms (order): {visited}")
+            steps = play.get("steps", [])
+            show = steps[:30]  # limit to first 30 actions for readability
+            for i, st in enumerate(show, 1):
+                act = st.get("action")
+                frm = st.get("from")
+                to = st.get("to")
+                err = st.get("error")
+                lines.append(f"{i:02d}. action='{act}' from={frm} to={to}")
+                if err:
+                    lines.append(f"    error: {err}")
+                out = (st.get("output") or "").strip()
+                if out:
+                    snippet = out.splitlines()
+                    snippet = snippet[:8]  # show up to 8 lines
+                    for ln in snippet:
+                        lines.append(f"    {ln}")
+            if len(steps) > len(show):
+                lines.append(f"    ... ({len(steps) - len(show)} more actions)")
+            errs = play.get("errors", [])
+            if errs:
+                lines.append("")
+                lines.append("Playthrough Errors")
+                lines.append("-" * 60)
+                for e in errs:
+                    lines.append(f"- {e}")
+            lines.append("")
         lines.append("Summary")
         lines.append("-" * 60)
         lines.append(
@@ -2394,6 +2529,190 @@ class AdventureIDE:
         txt.configure(state=tk.DISABLED)
         btn = ttk.Button(top, text="Close", command=top.destroy)
         btn.pack(pady=6)
+
+    def _engine_dry_run(self) -> tuple[list[str], dict]:
+        """Attempt to load current adventure via the actual engine to catch runtime issues.
+
+        Returns (errors, info dict) where info contains engine path and status.
+        """
+        errors: list[str] = []
+        info: dict = {}
+        try:
+            # Prepare temp adventure file
+            from pathlib import Path as _Path
+            import json as _json
+            import importlib.util as _importlib
+            adv_path = _Path("adventures")
+            adv_path.mkdir(parents=True, exist_ok=True)
+            tmp = adv_path / "_verify_temp.json"
+            with open(tmp, "w", encoding="utf-8") as f:
+                _json.dump(self.adventure, f, indent=2)
+
+            # Load engine
+            engine_path = _Path(__file__).parent.parent.parent.parent / "sagacraft_engine.py"
+            info["engine_path"] = str(engine_path)
+            spec = _importlib.spec_from_file_location("sagacraft_engine", engine_path)
+            if spec is None or spec.loader is None:
+                errors.append("Engine load failed: could not create import spec")
+                info["status"] = "spec failure"
+                return errors, info
+
+            mod = _importlib.module_from_spec(spec)
+            try:
+                spec.loader.exec_module(mod)
+            except Exception as exc:  # noqa: BLE001
+                errors.append(f"Engine import error: {exc}")
+                info["status"] = "import error"
+                info["details"] = str(exc)
+                return errors, info
+
+            # Instantiate and load
+            game_cls = getattr(mod, "ExtendedAdventureGame", None) or getattr(mod, "EnhancedAdventureGame", None) or getattr(mod, "AdventureGame", None)
+            if not game_cls:
+                errors.append("Engine missing game class (Extended/Enhanced/AdventureGame)")
+                info["status"] = "missing class"
+                return errors, info
+
+            try:
+                game = game_cls(str(tmp))
+                game.load_adventure()
+                info["status"] = "ok"
+            except Exception as exc:  # noqa: BLE001
+                errors.append(f"Engine load_adventure failed: {exc}")
+                info["status"] = "load error"
+                info["details"] = str(exc)
+        except Exception as exc:  # noqa: BLE001
+            errors.append(f"Verification dry-run error: {exc}")
+            info["status"] = "exception"
+            info["details"] = str(exc)
+        return errors, info
+
+    def _simulate_playthrough(self, max_steps: int = 100) -> dict:
+        """Run a bounded, deterministic playthrough: look, traverse exits, collect outputs.
+
+        Uses the real engine with the current adventure; walks the graph from start_room
+        using a stable direction order. Captures printed output for each action.
+        """
+        from pathlib import Path as _Path
+        import json as _json
+        import importlib.util as _importlib
+        from io import StringIO as _StringIO
+        import sys as _sys
+
+        result = {"status": "idle", "steps": [], "visited": [], "errors": []}
+        try:
+            # Write temp adventure
+            adv_path = _Path("adventures")
+            adv_path.mkdir(parents=True, exist_ok=True)
+            tmp = adv_path / "_verify_play.json"
+            with open(tmp, "w", encoding="utf-8") as f:
+                _json.dump(self.adventure, f, indent=2)
+
+            # Load engine
+            engine_path = _Path(__file__).parent.parent.parent.parent / "sagacraft_engine.py"
+            spec = _importlib.spec_from_file_location("sagacraft_engine", engine_path)
+            if spec is None or spec.loader is None:
+                result["status"] = "engine-spec-fail"
+                result["errors"].append("Could not create engine spec")
+                return result
+            mod = _importlib.module_from_spec(spec)
+            try:
+                spec.loader.exec_module(mod)
+            except Exception as exc:  # noqa: BLE001
+                result["status"] = "engine-import-fail"
+                result["errors"].append(f"Engine import error: {exc}")
+                return result
+
+            game_cls = getattr(mod, "ExtendedAdventureGame", None) or getattr(mod, "EnhancedAdventureGame", None) or getattr(mod, "AdventureGame", None)
+            if not game_cls:
+                result["status"] = "no-game-class"
+                result["errors"].append("Engine missing game class")
+                return result
+
+            game = game_cls(str(tmp))
+            game.load_adventure()
+            result["status"] = "running"
+
+            # Helper to capture one engine call
+            def capture(callable_, *args, **kwargs):
+                old = _sys.stdout
+                buf = _StringIO()
+                _sys.stdout = buf
+                err = None
+                try:
+                    callable_(*args, **kwargs)
+                except Exception as exc:  # noqa: BLE001
+                    err = exc
+                finally:
+                    out = buf.getvalue()
+                    _sys.stdout = old
+                return out, err
+
+            # Step 0: look at start
+            out, err = capture(game.look)
+            result["steps"].append({"action": "look", "output": out.strip(), "error": str(err) if err else None})
+            if err:
+                result["status"] = "error"
+                result["errors"].append(f"look failed: {err}")
+                return result
+
+            # Traverse rooms breadth-first via exits in stable direction order
+            from collections import deque
+            order = ["north", "south", "east", "west", "up", "down", "in", "out",
+                     "northeast", "northwest", "southeast", "southwest"]
+            visited = set()
+            cur = getattr(game.player, "current_room", None)
+            start_id = getattr(cur, "id", None)
+            if start_id is None:
+                result["status"] = "error"
+                result["errors"].append("Start room not set")
+                return result
+            visited.add(start_id)
+            q = deque([start_id])
+            result["visited"].append(start_id)
+
+            # Map id -> exits from current adventure
+            exits_map = {r.get("id"): dict(r.get("exits", {})) for r in self.adventure.get("rooms", [])}
+            steps = 0
+
+            while q and steps < max_steps:
+                rid = q.popleft()
+                exits = exits_map.get(rid, {})
+                # Try exits in stable order first, then any others
+                dirs = [d for d in order if d in exits] + [d for d in exits.keys() if d not in order]
+                for d in dirs:
+                    tgt = exits.get(d)
+                    if not isinstance(tgt, int):
+                        continue
+                    # Issue move command
+                    cmd = d
+                    out, err = capture(game.process_command, cmd)
+                    result["steps"].append({"action": cmd, "from": rid, "to": tgt, "output": out.strip(), "error": str(err) if err else None})
+                    steps += 1
+                    if err:
+                        result["status"] = "error"
+                        result["errors"].append(f"move '{cmd}' failed from {rid} to {tgt}: {err}")
+                        if steps >= max_steps:
+                            break
+                        continue
+                    # Track visited and enqueue
+                    cur = getattr(game.player, "current_room", None)
+                    cur_id = getattr(cur, "id", None)
+                    if cur_id is not None and cur_id not in visited:
+                        visited.add(cur_id)
+                        result["visited"].append(cur_id)
+                        q.append(cur_id)
+                if steps >= max_steps:
+                    break
+
+            # Final look
+            out, err = capture(game.look)
+            result["steps"].append({"action": "look", "output": out.strip(), "error": str(err) if err else None})
+            result["status"] = "ok" if not result["errors"] else "error"
+        except Exception as exc:  # noqa: BLE001
+            result["status"] = "exception"
+            result["errors"].append(str(exc))
+        return result
 
         return errors
 
