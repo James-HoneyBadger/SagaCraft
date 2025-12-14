@@ -4,11 +4,7 @@ SagaCraft includes two convenient launcher scripts for rapid access:
 
 ## IDE - Adventure Creator
 ```bash
-./Saga.py
-```
-or
-```bash
-python Saga.py
+./Saga.sh
 ```
 
 Opens the SagaCraft Adventure IDE for creating, editing, and testing adventures.
