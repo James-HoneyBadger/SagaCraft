@@ -2190,124 +2190,136 @@ F5 - Test Adventure
 
     def load_for_play(self):
         """Load an adventure file to play"""
-        filename = filedialog.askopenfilename(
-            title="Load Adventure to Play",
-            initialdir="adventures",
-            filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
-        )
+        try:
+            filename = filedialog.askopenfilename(
+                title="Load Adventure to Play",
+                initialdir="adventures",
+                filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
+            )
 
-        if not filename:
-            return
+            if not filename:
+                return
 
-        loaded = self._load_adventure_file(filename)
-        if not loaded:
-            return
+            loaded = self._load_adventure_file(filename)
+            if not loaded:
+                return
 
-        self.clear_game_output()
-        self.print_game("=" * 60)
-        self.print_game(f"  LOADED: {self.adventure.get('title', 'Untitled')}")
-        self.print_game("=" * 60)
-        self.print_game("")
-        self.print_game("Click '▶ Start Game' to begin playing!")
-        self.print_game("")
-        self.test_badge_var.set("Play: Adventure Loaded")
-        self.validation_badge_var.set("Validation: —")
+            self.clear_game_output()
+            self.print_game("=" * 60)
+            self.print_game(f"  LOADED: {self.adventure.get('title', 'Untitled')}")
+            self.print_game("=" * 60)
+            self.print_game("")
+            self.print_game("Click '▶ Start Game' to begin playing!")
+            self.print_game("")
+            self.test_badge_var.set("Play: Adventure Loaded")
+            self.validation_badge_var.set("Validation: —")
+        except Exception as exc:
+            print(f"ERROR in load_for_play: {exc}")
+            import traceback
+            traceback.print_exc()
+            messagebox.showerror("Load Error", f"Failed to load adventure:\n{exc}")
 
     def start_game(self):
         """Start playing the loaded adventure"""
-        # Save current adventure to temp file
-        temp_file = "adventures/_temp_play.json"
-        self.collect_adventure_data()
-
-        validation_errors = self.validate_adventure(silent=True)
-        if validation_errors:
-            self.validation_badge_var.set(
-                f"Validation: ⚠ {len(validation_errors)} issue(s)"
-            )
-        else:
-            self.validation_badge_var.set("Validation: ✅ Clean")
-
-        Path("adventures").mkdir(parents=True, exist_ok=True)
-        self.test_badge_var.set("Play: Starting...")
-        self.game_instance = None
-        self.game_running = False
-        if self.point_and_click is not None:
-            self.point_and_click.destroy()
-            self.point_and_click = None
-
         try:
-            with open(temp_file, "w", encoding="utf-8") as handle:
-                json.dump(self.adventure, handle, indent=2)
-        except (OSError, TypeError) as exc:
-            self._fail_play(f"Failed to prepare adventure file:\n{exc}")
-            return
+            # Save current adventure to temp file
+            temp_file = "adventures/_temp_play.json"
+            self.collect_adventure_data()
 
-        engine_path = (
-            Path(__file__).parent.parent.parent.parent / "sagacraft_engine.py"
-        )
-        spec = importlib.util.spec_from_file_location(
-            "sagacraft_engine", engine_path
-        )
-        if spec is None or spec.loader is None:
-            self._fail_play("Unable to load the enhanced game engine module.")
-            return
+            validation_errors = self.validate_adventure(silent=True)
+            if validation_errors:
+                self.validation_badge_var.set(
+                    f"Validation: ⚠ {len(validation_errors)} issue(s)"
+                )
+            else:
+                self.validation_badge_var.set("Validation: ✅ Clean")
 
-        acs_module = importlib.util.module_from_spec(spec)
-        try:
-            spec.loader.exec_module(acs_module)
-        except (FileNotFoundError, ImportError) as exc:
-            self._fail_play(f"Failed to load game engine:\n{exc}")
-            return
-
-        self.clear_game_output()
-        try:
-            self.game_instance = acs_module.ExtendedAdventureGame(temp_file)
-            self.game_instance.load_adventure()
-        except (json.JSONDecodeError, OSError, AttributeError, RuntimeError) as exc:
+            Path("adventures").mkdir(parents=True, exist_ok=True)
+            self.test_badge_var.set("Play: Starting...")
             self.game_instance = None
-            self._fail_play(f"Failed to initialize game:\n{exc}")
-            return
+            self.game_running = False
+            if self.point_and_click is not None:
+                self.point_and_click.destroy()
+                self.point_and_click = None
 
-        self._clear_mod_console()
-        mod_messages = self._apply_active_mods_to_game()
-        for message in mod_messages:
-            self._log_mod_console(message)
-            self.print_game(f"[Mods] {message}")
+            try:
+                with open(temp_file, "w", encoding="utf-8") as handle:
+                    json.dump(self.adventure, handle, indent=2)
+            except (OSError, TypeError) as exc:
+                self._fail_play(f"Failed to prepare adventure file:\n{exc}")
+                return
 
-        self.game_running = True
+            engine_path = (
+                Path(__file__).parent.parent.parent.parent / "sagacraft_engine.py"
+            )
+            spec = importlib.util.spec_from_file_location(
+                "sagacraft_engine", engine_path
+            )
+            if spec is None or spec.loader is None:
+                self._fail_play("Unable to load the enhanced game engine module.")
+                return
 
-        # Print introduction
-        self.print_game("=" * 60)
-        title = self.game_instance.adventure_title.upper()
-        self.print_game(f"  {title}")
-        self.print_game("=" * 60)
-        self.print_game("")
-        self.print_game(self.game_instance.adventure_intro)
-        self.print_game("")
-        self.print_game("=" * 60)
-        self.print_game("")
+            acs_module = importlib.util.module_from_spec(spec)
+            try:
+                spec.loader.exec_module(acs_module)
+            except (FileNotFoundError, ImportError) as exc:
+                self._fail_play(f"Failed to load game engine:\n{exc}")
+                return
 
-        # Show starting room - capture output
-        old_stdout = sys.stdout
-        buffer = StringIO()
-        sys.stdout = buffer
-        try:
-            self.game_instance.look()
-        except (AttributeError, RuntimeError) as exc:
+            self.clear_game_output()
+            try:
+                self.game_instance = acs_module.ExtendedAdventureGame(temp_file)
+                self.game_instance.load_adventure()
+            except (json.JSONDecodeError, OSError, AttributeError, RuntimeError) as exc:
+                self.game_instance = None
+                self._fail_play(f"Failed to initialize game:\n{exc}")
+                return
+
+            self._clear_mod_console()
+            mod_messages = self._apply_active_mods_to_game()
+            for message in mod_messages:
+                self._log_mod_console(message)
+                self.print_game(f"[Mods] {message}")
+
+            self.game_running = True
+
+            # Print introduction
+            self.print_game("=" * 60)
+            title = self.game_instance.adventure_title.upper()
+            self.print_game(f"  {title}")
+            self.print_game("=" * 60)
+            self.print_game("")
+            self.print_game(self.game_instance.adventure_intro)
+            self.print_game("")
+            self.print_game("=" * 60)
+            self.print_game("")
+
+            # Show starting room - capture output
+            old_stdout = sys.stdout
+            buffer = StringIO()
+            sys.stdout = buffer
+            try:
+                self.game_instance.look()
+            except (AttributeError, RuntimeError) as exc:
+                sys.stdout = old_stdout
+                self._fail_play(f"Failed to render starting room:\n{exc}")
+                return
+
+            output = buffer.getvalue()
             sys.stdout = old_stdout
-            self._fail_play(f"Failed to render starting room:\n{exc}")
-            return
 
-        output = buffer.getvalue()
-        sys.stdout = old_stdout
+            if output:
+                self.print_game(output.rstrip())
 
-        if output:
-            self.print_game(output.rstrip())
-
-        if self.command_entry is not None:
-            self.command_entry.focus()
-        self.update_status("Game started - enter commands below")
-        self.test_badge_var.set("Play: Running")
+            if self.command_entry is not None:
+                self.command_entry.focus()
+            self.update_status("Game started - enter commands below")
+            self.test_badge_var.set("Play: Running")
+        except Exception as exc:
+            print(f"UNHANDLED ERROR in start_game: {exc}")
+            import traceback
+            traceback.print_exc()
+            self._fail_play(f"Unexpected error:\n{exc}")
 
     def restart_game(self):
         """Restart the current game"""
@@ -2319,18 +2331,24 @@ F5 - Test Adventure
 
     def send_command(self):
         """Send command to game engine"""
-        if not self.game_running:
-            messagebox.showinfo(
-                "No Game", "Please start the game first using '▶ Start Game'"
-            )
-            return
+        try:
+            if not self.game_running:
+                messagebox.showinfo(
+                    "No Game", "Please start the game first using '▶ Start Game'"
+                )
+                return
 
-        command = self.command_entry.get().strip()
-        if not command:
-            return
+            command = self.command_entry.get().strip()
+            if not command:
+                return
 
-        self.command_entry.delete(0, tk.END)
-        self._process_game_command(command, echo=True)
+            self.command_entry.delete(0, tk.END)
+            self._process_game_command(command, echo=True)
+        except Exception as exc:
+            print(f"ERROR in send_command: {exc}")
+            import traceback
+            traceback.print_exc()
+            messagebox.showerror("Command Error", f"Failed to process command:\n{exc}")
 
     def quick_save(self, slot: int):
         """Save the active session to a numbered slot."""
