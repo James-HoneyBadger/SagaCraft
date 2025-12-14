@@ -373,6 +373,9 @@ class AdventureIDE:
         tools_menu.add_command(
             label="✓ Validate Adventure", command=self.validate_adventure
         )
+        tools_menu.add_command(
+            label="🔎 Verify Game (Detailed)", command=self.verify_game
+        )
         # DSK import functionality removed
 
         # View menu
@@ -1623,12 +1626,21 @@ class AdventureIDE:
         ):
             return
 
+        # Provide a usable default adventure so Play works immediately
         self.adventure = {
             "title": "New Adventure",
             "author": "",
-            "intro": "",
+            "intro": "Welcome to your new SagaCraft adventure!",
             "start_room": 1,
-            "rooms": [],
+            "rooms": [
+                {
+                    "id": 1,
+                    "name": "Start",
+                    "description": "You are at the start.",
+                    "exits": {},
+                    "is_dark": False,
+                }
+            ],
             "items": [],
             "monsters": [],
             "effects": [],
@@ -2081,30 +2093,64 @@ class AdventureIDE:
             self.update_status("Testing adventure in IDE play tab")
 
     def validate_adventure(self, silent: bool = False):
-        """Validate adventure data and update the status badge."""
-        self.collect_adventure_data()
-        errors = []
+        """Validate adventure data and update the status badge.
 
-        if not self.adventure["title"]:
+        Returns a list of error strings. When silent=False, also shows a dialog.
+        """
+        self.collect_adventure_data()
+        errors: list[str] = []
+
+        # Title and minimal structure
+        if not self.adventure.get("title"):
             errors.append("Adventure must have a title")
 
-        if not self.adventure["rooms"]:
+        rooms = list(self.adventure.get("rooms", []))
+        if not rooms:
             errors.append("Adventure must have at least one room")
 
-        # Check start room exists
-        start_room = self.adventure["start_room"]
-        if not any(r["id"] == start_room for r in self.adventure["rooms"]):
+        # Room ID integrity
+        room_ids = [r.get("id") for r in rooms]
+        if any(rid is None for rid in room_ids):
+            errors.append("Every room must have an 'id'")
+        # Duplicate room ids
+        seen = set()
+        dupes = {rid for rid in room_ids if rid in seen or seen.add(rid)}
+        if dupes:
+            errors.append(f"Duplicate room id(s): {sorted(list(dupes))}")
+
+        room_id_set = {rid for rid in room_ids if rid is not None}
+
+        # Start room exists
+        start_room = self.adventure.get("start_room")
+        if start_room not in room_id_set:
             errors.append(f"Start room {start_room} does not exist")
 
-        # Check room exits
-        room_ids = {r["id"] for r in self.adventure["rooms"]}
-        for room in self.adventure["rooms"]:
-            for _, target in room["exits"].items():
-                if target not in room_ids and target != 0:
+        # Check room exits refer to valid rooms (allow 0 for 'nowhere')
+        for room in rooms:
+            exits = dict(room.get("exits", {}))
+            for direction, target in exits.items():
+                if target not in room_id_set and target != 0:
                     errors.append(
-                        f"Room {room['id']} has exit to non-existent room {target}"
+                        f"Room {room.get('id')} has exit '{direction}' to non-existent room {target}"
                     )
 
+        # Items located in valid rooms, if any
+        for item in self.adventure.get("items", []):
+            loc = item.get("location")
+            if isinstance(loc, int) and loc not in room_id_set:
+                errors.append(
+                    f"Item {item.get('id', item.get('name', 'unknown'))} references missing room {loc}"
+                )
+
+        # Monsters placed in valid rooms, if any
+        for mon in self.adventure.get("monsters", []):
+            mroom = mon.get("room")
+            if isinstance(mroom, int) and mroom not in room_id_set:
+                errors.append(
+                    f"Monster {mon.get('id', mon.get('name', 'unknown'))} references missing room {mroom}"
+                )
+
+        # Update UI badges and optionally show dialog
         if errors:
             self.validation_badge_var.set(f"Validation: ⚠ {len(errors)} issue(s)")
             if not silent:
@@ -2113,6 +2159,241 @@ class AdventureIDE:
             self.validation_badge_var.set("Validation: ✅ Clean")
             if not silent:
                 messagebox.showinfo("Validation", "Adventure is valid!")
+
+        return errors
+
+    # --- Detailed Game Verification ---
+    def verify_game(self):
+        """Run a comprehensive verification and show a detailed report."""
+        report = self._analyze_adventure()
+        errors = report.get("errors", [])
+        warnings = report.get("warnings", [])
+
+        # Update badges to reflect verification results
+        if errors:
+            self.validation_badge_var.set(f"Validation: ⚠ {len(errors)} error(s), {len(warnings)} warning(s)")
+        elif warnings:
+            self.validation_badge_var.set(f"Validation: ⚠ {len(warnings)} warning(s)")
+        else:
+            self.validation_badge_var.set("Validation: ✅ Clean")
+
+        # Show report window
+        text = self._format_verification_report(report)
+        self._show_text_report("Game Verification Report", text)
+
+    def _reverse_direction(self, d: str) -> str | None:
+        mapping = {
+            "north": "south", "south": "north",
+            "east": "west", "west": "east",
+            "northeast": "southwest", "southwest": "northeast",
+            "northwest": "southeast", "southeast": "northwest",
+            "up": "down", "down": "up",
+            "in": "out", "out": "in",
+        }
+        return mapping.get(d.lower())
+
+    def _analyze_adventure(self) -> dict:
+        """Compute stats, errors, and warnings for the current adventure."""
+        self.collect_adventure_data()
+
+        adv = self.adventure
+        rooms = list(adv.get("rooms", []))
+        items = list(adv.get("items", []))
+        monsters = list(adv.get("monsters", []))
+        start_room = adv.get("start_room")
+
+        errors: list[str] = []
+        warnings: list[str] = []
+        suggestions: list[str] = []
+
+        # Basic structure
+        title = adv.get("title") or ""
+        if not title.strip():
+            errors.append("Missing adventure title")
+
+        if not rooms:
+            errors.append("Adventure has no rooms")
+
+        # Room id integrity and duplicates
+        room_ids = []
+        for r in rooms:
+            rid = r.get("id")
+            if rid is None:
+                errors.append("A room is missing an 'id'")
+            else:
+                room_ids.append(rid)
+        seen: set[int] = set()
+        dupes = sorted({rid for rid in room_ids if rid in seen or seen.add(rid)})
+        if dupes:
+            errors.append(f"Duplicate room id(s): {dupes}")
+
+        room_id_set = set(room_ids)
+
+        # Start room validity
+        if start_room not in room_id_set:
+            errors.append(f"Start room {start_room} does not exist")
+
+        # Exit targets and reciprocity
+        total_exits = 0
+        missing_reverse = 0
+        for r in rooms:
+            rid = r.get("id")
+            exits = dict(r.get("exits", {}))
+            # Type sanity
+            if not isinstance(exits, dict):
+                errors.append(f"Room {rid} has invalid 'exits' (must be object/dict)")
+                continue
+            for direction, target in exits.items():
+                total_exits += 1
+                if target not in room_id_set and target != 0:
+                    errors.append(
+                        f"Room {rid} has exit '{direction}' to non-existent room {target}"
+                    )
+                # Reciprocity check (warning-level)
+                rev = self._reverse_direction(direction)
+                if rev and target in room_id_set:
+                    # Find target room
+                    tr = next((x for x in rooms if x.get("id") == target), None)
+                    if tr is not None:
+                        trexits = dict(tr.get("exits", {}))
+                        if trexits.get(rev) != rid:
+                            missing_reverse += 1
+                            warnings.append(
+                                f"Exit {rid}.{direction} -> {target} has no reverse {target}.{rev} -> {rid}"
+                            )
+
+        # Reachability from start_room (if valid)
+        reachable = set()
+        if start_room in room_id_set:
+            # BFS
+            from collections import deque
+            q = deque([start_room])
+            reachable.add(start_room)
+            exits_map = {r.get("id"): dict(r.get("exits", {})) for r in rooms}
+            while q:
+                cur = q.popleft()
+                for tgt in exits_map.get(cur, {}).values():
+                    if isinstance(tgt, int) and tgt in room_id_set and tgt not in reachable:
+                        reachable.add(tgt)
+                        q.append(tgt)
+
+        unreachable = sorted(list(room_id_set - reachable)) if room_id_set else []
+        if unreachable:
+            warnings.append(f"Unreachable rooms from start: {unreachable}")
+            suggestions.append("Ensure main story areas are reachable from the start room or provide guidance.")
+
+        # Room content quality
+        for r in rooms:
+            rid = r.get("id")
+            name = (r.get("name") or "").strip()
+            desc = (r.get("description") or "").strip()
+            if not name:
+                warnings.append(f"Room {rid} is missing a name")
+            if not desc:
+                warnings.append(f"Room {rid} is missing a description")
+
+        # Item placement sanity
+        for it in items:
+            loc = it.get("location")
+            label = it.get("id", it.get("name", "<unnamed item>"))
+            if isinstance(loc, int) and loc not in room_id_set:
+                errors.append(f"Item {label} references missing room {loc}")
+
+        # Monster placement sanity
+        for mon in monsters:
+            mroom = mon.get("room")
+            label = mon.get("id", mon.get("name", "<unnamed monster>"))
+            if isinstance(mroom, int) and mroom not in room_id_set:
+                errors.append(f"Monster {label} references missing room {mroom}")
+
+        # Duplicate names (soft uniqueness suggestion)
+        room_names = [ (r.get("id"), (r.get("name") or "").strip()) for r in rooms ]
+        name_counts: dict[str,int] = {}
+        for _, nm in room_names:
+            if nm:
+                name_counts[nm] = name_counts.get(nm, 0) + 1
+        dup_name_list = sorted([nm for nm,cnt in name_counts.items() if cnt > 1])
+        if dup_name_list:
+            suggestions.append(f"Duplicate room names found: {dup_name_list}")
+
+        # Stats
+        stats = {
+            "rooms": len(rooms),
+            "items": len(items),
+            "monsters": len(monsters),
+            "exits": total_exits,
+            "reachable_rooms": len(reachable),
+            "unreachable_rooms": len(unreachable),
+            "missing_reverse_links": missing_reverse,
+        }
+
+        return {
+            "title": title or "(untitled)",
+            "errors": errors,
+            "warnings": warnings,
+            "suggestions": suggestions,
+            "stats": stats,
+        }
+
+    def _format_verification_report(self, report: dict) -> str:
+        lines: list[str] = []
+        title = report.get("title", "(untitled)")
+        stats = report.get("stats", {})
+        errors = report.get("errors", [])
+        warnings = report.get("warnings", [])
+        suggestions = report.get("suggestions", [])
+
+        lines.append("=" * 60)
+        lines.append(f"GAME VERIFICATION: {title}")
+        lines.append("=" * 60)
+        lines.append("")
+        lines.append("Summary")
+        lines.append("-" * 60)
+        lines.append(
+            f"Rooms: {stats.get('rooms', 0)} | Exits: {stats.get('exits', 0)} | Items: {stats.get('items', 0)} | Monsters: {stats.get('monsters', 0)}"
+        )
+        lines.append(
+            f"Reachable: {stats.get('reachable_rooms', 0)} | Unreachable: {stats.get('unreachable_rooms', 0)} | Missing reverse links: {stats.get('missing_reverse_links', 0)}"
+        )
+        lines.append("")
+
+        if errors:
+            lines.append("Errors")
+            lines.append("-" * 60)
+            for e in errors:
+                lines.append(f"- {e}")
+            lines.append("")
+
+        if warnings:
+            lines.append("Warnings")
+            lines.append("-" * 60)
+            for w in warnings:
+                lines.append(f"- {w}")
+            lines.append("")
+
+        if suggestions:
+            lines.append("Suggestions")
+            lines.append("-" * 60)
+            for s in suggestions:
+                lines.append(f"- {s}")
+            lines.append("")
+
+        if not errors and not warnings and not suggestions:
+            lines.append("No issues found. Your game looks great!")
+
+        lines.append("" )
+        return "\n".join(lines)
+
+    def _show_text_report(self, title: str, text: str):
+        top = tk.Toplevel(self.root)
+        top.title(title)
+        top.geometry("900x600")
+        txt = scrolledtext.ScrolledText(top, wrap=tk.WORD)
+        txt.pack(fill=tk.BOTH, expand=True)
+        txt.insert(tk.END, text)
+        txt.configure(state=tk.DISABLED)
+        btn = ttk.Button(top, text="Close", command=top.destroy)
+        btn.pack(pady=6)
 
         return errors
 
@@ -2222,6 +2503,8 @@ F5 - Test Adventure
     def start_game(self):
         """Start playing the loaded adventure"""
         try:
+            # Immediate UI feedback that the button was clicked
+            self.print_game("\n[Play] Start button clicked. Preparing game...")
             # Save current adventure to temp file
             temp_file = "adventures/_temp_play.json"
             self.collect_adventure_data()
@@ -2231,6 +2514,13 @@ F5 - Test Adventure
                 self.validation_badge_var.set(
                     f"Validation: ⚠ {len(validation_errors)} issue(s)"
                 )
+                # Stop if invalid to prevent confusing failures later
+                messagebox.showwarning(
+                    "Validation Issues",
+                    "Cannot start game until validation issues are fixed."
+                )
+                self.test_badge_var.set("Play: Error")
+                return
             else:
                 self.validation_badge_var.set("Validation: ✅ Clean")
 
