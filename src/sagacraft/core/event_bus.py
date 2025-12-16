@@ -6,18 +6,10 @@ making the system more modular and easier to extend.
 """
 
 from dataclasses import dataclass, field
-from enum import IntEnum
 from typing import Any, Callable, Dict, List, Optional
 import logging
 
-
-class EventPriority(IntEnum):
-    """Event handler priority (lower values run first)"""
-
-    CRITICAL = 0
-    HIGH = 10
-    NORMAL = 50
-    LOW = 100
+from .priorities import Priority as EventPriority
 
 
 @dataclass
@@ -114,7 +106,7 @@ class EventBus:
             self._subscriptions[event_name].append(subscription)
             self._subscriptions[event_name].sort()
 
-        self.logger.debug(f"Subscribed {plugin_name} to {event_name}")
+        self.logger.debug("Subscribed %s to %s", plugin_name, event_name)
 
     def unsubscribe(self, event_name: str, handler: Callable):
         """
@@ -136,7 +128,7 @@ class EventBus:
     def publish(
         self,
         event_name: str,
-        data: Dict[str, Any] = None,
+        data: Optional[Dict[str, Any]] = None,
         source: str = "system",
         cancellable: bool = False,
     ) -> Event:
@@ -176,10 +168,12 @@ class EventBus:
 
             try:
                 subscription.handler(event)
-            except Exception as e:
+            except Exception as exc:  # pylint: disable=broad-exception-caught
                 self.logger.error(
-                    f"Error in {subscription.plugin_name} "
-                    f"handling {event_name}: {e}"
+                    "Error in %s handling %s: %s",
+                    subscription.plugin_name,
+                    event_name,
+                    exc,
                 )
 
         return event

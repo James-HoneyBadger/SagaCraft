@@ -6,8 +6,8 @@ This module provides enhanced natural language processing for command
 interpretation, similar to Inform 7's approach but adapted for SagaCraft.
 """
 
-from typing import Dict, List, Tuple, Optional, Set
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional, Set, Tuple
 from enum import Enum
 
 
@@ -30,14 +30,10 @@ class ParsedCommand:
     direct_object: Optional[str] = None
     indirect_object: Optional[str] = None
     preposition: Optional[str] = None
-    adjectives: List[str] = None
+    adjectives: List[str] = field(default_factory=list)
     pattern: Optional[GrammarPattern] = None
     confidence: float = 1.0  # 0.0 to 1.0
     raw_input: str = ""
-
-    def __post_init__(self):
-        if self.adjectives is None:
-            self.adjectives = []
 
 
 class InformStyleParser:
@@ -230,7 +226,7 @@ class InformStyleParser:
         # Find preposition
         prep_index, preposition = self.find_preposition_split(remaining)
 
-        if preposition:
+        if preposition is not None and prep_index is not None:
             # Pattern: VERB [ADJ] NOUN PREP [ADJ] NOUN
             direct_obj = " ".join(remaining[:prep_index])
             slice_start = prep_index + 1
@@ -246,7 +242,7 @@ class InformStyleParser:
                 raw_input=original,
             )
 
-        elif len(remaining) >= 2:
+        if len(remaining) >= 2:
             # Pattern: VERB NOUN NOUN (like "give guard sword")
             return ParsedCommand(
                 verb=verb,
@@ -257,17 +253,14 @@ class InformStyleParser:
                 raw_input=original,
             )
 
-        else:
-            # Pattern: VERB [ADJ] NOUN
-            return ParsedCommand(
-                verb=verb,
-                direct_object=" ".join(remaining),
-                adjectives=adjectives,
-                pattern=(
-                    GrammarPattern.VERB_NOUN if adjectives else GrammarPattern.VERB_NOUN
-                ),
-                raw_input=original,
-            )
+        # Pattern: VERB [ADJ] NOUN
+        return ParsedCommand(
+            verb=verb,
+            direct_object=" ".join(remaining),
+            adjectives=adjectives,
+            pattern=GrammarPattern.VERB_NOUN if adjectives else GrammarPattern.VERB_NOUN,
+            raw_input=original,
+        )
 
     def understand_as(self, phrase: str, canonical: str):
         """
@@ -335,12 +328,12 @@ class InformStyleWorld:
     provides similar capabilities for SagaCraft.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.relations: Dict[str, List[Tuple[str, str]]] = {}
-        self.properties: Dict[str, Dict[str, any]] = {}
+        self.properties: Dict[str, Dict[str, Any]] = {}
         self.kinds: Dict[str, str] = {}  # object -> kind
 
-    def relate(self, relation: str, obj1: str, obj2: str):
+    def relate(self, relation: str, obj1: str, obj2: str) -> None:
         """
         Define a relation between objects (Inform 7 style).
 
@@ -358,13 +351,13 @@ class InformStyleWorld:
             return []
         return [obj2 for o1, obj2 in self.relations[relation] if o1 == obj1]
 
-    def set_property(self, obj: str, property_name: str, value: any):
+    def set_property(self, obj: str, property_name: str, value: Any) -> None:
         """Set property on object (like Inform 7 properties)"""
         if obj not in self.properties:
             self.properties[obj] = {}
         self.properties[obj][property_name] = value
 
-    def get_property(self, obj: str, property_name: str, default=None) -> any:
+    def get_property(self, obj: str, property_name: str, default: Any = None) -> Any:
         """Get property from object"""
         return self.properties.get(obj, {}).get(property_name, default)
 

@@ -196,14 +196,16 @@ class ColorPalette:
         """Get color palette for scheme"""
         if scheme == ColorScheme.DEFAULT:
             return ColorPalette.DEFAULT
-        elif scheme == ColorScheme.HIGH_CONTRAST:
+
+        if scheme == ColorScheme.HIGH_CONTRAST:
             return ColorPalette.HIGH_CONTRAST
-        elif scheme == ColorScheme.MONOCHROME:
+
+        if scheme == ColorScheme.MONOCHROME:
             return ColorPalette.MONOCHROME
-        else:
-            # Colorblind modes use modified default
-            # (would need more sophisticated color adjustments)
-            return ColorPalette.DEFAULT
+
+        # Colorblind modes use modified default
+        # (would need more sophisticated color adjustments)
+        return ColorPalette.DEFAULT
 
 
 class AccessibilitySystem:
@@ -261,14 +263,14 @@ class AccessibilitySystem:
         if self.display.word_wrap:
             # Simple word wrap
             width = self.display.get_text_width()
-            lines = []
+            lines: list[str] = []
             for paragraph in text.split("\n"):
                 if len(paragraph) <= width:
                     lines.append(paragraph)
                 else:
                     # Wrap long lines
                     words = paragraph.split()
-                    current_line = []
+                    current_line: list[str] = []
                     current_length = 0
 
                     for word in words:
@@ -301,18 +303,18 @@ class AccessibilitySystem:
         filled = int((current / maximum) * width)
         empty = width - filled
 
-        bar = "█" * filled + "░" * empty
+        health_bar = "█" * filled + "░" * empty
         percentage = int((current / maximum) * 100)
 
         # Color code based on health
         if percentage > 60:
-            bar = self.colorize(bar, "success")
+            health_bar = self.colorize(health_bar, "success")
         elif percentage > 30:
-            bar = self.colorize(bar, "warning")
+            health_bar = self.colorize(health_bar, "warning")
         else:
-            bar = self.colorize(bar, "error")
+            health_bar = self.colorize(health_bar, "error")
 
-        return f"[{bar}] {current}/{maximum}"
+        return f"[{health_bar}] {current}/{maximum}"
 
     def format_compass(self, exits: List[str]) -> str:
         """Format compass showing available exits"""
@@ -341,7 +343,7 @@ class AccessibilitySystem:
         }
 
         if not self.display.use_emoji:
-            compass = {k: k[0].upper() for k in compass.keys()}
+            compass = {k: k[0].upper() for k in compass}
 
         symbols = [compass.get(e.lower(), e[0]) for e in exits]
         return f"Exits: {' '.join(symbols)}"
@@ -371,7 +373,7 @@ class AccessibilitySystem:
 
         return suggestions.get(context, [])
 
-    def confirm_action(self, action: str) -> str:
+    def confirm_action(self, action: str) -> str | None:
         """Get confirmation prompt for dangerous actions"""
         if not self.confirm_dangerous:
             return None

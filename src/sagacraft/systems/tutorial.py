@@ -47,7 +47,7 @@ class Tutorial:
 class ContextualHintSystem:
     """Provides context-aware hints and tutorials"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.tutorials: Dict[str, Tutorial] = {}
         self.shown_tutorials: Set[str] = set()
         self.discovered_features: Set[str] = set()
@@ -56,7 +56,7 @@ class ContextualHintSystem:
 
         self._register_default_tutorials()
 
-    def _register_default_tutorials(self):
+    def _register_default_tutorials(self) -> None:
         """Register built-in tutorials"""
         tutorials = [
             # Beginner - Movement
@@ -198,21 +198,29 @@ class ContextualHintSystem:
         # Simple trigger matching (can be extended)
         if trigger == "first_room":
             return context == "moved" and stats.get("rooms_visited", 0) == 1
-        elif trigger == "first_look":
+
+        if trigger == "first_look":
             return context == "looked"
-        elif trigger == "first_item":
+
+        if trigger == "first_item":
             return context == "got_item"
-        elif trigger == "first_enemy":
+
+        if trigger == "first_enemy":
             return context == "combat_start"
-        elif trigger == "first_npc":
+
+        if trigger == "first_npc":
             return context == "saw_npc"
-        elif trigger == "found_equipment":
+
+        if trigger == "found_equipment":
             return context == "got_equipment"
-        elif trigger == "first_recruitment":
+
+        if trigger == "first_recruitment":
             return context == "can_recruit"
-        elif trigger == "used_simple_command":
+
+        if trigger == "used_simple_command":
             return stats.get("commands_entered", 0) > 10
-        elif trigger == "has_companions":
+
+        if trigger == "has_companions":
             return stats.get("companions", 0) > 0
         return False
 
@@ -303,13 +311,15 @@ class ContextualHintSystem:
                 stats.get("rooms_visited", 0) >= 5
                 and stats.get("items_collected", 0) >= 3
             )
-        elif self.tutorial_stage == TutorialStage.INTERMEDIATE:
+
+        if self.tutorial_stage == TutorialStage.INTERMEDIATE:
             # Advance after some combat and interaction
             return (
                 stats.get("enemies_defeated", 0) >= 3
                 and stats.get("npcs_talked_to", 0) >= 2
             )
-        elif self.tutorial_stage == TutorialStage.ADVANCED:
+
+        if self.tutorial_stage == TutorialStage.ADVANCED:
             # Advance to expert after recruiting
             return stats.get("companions_recruited", 0) >= 1
         return False

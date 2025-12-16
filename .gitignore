@@ -24,6 +24,10 @@ wheels/
 venv/
 ENV/
 env/
+.venv/
+
+# Type checking
+.mypy_cache/
 
 # IDE
 .vscode/
@@ -40,6 +44,7 @@ htmlcov/
 # Game files
 saves/
 *.save
+adventures/_*.json
 
 # OS
 .DS_Store

@@ -199,17 +199,17 @@ def create_inform_enhanced_engine(base_engine_class):
             Falls back to original parsing if Inform parsing fails.
             """
             # Try Inform 7 style parsing first
-            verb, obj1, obj2 = self.process_natural_command(command)
+            verb, obj1, _ = self.process_natural_command(command)
 
             if verb != "unknown":
                 # Successfully parsed with Inform style
                 # Route to appropriate handler
-                return self._route_command(verb, obj1, obj2)
-            else:
-                # Fall back to original parser
-                return base_engine_class.process_command(self, command)
+                return self._route_command(verb, obj1)
 
-        def _route_command(self, verb: str, obj1: Optional[str], obj2: Optional[str]):
+            # Fall back to original parser
+            return base_engine_class.process_command(self, command)
+
+        def _route_command(self, verb: str, obj1: Optional[str]) -> str:
             """Route parsed command to appropriate handler"""
             # Map to existing engine methods
             handlers = {
@@ -218,16 +218,16 @@ def create_inform_enhanced_engine(base_engine_class):
                 "examine": lambda: self._handle_examine(obj1),
                 "go": lambda: self._handle_go(obj1),
                 "attack": lambda: self._handle_attack(obj1),
-                "inventory": lambda: self._handle_inventory(),
-                "help": lambda: self._handle_help(),
-                "quit": lambda: self._handle_quit(),
+                "inventory": self._handle_inventory,
+                "help": self._handle_help,
+                "quit": self._handle_quit,
             }
 
             handler = handlers.get(verb)
             if handler:
                 return handler()
-            else:
-                return f"I don't know how to {verb}."
+
+            return f"I don't know how to {verb}."
 
         def _handle_take(self, obj):
             """Handle take command"""
@@ -282,10 +282,13 @@ def demo_inform_integration():
 
     # Create game engine (would use real GameEngine in production)
     class DummyEngine:
+        """Minimal engine stub used by demo_inform_integration."""
+
         def __init__(self):
             pass
 
         def process_command(self, cmd):
+            """Pretend to handle a command and return a canned response."""
             return f"Base engine: {cmd}"
 
     EnhancedEngine = create_inform_enhanced_engine(DummyEngine)

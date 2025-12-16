@@ -5,14 +5,20 @@ Allow adventure creators to extend functionality with Python scripts.
 """
 
 import copy
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+import importlib
 from dataclasses import MISSING, dataclass, field, fields, is_dataclass
 from enum import Enum
+from functools import lru_cache
+from types import ModuleType
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
-try:
-    from sagacraft.core import engine as core_engine  # type: ignore
-except ImportError:  # pragma: no cover - optional dependency for spawning helpers
-    core_engine = None
+
+@lru_cache(maxsize=1)
+def _get_core_engine_module() -> Optional[ModuleType]:
+    try:
+        return importlib.import_module("sagacraft.core.engine")
+    except ImportError:  # pragma: no cover - optional dependency for spawning helpers
+        return None
 
 
 class EventType(Enum):
@@ -218,6 +224,7 @@ class ScriptContext:
         npc_cls = template_npc.__class__ if template_npc else None
         friendliness_value: Any = getattr(template_npc, "friendliness", None)
 
+        core_engine = _get_core_engine_module()
         if npc_cls is None and core_engine is not None:
             npc_cls = getattr(core_engine, "Monster", None)
 
@@ -318,6 +325,7 @@ class ScriptContext:
         item_cls = template_item.__class__ if template_item else None
         item_type_value: Any = getattr(template_item, "item_type", None)
 
+        core_engine = _get_core_engine_module()
         if item_cls is None and core_engine is not None:
             item_cls = getattr(core_engine, "Item", None)
 
@@ -477,7 +485,7 @@ class ScriptExecutionError(RuntimeError):
 class ModdingSystem:
     """System for loading and executing mod scripts"""
 
-    def __init__(self, engine=None):
+    def __init__(self, engine=None) -> None:
         self.engine = engine
         self.hooks: Dict[EventType, List[ScriptHook]] = {
             event: [] for event in EventType
@@ -485,7 +493,7 @@ class ModdingSystem:
         self.custom_commands: Dict[str, CustomCommand] = {}
         self.script_context = ScriptContext(engine)
 
-    def register_hook(self, hook: ScriptHook):
+    def register_hook(self, hook: ScriptHook) -> None:
         """Register an event hook"""
         if hook.event not in self.hooks:
             self.hooks[hook.event] = []
@@ -493,7 +501,7 @@ class ModdingSystem:
         # Sort by priority (highest first)
         self.hooks[hook.event].sort(key=lambda h: h.priority, reverse=True)
 
-    def register_command(self, command: CustomCommand):
+    def register_command(self, command: CustomCommand) -> None:
         """Register a custom command"""
         self.custom_commands[command.verb] = command
         for alias in command.aliases:
@@ -501,7 +509,7 @@ class ModdingSystem:
 
     def trigger_event(self, event: EventType, event_data: Dict[str, Any]) -> List[str]:
         """Trigger an event and run associated hooks"""
-        output = []
+        output: list[str] = []
 
         if event not in self.hooks:
             return output

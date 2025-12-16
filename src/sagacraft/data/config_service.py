@@ -4,14 +4,15 @@ Configuration service for managing game and plugin settings
 
 import json
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, cast
 import logging
 
-from core.services import Service
+from sagacraft.core.services import Service
 
 # YAML is optional
 try:
-    import yaml
+    # pyright: ignore[reportMissingModuleSource]
+    import yaml  # type: ignore[import-not-found,import-untyped]
 
     YAML_AVAILABLE = True
 except ImportError:
@@ -59,23 +60,47 @@ class ConfigService(Service):
         """Save all configurations"""
         self.save_all()
 
+    @staticmethod
+    def _ensure_dict(value: Any) -> Dict[str, Any]:
+        if isinstance(value, dict):
+            return value
+        return {}
+
+    def _yaml_load_dict(self, handle) -> Dict[str, Any]:
+        if not YAML_AVAILABLE or yaml is None:
+            return {}
+        loaded = yaml.safe_load(handle)
+        return self._ensure_dict(loaded)
+
     def load_config(self, config_path: Path):
         """Load main configuration file"""
+        if config_path.suffix in {".yaml", ".yml"}:
+            if not YAML_AVAILABLE or yaml is None:
+                self.logger.error("YAML support is not available. Please install PyYAML.")
+                self._config = {}
+                return
+            yaml_error = cast(type[BaseException], getattr(yaml, "YAMLError", Exception))
+            try:
+                with open(config_path, "r", encoding="utf-8") as handle:
+                    self._config = self._yaml_load_dict(handle)
+                self.logger.info("Loaded config from %s", config_path)
+            except (OSError, yaml_error) as exc:
+                self.logger.error("Failed to load YAML config %s: %s", config_path, exc)
+                self._config = {}
+            return
+
         try:
-            with open(config_path, "r") as f:
-                if config_path.suffix == ".yaml" and YAML_AVAILABLE:
-                    self._config = yaml.safe_load(f) or {}
-                else:
-                    self._config = json.load(f)
-            self.logger.info(f"Loaded config from {config_path}")
-        except Exception as e:
-            self.logger.error(f"Failed to load config: {e}")
+            with open(config_path, "r", encoding="utf-8") as handle:
+                self._config = self._ensure_dict(json.load(handle))
+            self.logger.info("Loaded config from %s", config_path)
+        except (OSError, json.JSONDecodeError) as exc:
+            self.logger.error("Failed to load config %s: %s", config_path, exc)
             self._config = {}
 
     def get(self, key: str, default: Any = None) -> Any:
         """Get a configuration value"""
         parts = key.split(".")
-        value = self._config
+        value: Any = self._config
 
         for part in parts:
             if isinstance(value, dict):
@@ -93,9 +118,11 @@ class ConfigService(Service):
         config = self._config
 
         for part in parts[:-1]:
-            if part not in config:
-                config[part] = {}
-            config = config[part]
+            next_config = config.get(part)
+            if not isinstance(next_config, dict):
+                next_config = {}
+                config[part] = next_config
+            config = next_config
 
         config[parts[-1]] = value
 
@@ -105,7 +132,7 @@ class ConfigService(Service):
             self._plugin_configs[plugin_name] = {}
 
         parts = key.split(".")
-        value = self._plugin_configs[plugin_name]
+        value: Any = self._plugin_configs[plugin_name]
 
         for part in parts:
             if isinstance(value, dict):
@@ -126,9 +153,11 @@ class ConfigService(Service):
         config = self._plugin_configs[plugin_name]
 
         for part in parts[:-1]:
-            if part not in config:
-                config[part] = {}
-            config = config[part]
+            next_config = config.get(part)
+            if not isinstance(next_config, dict):
+                next_config = {}
+                config[part] = next_config
+            config = next_config
 
         config[parts[-1]] = value
 
@@ -138,22 +167,30 @@ class ConfigService(Service):
         if not plugins_dir.exists():
             return
 
-        for config_file in plugins_dir.glob("*.yaml"):
-            plugin_name = config_file.stem
-            try:
-                with open(config_file, "r") as f:
-                    self._plugin_configs[plugin_name] = yaml.safe_load(f) or {}
-            except Exception as e:
-                self.logger.error(f"Failed to load config for {plugin_name}: {e}")
+        if YAML_AVAILABLE and yaml is not None:
+            yaml_error = cast(type[BaseException], getattr(yaml, "YAMLError", Exception))
+            for config_file in plugins_dir.glob("*.yaml"):
+                plugin_name = config_file.stem
+                try:
+                    with open(config_file, "r", encoding="utf-8") as handle:
+                        self._plugin_configs[plugin_name] = self._yaml_load_dict(handle)
+                except (OSError, yaml_error) as exc:
+                    self.logger.error(
+                        "Failed to load YAML config for %s: %s", plugin_name, exc
+                    )
 
         for config_file in plugins_dir.glob("*.json"):
             plugin_name = config_file.stem
             if plugin_name not in self._plugin_configs:
                 try:
-                    with open(config_file, "r") as f:
-                        self._plugin_configs[plugin_name] = json.load(f)
-                except Exception as e:
-                    self.logger.error(f"Failed to load config for {plugin_name}: {e}")
+                    with open(config_file, "r", encoding="utf-8") as handle:
+                        self._plugin_configs[plugin_name] = self._ensure_dict(
+                            json.load(handle)
+                        )
+                except (OSError, json.JSONDecodeError) as exc:
+                    self.logger.error(
+                        "Failed to load JSON config for %s: %s", plugin_name, exc
+                    )
 
     def _save_default_config(self):
         """Save default engine configuration"""
@@ -177,22 +214,22 @@ class ConfigService(Service):
 
         config_path = self.config_dir / "engine.json"
         try:
-            with open(config_path, "w") as f:
-                json.dump(default_config, f, indent=2)
+            with open(config_path, "w", encoding="utf-8") as handle:
+                json.dump(default_config, handle, indent=2)
             self._config = default_config
             self.logger.info("Created default config")
-        except Exception as e:
-            self.logger.error(f"Failed to save default config: {e}")
+        except OSError as exc:
+            self.logger.error("Failed to save default config: %s", exc)
 
     def save_all(self):
         """Save all configurations to disk"""
         # Save main config
         config_path = self.config_dir / "engine.json"
         try:
-            with open(config_path, "w") as f:
-                json.dump(self._config, f, indent=2)
-        except Exception as e:
-            self.logger.error(f"Failed to save config: {e}")
+            with open(config_path, "w", encoding="utf-8") as handle:
+                json.dump(self._config, handle, indent=2)
+        except OSError as exc:
+            self.logger.error("Failed to save config: %s", exc)
 
         # Save plugin configs
         plugins_dir = self.config_dir / "plugins"
@@ -201,7 +238,7 @@ class ConfigService(Service):
         for plugin_name, config in self._plugin_configs.items():
             config_path = plugins_dir / f"{plugin_name}.json"
             try:
-                with open(config_path, "w") as f:
-                    json.dump(config, f, indent=2)
-            except Exception as e:
-                self.logger.error(f"Failed to save config for {plugin_name}: {e}")
+                with open(config_path, "w", encoding="utf-8") as handle:
+                    json.dump(config, handle, indent=2)
+            except OSError as exc:
+                self.logger.error("Failed to save config for %s: %s", plugin_name, exc)

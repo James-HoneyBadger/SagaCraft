@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Dict, Any, Optional
 import logging
 
-from core.services import Service
+from sagacraft.core.services import Service
 
 
 class IOService(Service):
@@ -43,7 +43,7 @@ class IOService(Service):
 
     def shutdown(self):
         """Cleanup (nothing needed for basic I/O)"""
-        pass
+        return None
 
     def load_json(self, file_path: Path) -> Optional[Dict[str, Any]]:
         """
@@ -56,16 +56,16 @@ class IOService(Service):
             Parsed JSON data or None on error
         """
         try:
-            with open(file_path, "r") as f:
-                return json.load(f)
+            with open(file_path, "r", encoding="utf-8") as handle:
+                return json.load(handle)
         except FileNotFoundError:
-            self.logger.error(f"File not found: {file_path}")
+            self.logger.error("File not found: %s", file_path)
             return None
-        except json.JSONDecodeError as e:
-            self.logger.error(f"Invalid JSON in {file_path}: {e}")
+        except json.JSONDecodeError as exc:
+            self.logger.error("Invalid JSON in %s: %s", file_path, exc)
             return None
-        except Exception as e:
-            self.logger.error(f"Error loading {file_path}: {e}")
+        except OSError as exc:
+            self.logger.error("Error loading %s: %s", file_path, exc)
             return None
 
     def save_json(self, file_path: Path, data: Dict[str, Any], indent: int = 2) -> bool:
@@ -82,11 +82,11 @@ class IOService(Service):
         """
         try:
             file_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(file_path, "w") as f:
-                json.dump(data, f, indent=indent)
+            with open(file_path, "w", encoding="utf-8") as handle:
+                json.dump(data, handle, indent=indent)
             return True
-        except Exception as e:
-            self.logger.error(f"Error saving to {file_path}: {e}")
+        except OSError as exc:
+            self.logger.error("Error saving to %s: %s", file_path, exc)
             return False
 
     def load_adventure(self, adventure_name: str) -> Optional[Dict[str, Any]]:
@@ -147,6 +147,6 @@ class IOService(Service):
         try:
             save_path.unlink()
             return True
-        except Exception as e:
-            self.logger.error(f"Error deleting save {save_name}: {e}")
+        except OSError as exc:
+            self.logger.error("Error deleting save %s: %s", save_name, exc)
             return False

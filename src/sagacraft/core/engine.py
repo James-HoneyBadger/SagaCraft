@@ -14,6 +14,8 @@ from typing import Any, Dict, List, Optional, Set, cast
 from dataclasses import dataclass, field
 from enum import Enum
 
+from sagacraft.core.adventure_loader import read_adventure_data
+
 # Import natural language parser if available
 try:
     from sagacraft.core import parser as parser_module
@@ -25,35 +27,39 @@ try:
     from sagacraft.systems import tutorial as tutorial_module
     from sagacraft.ui import accessibility as accessibility_module
 
-    NaturalLanguageParser = parser_module.NaturalLanguageParser
-    Companion = parser_module.Companion
-    CompanionStance = getattr(parser_module, "CompanionStance", None)
-    NPCContextManager = npc_context_module.NPCContextManager
-    EnvironmentalSystem = environment_module.EnvironmentalSystem
-    SmartCommandSystem = commands_module.SmartCommandSystem
-    AchievementSystem = achievements_module.AchievementSystem
-    AdventureJournal = journal_module.AdventureJournal
-    ContextualHintSystem = tutorial_module.ContextualHintSystem
-    AccessibilitySystem = accessibility_module.AccessibilitySystem
+    NaturalLanguageParser = parser_module.NaturalLanguageParser  # pylint: disable=invalid-name
+    Companion = parser_module.Companion  # pylint: disable=invalid-name
+    CompanionStance = getattr(
+        parser_module, "CompanionStance", None
+    )  # pylint: disable=invalid-name
+    NPCContextManager = npc_context_module.NPCContextManager  # pylint: disable=invalid-name
+    EnvironmentalSystem = environment_module.EnvironmentalSystem  # pylint: disable=invalid-name
+    SmartCommandSystem = commands_module.SmartCommandSystem  # pylint: disable=invalid-name
+    AchievementSystem = achievements_module.AchievementSystem  # pylint: disable=invalid-name
+    AdventureJournal = journal_module.AdventureJournal  # pylint: disable=invalid-name
+    ContextualHintSystem = tutorial_module.ContextualHintSystem  # pylint: disable=invalid-name
+    AccessibilitySystem = accessibility_module.AccessibilitySystem  # pylint: disable=invalid-name
     # Defer modding import to avoid circular dependency
-    ModdingSystem = None
-    EventType = None
+    ModdingSystem = None  # pylint: disable=invalid-name
+    EventType = None  # pylint: disable=invalid-name
 
     ENHANCED_PARSER_AVAILABLE = True
 except ImportError:
     ENHANCED_PARSER_AVAILABLE = False
-    NaturalLanguageParser = cast(Any, None)
-    Companion = cast(Any, None)
-    CompanionStance = None
-    NPCContextManager = cast(Any, None)
-    EnvironmentalSystem = cast(Any, None)
-    SmartCommandSystem = cast(Any, None)
-    AchievementSystem = cast(Any, None)
-    AdventureJournal = cast(Any, None)
-    ContextualHintSystem = cast(Any, None)
-    ModdingSystem = cast(Any, None)
-    EventType = cast(Any, None)
-    AccessibilitySystem = cast(Any, None)
+    NaturalLanguageParser = cast(Any, None)  # pylint: disable=invalid-name
+    Companion = cast(Any, None)  # pylint: disable=invalid-name
+    CompanionStance = None  # pylint: disable=invalid-name
+    NPCContextManager = cast(Any, None)  # pylint: disable=invalid-name
+    EnvironmentalSystem = cast(Any, None)  # pylint: disable=invalid-name
+    SmartCommandSystem = cast(Any, None)  # pylint: disable=invalid-name
+    AchievementSystem = cast(Any, None)  # pylint: disable=invalid-name
+    AdventureJournal = cast(Any, None)  # pylint: disable=invalid-name
+    ContextualHintSystem = cast(Any, None)  # pylint: disable=invalid-name
+    ModdingSystem = cast(Any, None)  # pylint: disable=invalid-name
+    EventType = cast(Any, None)  # pylint: disable=invalid-name
+    AccessibilitySystem = cast(Any, None)  # pylint: disable=invalid-name
+
+# pylint: enable=invalid-name
 
 
 class ItemType(Enum):
@@ -78,7 +84,7 @@ class MonsterStatus(Enum):
 
 
 @dataclass
-class Item:
+class Item:  # pylint: disable=too-many-instance-attributes
     """Represents an item in the game world"""
 
     id: int
@@ -107,7 +113,7 @@ class Item:
 
 
 @dataclass
-class Monster:
+class Monster:  # pylint: disable=too-many-instance-attributes
     """Represents a monster or NPC"""
 
     id: int
@@ -145,7 +151,7 @@ class Room:
 
 
 @dataclass
-class Player:
+class Player:  # pylint: disable=too-many-instance-attributes
     """Player character stats"""
 
     name: str = "Adventurer"
@@ -168,7 +174,7 @@ class Player:
             self.current_health = self.hardiness
 
 
-class AdventureGame:
+class AdventureGame:  # pylint: disable=too-many-instance-attributes,too-many-public-methods
     """Main game engine for text adventures"""
 
     def __init__(self, adventure_file: str):
@@ -216,6 +222,7 @@ class AdventureGame:
 
     def _init_modding(self):
         """Lazy load ModdingSystem and EventType to break circular import."""
+        # pylint: disable=import-outside-toplevel
         try:
             import sys
             from sagacraft.tools.modding import (
@@ -267,7 +274,7 @@ class AdventureGame:
 
     def _fire_mod_event(
         self,
-        event,
+        event: Any,
         payload: Optional[Dict[str, Any]] = None,
         *,
         echo: bool = True,
@@ -279,10 +286,16 @@ class AdventureGame:
         if not self.modding or EventType is None or event is None:
             return payload, []
 
-        if not isinstance(event, EventType):
+        # Type ignore needed because EventType is conditionally imported as None
+        # Check if event is already an EventType enum instance
+        if not hasattr(event, "value") or not hasattr(event, "name"):
             try:
-                event = EventType(event)
-            except ValueError:
+                # If EventType is available, try to convert the event
+                if EventType is not None:
+                    event = EventType(event)  # type: ignore
+                else:
+                    return payload, []
+            except (ValueError, TypeError):
                 return payload, []
 
         outputs = self.modding.trigger_event(event, payload) or []
@@ -305,7 +318,7 @@ class AdventureGame:
             "previous_room": previous_room,
             "previous_room_id": getattr(previous_room, "id", None),
         }
-        self._fire_mod_event(EventType.ON_ENTER_ROOM, payload)
+        self._fire_mod_event(EventType.ON_ENTER_ROOM, payload)  # type: ignore
         self._mod_last_room_id = getattr(room, "id", None)
 
     def _notify_room_exit(
@@ -319,7 +332,7 @@ class AdventureGame:
             "direction": direction,
             "cancel": False,
         }
-        payload, _ = self._fire_mod_event(EventType.ON_EXIT_ROOM, payload)
+        payload, _ = self._fire_mod_event(EventType.ON_EXIT_ROOM, payload)  # type: ignore
         return payload
 
     def on_mods_loaded(self):
@@ -328,14 +341,13 @@ class AdventureGame:
             return
 
         payload = {"player": self.player, "adventure": self}
-        self._fire_mod_event(EventType.ON_LOAD, payload)
+        self._fire_mod_event(EventType.ON_LOAD, payload)  # type: ignore
         self.notify_room_entry(self.get_current_room(), previous_room=None)
 
     def load_adventure(self):
         """Load adventure data from JSON file"""
         try:
-            with open(self.adventure_file, "r", encoding="utf-8") as handle:
-                data = json.load(handle)
+            data = read_adventure_data(self.adventure_file)
 
             self.adventure_title = data.get("title", "Untitled Adventure")
             self.adventure_intro = data.get("intro", "")
@@ -575,7 +587,9 @@ class AdventureGame:
             "item_name": item.name,
             "cancel": False,
         }
-        take_payload, _ = self._fire_mod_event(EventType.ON_TAKE_ITEM, take_payload)
+        take_payload, _ = self._fire_mod_event(
+            EventType.ON_TAKE_ITEM, take_payload  # type: ignore
+        )
         if take_payload.get("cancel"):
             message = take_payload.get("message")
             if message:
@@ -611,7 +625,9 @@ class AdventureGame:
             "item_name": item.name,
             "cancel": False,
         }
-        drop_payload, _ = self._fire_mod_event(EventType.ON_DROP_ITEM, drop_payload)
+        drop_payload, _ = self._fire_mod_event(
+            EventType.ON_DROP_ITEM, drop_payload  # type: ignore
+        )
         if drop_payload.get("cancel"):
             message = drop_payload.get("message")
             if message:
@@ -702,7 +718,9 @@ class AdventureGame:
             "damage": base_damage,
             "cancel": False,
         }
-        attack_payload, _ = self._fire_mod_event(EventType.ON_ATTACK, attack_payload)
+        attack_payload, _ = self._fire_mod_event(
+            EventType.ON_ATTACK, attack_payload  # type: ignore
+        )
         if attack_payload.get("cancel"):
             message = attack_payload.get("message")
             if message:
@@ -735,7 +753,9 @@ class AdventureGame:
                 "weapon": weapon,
                 "damage": damage,
             }
-            self._fire_mod_event(EventType.ON_KILL, kill_payload)
+            self._fire_mod_event(
+                EventType.ON_KILL, kill_payload  # type: ignore
+            )
             if target.gold > 0:
                 self.player.gold += target.gold
                 print(f"You found {target.gold} gold pieces!")
@@ -755,7 +775,9 @@ class AdventureGame:
                 "room": room,
                 "killer": target,
             }
-            self._fire_mod_event(EventType.ON_DEATH, death_payload)
+            self._fire_mod_event(
+                EventType.ON_DEATH, death_payload  # type: ignore
+            )
             self.game_over = True
 
     # NPC Interaction & Context Methods
@@ -785,7 +807,9 @@ class AdventureGame:
             "topic": topic,
             "cancel": False,
         }
-        talk_payload, _ = self._fire_mod_event(EventType.ON_TALK, talk_payload)
+        talk_payload, _ = self._fire_mod_event(
+            EventType.ON_TALK, talk_payload  # type: ignore
+        )
         if talk_payload.get("cancel"):
             message = talk_payload.get("message")
             if message:
@@ -866,7 +890,9 @@ class AdventureGame:
             "target_name": npc_name,
             "cancel": False,
         }
-        examine_payload, _ = self._fire_mod_event(EventType.ON_EXAMINE, examine_payload)
+        examine_payload, _ = self._fire_mod_event(
+            EventType.ON_EXAMINE, examine_payload  # type: ignore
+        )
         if examine_payload.get("cancel"):
             message = examine_payload.get("message")
             if message:
@@ -915,7 +941,9 @@ class AdventureGame:
             "target_type": "object",
             "cancel": False,
         }
-        examine_payload, _ = self._fire_mod_event(EventType.ON_EXAMINE, examine_payload)
+        examine_payload, _ = self._fire_mod_event(
+            EventType.ON_EXAMINE, examine_payload  # type: ignore
+        )
         if examine_payload.get("cancel"):
             message = examine_payload.get("message")
             if message:
@@ -1089,6 +1117,8 @@ class AdventureGame:
 
     def process_command(self, command: str):
         """Process a player command"""
+        # pylint: disable=too-many-branches,too-many-statements,too-many-locals
+        # pylint: disable=too-many-return-statements,too-many-nested-blocks,no-else-return
         # Process with smart command system if available
         if self.command_system:
             # Fix typos and process
@@ -1107,7 +1137,9 @@ class AdventureGame:
             "handled": False,
             "cancel": False,
         }
-        command_payload, _ = self._fire_mod_event(EventType.ON_COMMAND, command_payload)
+        command_payload, _ = self._fire_mod_event(
+            EventType.ON_COMMAND, command_payload  # type: ignore
+        )
         if command_payload.get("cancel"):
             message = command_payload.get("message")
             if message:
@@ -1212,7 +1244,7 @@ class AdventureGame:
             elif action == "gather":
                 self.gather_party()
                 return
-            elif action == "eat" or action == "drink":
+            elif action in ("eat", "drink"):
                 target = parsed.get("target", "")
                 if target:
                     item = self._find_inventory_item(target)
@@ -1388,7 +1420,7 @@ class AdventureGame:
                             "cancel": False,
                         }
                         use_payload, _ = self._fire_mod_event(
-                            EventType.ON_USE_ITEM, use_payload
+                            EventType.ON_USE_ITEM, use_payload  # type: ignore
                         )
                         if use_payload.get("cancel"):
                             message = use_payload.get("message")
@@ -1415,7 +1447,7 @@ class AdventureGame:
                 else:
                     print("Use what?")
                 return
-            elif action == "open" or action == "close":
+            elif action in ("open", "close"):
                 target = parsed.get("target", "")
                 if target:
                     room = self.get_current_room()
@@ -1437,7 +1469,7 @@ class AdventureGame:
                 else:
                     print(f"{action.capitalize()} what?")
                 return
-            elif action == "equip" or action == "unequip":
+            elif action in ("equip", "unequip"):
                 target = parsed.get("target", "")
                 if target:
                     item = None
@@ -1695,7 +1727,8 @@ class AdventureGame:
                 "handled": False,
             }
             unknown_payload, _ = self._fire_mod_event(
-                EventType.ON_UNKNOWN_COMMAND, unknown_payload
+                EventType.ON_UNKNOWN_COMMAND,  # type: ignore
+                unknown_payload,
             )
             if unknown_payload.get("handled"):
                 return

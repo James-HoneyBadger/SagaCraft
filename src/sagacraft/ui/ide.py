@@ -4,7 +4,8 @@
 A complete IDE for creating, editing, and playing text adventures.
 """
 
-# pylint: disable=too-many-lines
+# pylint: disable=too-many-lines,too-many-instance-attributes,too-many-public-methods
+# pylint: disable=attribute-defined-outside-init
 
 import ast
 import tkinter as tk
@@ -12,14 +13,40 @@ from tkinter import ttk, filedialog, messagebox, scrolledtext
 import difflib
 import json
 import os
+import random
 import sys
 import importlib.util
+from functools import partial
+from collections import deque
 from pathlib import Path
 from io import StringIO
+import traceback
+from typing import Any, Callable, cast
+
+from sagacraft.ui.config_io import (
+    safe_read_json_mapping,
+    update_ui_preferences,
+    write_json_mapping,
+)
+from sagacraft.ui.engine_runner import capture_stdout, run_engine_command
+from sagacraft.ui.menu_helpers import (
+    add_font_family_commands,
+    add_font_size_commands,
+    create_styled_menu,
+)
+from sagacraft.ui.theme import get_default_themes
 
 
 class AdventureIDE:
     """Main IDE window for SagaCraft"""
+
+    def quit_ide(self):
+        """Exit the IDE application."""
+        if getattr(self, "modified", False) and not messagebox.askyesno(
+            "Unsaved Changes", "You have unsaved changes. Quit anyway?"
+        ):
+            return
+        self.root.quit()
 
     def __init__(self, root):
         self.root = root
@@ -27,85 +54,24 @@ class AdventureIDE:
         self.root.geometry("1400x900")
 
         # Theme definitions
-        self.themes = {
-            "Dark": {
-                "bg": "#2b2b2b",
-                "fg": "#ffffff",
-                "accent": "#4a90e2",
-                "accent_dark": "#357abd",
-                "success": "#5cb85c",
-                "warning": "#f0ad4e",
-                "danger": "#d9534f",
-                "sidebar": "#3c3c3c",
-                "panel": "#353535",
-                "border": "#4a4a4a",
-                "text_bg": "#252525",
-                "button": "#4a90e2",
-                "button_hover": "#357abd",
-            },
-            "Light": {
-                "bg": "#f5f5f5",
-                "fg": "#333333",
-                "accent": "#4a90e2",
-                "accent_dark": "#357abd",
-                "success": "#5cb85c",
-                "warning": "#f0ad4e",
-                "danger": "#d9534f",
-                "sidebar": "#e0e0e0",
-                "panel": "#ffffff",
-                "border": "#cccccc",
-                "text_bg": "#ffffff",
-                "button": "#4a90e2",
-                "button_hover": "#357abd",
-            },
-            "Dracula": {
-                "bg": "#282a36",
-                "fg": "#f8f8f2",
-                "accent": "#bd93f9",
-                "accent_dark": "#9d73d9",
-                "success": "#50fa7b",
-                "warning": "#f1fa8c",
-                "danger": "#ff5555",
-                "sidebar": "#1e1f28",
-                "panel": "#44475a",
-                "border": "#6272a4",
-                "text_bg": "#1e1f28",
-                "button": "#bd93f9",
-                "button_hover": "#9d73d9",
-            },
-            "Nord": {
-                "bg": "#2e3440",
-                "fg": "#eceff4",
-                "accent": "#88c0d0",
-                "accent_dark": "#5e81ac",
-                "success": "#a3be8c",
-                "warning": "#ebcb8b",
-                "danger": "#bf616a",
-                "sidebar": "#3b4252",
-                "panel": "#434c5e",
-                "border": "#4c566a",
-                "text_bg": "#2e3440",
-                "button": "#88c0d0",
-                "button_hover": "#5e81ac",
-            },
-            "Monokai": {
-                "bg": "#272822",
-                "fg": "#f8f8f2",
-                "accent": "#66d9ef",
-                "accent_dark": "#46b9cf",
-                "success": "#a6e22e",
-                "warning": "#e6db74",
-                "danger": "#f92672",
-                "sidebar": "#1e1f1c",
-                "panel": "#3e3d32",
-                "border": "#75715e",
-                "text_bg": "#1e1f1c",
-                "button": "#66d9ef",
-                "button_hover": "#46b9cf",
-            },
-        }
+        self.themes = get_default_themes()
 
-        # Current theme and font settings
+        self._init_default_theme_and_fonts()
+        self._load_ui_preferences()
+        self.setup_styles()
+
+        self._init_empty_adventure()
+        self._init_file_state()
+        self._init_recent_and_play_state()
+        self._init_modding_state()
+        self._init_widget_refs()
+
+        self._ensure_mod_root()
+        self._load_mod_state()
+        self.setup_ui()
+        self.new_adventure()
+
+    def _init_default_theme_and_fonts(self):
         self.current_theme = "Dark"
         self.colors = self.themes[self.current_theme]
         self.current_font_family = "Segoe UI"
@@ -113,13 +79,7 @@ class AdventureIDE:
         self.editor_font_family = "Consolas"
         self.editor_font_size = 11
 
-        # Load persisted UI preferences (theme + fonts)
-        self._load_ui_preferences()
-
-        # Configure dark theme
-        self.setup_styles()
-
-        # Current adventure data
+    def _init_empty_adventure(self):
         self.adventure = {
             "title": "New Adventure",
             "author": "",
@@ -131,10 +91,11 @@ class AdventureIDE:
             "effects": [],
         }
 
+    def _init_file_state(self):
         self.current_file = None
         self.modified = False
 
-        # Recent files and quick status state
+    def _init_recent_and_play_state(self):
         self.recent_files = self._load_recent_files()
         self.recent_list_container = None
         self.validation_badge_var = tk.StringVar(value="Validation: —")
@@ -144,6 +105,8 @@ class AdventureIDE:
         self.game_instance = None
         self.game_running = False
         self.point_and_click = None
+
+    def _init_modding_state(self):
         self.mod_root = Path("mods")
         self.mod_state_path = Path("config/modding_state.json")
         self.mod_catalog = []
@@ -156,7 +119,7 @@ class AdventureIDE:
         self.mod_toggle_button = None
         self.mod_view_button = None
 
-        # Widget references populated during UI construction
+    def _init_widget_refs(self):  # pylint: disable=too-many-statements
         self.notebook = None
         self.status_bar = None
         self.game_output = None
@@ -211,11 +174,6 @@ class AdventureIDE:
         self.hotspot_value_var = None
         self.hotspot_tooltip_var = None
         self._suppress_mode_change = False
-
-        self._ensure_mod_root()
-        self._load_mod_state()
-        self.setup_ui()
-        self.new_adventure()
 
     def setup_styles(self):
         """Configure modern ttk styles"""
@@ -327,185 +285,29 @@ class AdventureIDE:
 
     def setup_ui(self):
         """Create the main UI"""
-        # Menu bar with dark theme
-        menubar = tk.Menu(
-            self.root,
-            bg=self.colors["sidebar"],
-            fg=self.colors["fg"],
-            activebackground=self.colors["accent"],
-        )
-        self.root.config(menu=menubar)
-
-        # File menu
-        file_menu = tk.Menu(
-            menubar,
-            tearoff=0,
-            bg=self.colors["panel"],
-            fg=self.colors["fg"],
-            activebackground=self.colors["accent"],
-        )
-        menubar.add_cascade(label="📁 File", menu=file_menu)
-        file_menu.add_command(
-            label="🆕 New Adventure", command=self.new_adventure, accelerator="Ctrl+N"
-        )
-        file_menu.add_command(
-            label="📂 Open...", command=self.open_adventure, accelerator="Ctrl+O"
-        )
-        file_menu.add_command(
-            label="💾 Save", command=self.save_adventure, accelerator="Ctrl+S"
-        )
-        file_menu.add_command(label="💾 Save As...", command=self.save_adventure_as)
-        file_menu.add_separator()
-        file_menu.add_command(label="🚪 Exit", command=self.quit_ide)
-
-        # Tools menu
-        tools_menu = tk.Menu(
-            menubar,
-            tearoff=0,
-            bg=self.colors["panel"],
-            fg=self.colors["fg"],
-            activebackground=self.colors["accent"],
-        )
-        menubar.add_cascade(label="🛠️ Tools", menu=tools_menu)
-        tools_menu.add_command(
-            label="▶️ Test Adventure", command=self.test_adventure, accelerator="F5"
-        )
-        tools_menu.add_command(
-            label="✓ Validate Adventure", command=self.validate_adventure
-        )
-        tools_menu.add_command(
-            label="🔎 Verify Game (Detailed)", command=self.verify_game
-        )
-        # DSK import functionality removed
-
-        # View menu
-        view_menu = tk.Menu(
-            menubar,
-            tearoff=0,
-            bg=self.colors["panel"],
-            fg=self.colors["fg"],
-            activebackground=self.colors["accent"],
-        )
-        menubar.add_cascade(label="👁️ View", menu=view_menu)
-
-        # Theme submenu
-        theme_menu = tk.Menu(
-            view_menu,
-            tearoff=0,
-            bg=self.colors["panel"],
-            fg=self.colors["fg"],
-            activebackground=self.colors["accent"],
-        )
-        view_menu.add_cascade(label="🎨 Theme", menu=theme_menu)
-        for theme_name in self.themes:
-            theme_menu.add_command(
-                label=theme_name, command=lambda t=theme_name: self.change_theme(t)
-            )
-
-        # Font submenu
-        font_menu = tk.Menu(
-            view_menu,
-            tearoff=0,
-            bg=self.colors["panel"],
-            fg=self.colors["fg"],
-            activebackground=self.colors["accent"],
-        )
-        view_menu.add_cascade(label="🔤 Font", menu=font_menu)
-
-        # Font family submenu
-        font_family_menu = tk.Menu(
-            font_menu,
-            tearoff=0,
-            bg=self.colors["panel"],
-            fg=self.colors["fg"],
-            activebackground=self.colors["accent"],
-        )
-        font_menu.add_cascade(label="Font Family", menu=font_family_menu)
-        for family in [
-            "Segoe UI",
-            "Arial",
-            "Helvetica",
-            "Verdana",
-            "Tahoma",
-            "Calibri",
-        ]:
-            font_family_menu.add_command(
-                label=family, command=lambda f=family: self.change_font_family(f)
-            )
-
-        # Font size submenu
-        font_size_menu = tk.Menu(
-            font_menu,
-            tearoff=0,
-            bg=self.colors["panel"],
-            fg=self.colors["fg"],
-            activebackground=self.colors["accent"],
-        )
-        font_menu.add_cascade(label="Font Size", menu=font_size_menu)
-        for size in [8, 9, 10, 11, 12, 14, 16]:
-            font_size_menu.add_command(
-                label=f"{size}pt", command=lambda s=size: self.change_font_size(s)
-            )
-
-        # Editor font submenu
-        editor_font_menu = tk.Menu(
-            font_menu,
-            tearoff=0,
-            bg=self.colors["panel"],
-            fg=self.colors["fg"],
-            activebackground=self.colors["accent"],
-        )
-        font_menu.add_cascade(label="Editor Font", menu=editor_font_menu)
-        for family in [
-            "Consolas",
-            "Courier New",
-            "Monaco",
-            "Menlo",
-            "Source Code Pro",
-            "Fira Code",
-        ]:
-            editor_font_menu.add_command(
-                label=family, command=lambda f=family: self.change_editor_font(f)
-            )
-
-        view_menu.add_separator()
-        view_menu.add_command(
-            label="↺ Reset to Defaults", command=self.reset_view_settings
-        )
-
-        # Help menu
-        help_menu = tk.Menu(
-            menubar,
-            tearoff=0,
-            bg=self.colors["panel"],
-            fg=self.colors["fg"],
-            activebackground=self.colors["accent"],
-        )
-        menubar.add_cascade(label="❓ Help", menu=help_menu)
-        help_menu.add_command(label="📖 Quick Start Guide", command=self.show_help)
-        help_menu.add_command(label="ℹ️ About", command=self.show_about)
-
-        # Keyboard shortcuts
-        self.root.bind("<Control-n>", lambda e: self.new_adventure())
-        self.root.bind("<Control-o>", lambda e: self.open_adventure())
-        self.root.bind("<Control-s>", lambda e: self.save_adventure())
-        self.root.bind("<F5>", lambda e: self.test_adventure())
+        menubar = self._create_menubar()
+        self._add_file_menu(menubar)
+        self._add_tools_menu(menubar)
+        self._add_view_menu(menubar)
+        self._add_help_menu(menubar)
+        self._bind_ide_shortcuts()
 
         # Main container
         main_frame = ttk.Frame(self.root, padding="10")
-        main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        main_frame.grid(row=0, column=0, sticky="nsew")
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
 
         # Notebook for tabs
         self.notebook = ttk.Notebook(main_frame)
         self.notebook.grid(
-            row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 10)
+            row=0, column=0, sticky="nsew", pady=(0, 10)
         )
         main_frame.columnconfigure(0, weight=1)
         main_frame.rowconfigure(0, weight=1)
 
         # Create tabs - Play tab first for easy access
+        # Ensure self.notebook is initialized before creating tabs
         self.create_play_tab()
         self.create_info_tab()
         self.create_rooms_tab()
@@ -516,7 +318,7 @@ class AdventureIDE:
 
         # Status bar with color
         status_frame = ttk.Frame(main_frame)
-        status_frame.grid(row=1, column=0, sticky=(tk.W, tk.E))
+        status_frame.grid(row=1, column=0, sticky="we")
         self.status_bar = tk.Label(
             status_frame,
             text="✓ Ready",
@@ -529,6 +331,178 @@ class AdventureIDE:
             pady=5,
         )
         self.status_bar.pack(fill=tk.BOTH, expand=True)
+
+    def _create_menubar(self) -> tk.Menu:
+        menubar = tk.Menu(
+            self.root,
+            bg=self.colors["sidebar"],
+            fg=self.colors["fg"],
+            activebackground=self.colors["accent"],
+        )
+        self.root.config(menu=menubar)
+        return menubar
+
+    def _add_file_menu(self, menubar: tk.Menu):
+        file_menu = tk.Menu(
+            menubar,
+            tearoff=0,
+            bg=self.colors["panel"],
+            fg=self.colors["fg"],
+            activebackground=self.colors["accent"],
+        )
+        menubar.add_cascade(label="📁 File", menu=file_menu)
+        file_menu.add_command(
+            label="🆕 New Adventure",
+            command=self.new_adventure,
+            accelerator="Ctrl+N",
+        )
+        file_menu.add_command(
+            label="📂 Open...",
+            command=self.open_adventure,
+            accelerator="Ctrl+O",
+        )
+        file_menu.add_command(
+            label="💾 Save",
+            command=self.save_adventure,
+            accelerator="Ctrl+S",
+        )
+        file_menu.add_command(label="💾 Save As...", command=self.save_adventure_as)
+        file_menu.add_separator()
+        file_menu.add_command(label="🚪 Exit", command=self.quit_ide)
+
+    def _add_tools_menu(self, menubar: tk.Menu):
+        tools_menu = tk.Menu(
+            menubar,
+            tearoff=0,
+            bg=self.colors["panel"],
+            fg=self.colors["fg"],
+            activebackground=self.colors["accent"],
+        )
+        menubar.add_cascade(label="🛠️ Tools", menu=tools_menu)
+        tools_menu.add_command(
+            label="▶️ Test Adventure",
+            command=self.test_adventure,
+            accelerator="F5",
+        )
+        tools_menu.add_command(label="✓ Validate Adventure", command=self.validate_adventure)
+        tools_menu.add_command(label="🔎 Verify Game (Detailed)", command=self.verify_game)
+        tools_menu.add_command(label="🖥️ Play in IDE", command=self.play_in_ide_console)
+        tools_menu.add_command(
+            label="🧭 Command Palette…",
+            command=self.open_command_palette,
+            accelerator="Ctrl+Shift+P",
+        )
+        tools_menu.add_command(label="🔧 Auto-Fix Common Issues", command=self.auto_fix_game)
+        tools_menu.add_separator()
+        tools_menu.add_command(
+            label="📋 Strict Schema Validation",
+            command=self.strict_schema_validation,
+        )
+        tools_menu.add_separator()
+        tools_menu.add_command(label="📊 Graph Analytics", command=self.show_graph_analytics)
+        tools_menu.add_command(label="🖼️ Asset Browser", command=self.show_asset_browser)
+        tools_menu.add_command(label="📦 Mod Sandbox", command=self.show_mod_sandbox)
+        tools_menu.add_command(label="📝 Snippets & Templates", command=self.show_snippets_menu)
+
+    def _add_view_menu(self, menubar: tk.Menu):
+        view_menu = create_styled_menu(menubar, self.colors, tearoff=0)
+        menubar.add_cascade(label="👁️ View", menu=view_menu)
+
+        theme_menu = create_styled_menu(view_menu, self.colors, tearoff=0)
+        view_menu.add_cascade(label="🎨 Theme", menu=theme_menu)
+        for theme_name in self.themes:
+            theme_menu.add_command(
+                label=theme_name,
+                command=cast(
+                    Callable[[], Any],
+                    partial(self.change_theme, theme_name),
+                ),
+            )
+
+        font_menu = create_styled_menu(view_menu, self.colors, tearoff=0)
+        view_menu.add_cascade(label="🔤 Font", menu=font_menu)
+
+        self._add_font_family_menu(font_menu)
+        self._add_font_size_menu(font_menu)
+        self._add_editor_font_menu(font_menu)
+
+        view_menu.add_separator()
+        view_menu.add_command(label="↺ Reset to Defaults", command=self.reset_view_settings)
+
+    def _add_font_family_menu(self, font_menu: tk.Menu):
+        font_family_menu = create_styled_menu(font_menu, self.colors, tearoff=0)
+        font_menu.add_cascade(label="Font Family", menu=font_family_menu)
+        add_font_family_commands(font_family_menu, self.change_font_family)
+
+    def _add_font_size_menu(self, font_menu: tk.Menu):
+        font_size_menu = create_styled_menu(font_menu, self.colors, tearoff=0)
+        font_menu.add_cascade(label="Font Size", menu=font_size_menu)
+        add_font_size_commands(
+            font_size_menu,
+            self.change_font_size,
+            sizes=[8, 9, 10, 11, 12, 14, 16],
+        )
+
+    def _add_editor_font_menu(self, font_menu: tk.Menu):
+        editor_font_menu = create_styled_menu(font_menu, self.colors, tearoff=0)
+        font_menu.add_cascade(label="Editor Font", menu=editor_font_menu)
+        for family in [
+            "Consolas",
+            "Courier New",
+            "Monaco",
+            "Menlo",
+            "Source Code Pro",
+            "Fira Code",
+        ]:
+            editor_font_menu.add_command(
+                label=family,
+                command=cast(
+                    Callable[[], Any],
+                    partial(self.change_editor_font, family),
+                ),
+            )
+
+    def _add_help_menu(self, menubar: tk.Menu):
+        help_menu = create_styled_menu(menubar, self.colors, tearoff=0)
+        menubar.add_cascade(label="❓ Help", menu=help_menu)
+        help_menu.add_command(label="📖 Quick Start Guide", command=self.show_help)
+        help_menu.add_command(label="ℹ️ About", command=self.show_about)
+
+    def _bind_ide_shortcuts(self):
+        def _on_palette(_e: Any) -> None:
+            self.open_command_palette()
+
+        def _on_test(_e: Any) -> None:
+            self.test_adventure()
+
+        def _on_verify(_e: Any) -> None:
+            self.verify_game()
+
+        def _on_autofix(_e: Any) -> None:
+            self.auto_fix_game()
+
+        def _on_strict_validate(_e: Any) -> None:
+            self.strict_schema_validation()
+
+        def _on_new(_e: Any) -> None:
+            self.new_adventure()
+
+        def _on_open(_e: Any) -> None:
+            self.open_adventure()
+
+        def _on_save(_e: Any) -> None:
+            self.save_adventure()
+
+        self.root.bind_all("<Control-Shift-Key-P>", _on_palette)
+        self.root.bind_all("<F5>", _on_test)
+        self.root.bind_all("<Control-Shift-Key-V>", _on_verify)
+        self.root.bind_all("<Control-Shift-Key-F>", _on_autofix)
+        self.root.bind_all("<Control-Shift-Key-S>", _on_strict_validate)
+
+        self.root.bind("<Control-n>", _on_new)
+        self.root.bind("<Control-o>", _on_open)
+        self.root.bind("<Control-s>", _on_save)
+        self.root.bind("<F5>", _on_test)
 
     def create_info_tab(self):
         """Adventure info tab with modern design"""
@@ -655,6 +629,9 @@ class AdventureIDE:
         ttk.Button(btn_frame, text="Delete", command=self.delete_room).pack(
             side=tk.LEFT, padx=2
         )
+        ttk.Button(btn_frame, text="Map", command=self.show_reachability_map).pack(
+            side=tk.LEFT, padx=2
+        )
 
         # Right panel - room editor
         right_panel = ttk.Frame(frame)
@@ -717,7 +694,7 @@ class AdventureIDE:
             row=6, column=1, sticky=tk.E, pady=10
         )
 
-    def create_items_tab(self):
+    def create_items_tab(self):  # pylint: disable=too-many-statements
         """Items editor tab"""
         frame = ttk.Frame(self.notebook, padding="10")
         self.notebook.add(frame, text="⚔️ Items")
@@ -823,7 +800,7 @@ class AdventureIDE:
             row=row, column=1, sticky=tk.E, pady=10
         )
 
-    def create_monsters_tab(self):
+    def create_monsters_tab(self):  # pylint: disable=too-many-statements
         """Monsters editor tab"""
         frame = ttk.Frame(self.notebook, padding="10")
         self.notebook.add(frame, text="👾 Monsters")
@@ -1255,7 +1232,7 @@ class AdventureIDE:
         if cache_entry and cache_entry["mtime"] == mod["mtime"]:
             return cache_entry["data"]
 
-        from sagacraft.tools.modding import ModdingSystem
+        from sagacraft.tools.modding import ModdingSystem  # pylint: disable=import-outside-toplevel
         summary = {"hooks": [], "commands": [], "error": None}
         sandbox = ModdingSystem()
         try:
@@ -1420,7 +1397,7 @@ class AdventureIDE:
             messages.append("Modding system not available for this adventure.")
             return messages
 
-        from sagacraft.tools.modding import ModdingSystem
+        from sagacraft.tools.modding import ModdingSystem  # pylint: disable=import-outside-toplevel
         self.game_instance.modding = ModdingSystem(engine=self.game_instance)
 
         for relative_path in sorted(self.enabled_mods):
@@ -1462,7 +1439,7 @@ class AdventureIDE:
             command=self.show_json_diff,
         ).pack(side=tk.LEFT, padx=5)
 
-    def create_play_tab(self):
+    def create_play_tab(self):  # pylint: disable=too-many-statements,too-many-locals
         """Interactive play tab with modern design"""
         frame = ttk.Frame(self.notebook, padding="20")
         self.notebook.add(frame, text="▶️ Play")
@@ -1518,7 +1495,11 @@ class AdventureIDE:
             bd=5,
         )
         self.command_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 10))
-        self.command_entry.bind("<Return>", lambda e: self.send_command())
+
+        def _on_command_enter(_event):
+            self.send_command()
+
+        self.command_entry.bind("<Return>", _on_command_enter)
 
         send_btn = ttk.Button(
             cmd_frame, text="➤ Send", command=self.send_command, style="Success.TButton"
@@ -1689,7 +1670,7 @@ class AdventureIDE:
         self.current_file = filename
         return self.save_adventure()
 
-    def _load_adventure_file(
+    def _load_adventure_file(  # pylint: disable=too-many-arguments
         self,
         filename: str,
         *,
@@ -1774,11 +1755,51 @@ class AdventureIDE:
         """Refresh the rooms listbox"""
         self.rooms_listbox.delete(0, tk.END)
         for room in self.adventure["rooms"]:
-            self.rooms_listbox.insert(tk.END, f"#{room['id']}: {room['name']}")
+            badge = self._get_room_validation_badge(room)
+            self.rooms_listbox.insert(tk.END, f"#{room['id']}: {room['name']} {badge}")
+
+    def _get_room_validation_badge(self, room: dict) -> str:
+        """Return status badge for a room (error/warning/ok)."""
+        errors = []
+        warnings = []
+
+        # Check required fields
+        if not room.get("name", "").strip():
+            errors.append("missing_name")
+        if not room.get("description", "").strip():
+            warnings.append("missing_desc")
+
+        # Check exits point to valid rooms
+        room_ids = {r.get("id") for r in self.adventure.get("rooms", [])}
+        exits = room.get("exits", {})
+        if isinstance(exits, dict):
+            for direction, target in exits.items():
+                if isinstance(target, int) and target not in room_ids:
+                    errors.append(f"bad_exit_{direction}")
+
+        # Check for missing reverse exits
+        for direction, target in exits.items():
+            if not isinstance(target, int) or target not in room_ids:
+                continue
+            rev = self._reverse_direction(direction)
+            if rev:
+                target_room = next(
+                    (r for r in self.adventure.get("rooms", [])
+                     if r.get("id") == target),
+                    None
+                )
+                if target_room and rev not in target_room.get("exits", {}):
+                    warnings.append(f"no_reverse_{direction}")
+
+        if errors:
+            return "❌"
+        if warnings:
+            return "⚠️"
+        return "✅"
 
     def add_room(self):
         """Add a new room"""
-        new_id = max([r["id"] for r in self.adventure["rooms"]], default=0) + 1
+        new_id = max((r["id"] for r in self.adventure["rooms"]), default=0) + 1
         room = {
             "id": new_id,
             "name": f"Room {new_id}",
@@ -1875,7 +1896,7 @@ class AdventureIDE:
 
     def add_item(self):
         """Add a new item"""
-        new_id = max([i["id"] for i in self.adventure["items"]], default=0) + 1
+        new_id = max((i["id"] for i in self.adventure["items"]), default=0) + 1
         item = {
             "id": new_id,
             "name": f"Item {new_id}",
@@ -1951,7 +1972,7 @@ class AdventureIDE:
 
     def add_monster(self):
         """Add a new monster"""
-        new_id = max([m["id"] for m in self.adventure["monsters"]], default=0) + 1
+        new_id = max((m["id"] for m in self.adventure["monsters"]), default=0) + 1
         monster = {
             "id": new_id,
             "name": f"Monster {new_id}",
@@ -2092,6 +2113,155 @@ class AdventureIDE:
         if self.game_running:
             self.update_status("Testing adventure in IDE play tab")
 
+    def play_in_ide_console(self):  # pylint: disable=too-many-statements,too-many-locals
+        """Play adventure in a dedicated console window with command input."""
+        self.collect_adventure_data()
+
+        console = tk.Toplevel(self.root)
+        console.title("Play in IDE - Console")
+        console.geometry("700x600")
+        console.configure(bg=self.colors.get("panel", "#222"))
+
+        # Top frame with options
+        options_frame = ttk.Frame(console)
+        options_frame.pack(fill=tk.X, padx=10, pady=8)
+
+        ttk.Label(options_frame, text="RNG Seed:").pack(side=tk.LEFT, padx=5)
+        seed_var = tk.IntVar(value=42)
+        seed_spin = ttk.Spinbox(options_frame, from_=0, to=999999, textvariable=seed_var, width=8)
+        seed_spin.pack(side=tk.LEFT, padx=5)
+
+        deterministic_var = tk.BooleanVar(value=True)
+        ttk.Checkbutton(
+            options_frame,
+            text="Deterministic playthrough",
+            variable=deterministic_var
+        ).pack(side=tk.LEFT, padx=5)
+
+        # Output area
+        output_frame = ttk.Frame(console)
+        output_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+
+        output = scrolledtext.ScrolledText(
+            output_frame,
+            wrap=tk.WORD,
+            bg=self.colors.get("text_bg", "#1a1a1a"),
+            fg=self.colors.get("fg", "#eee"),
+            height=20
+        )
+        output.pack(fill=tk.BOTH, expand=True)
+
+        # Input area
+        input_frame = ttk.Frame(console)
+        input_frame.pack(fill=tk.X, padx=10, pady=5)
+
+        ttk.Label(input_frame, text="Command:").pack(side=tk.LEFT, padx=5)
+        cmd_var = tk.StringVar()
+        cmd_entry = ttk.Entry(input_frame, textvariable=cmd_var, width=50)
+        cmd_entry.pack(side=tk.LEFT, padx=5, fill=tk.X, expand=True)
+
+        # Game instance holder
+        game_state = {"game": None, "output_capture": None}
+
+        def start_game() -> None:
+            """Initialize the game in the console."""
+            try:
+                output.delete(1.0, tk.END)
+
+                # Write temp adventure
+                adv_path = Path("adventures")
+                adv_path.mkdir(parents=True, exist_ok=True)
+                tmp = adv_path / "_console_play.json"
+                with open(tmp, "w", encoding="utf-8") as f:
+                    json.dump(self.adventure, f, indent=2)
+
+                # Load engine
+                engine_path = (
+                    Path(__file__).parent.parent.parent.parent / "sagacraft_engine.py"
+                )
+                spec = importlib.util.spec_from_file_location("engine", engine_path)
+                if spec is None or spec.loader is None:
+                    output.insert(tk.END, "❌ Could not load engine.\n")
+                    return
+
+                mod = importlib.util.module_from_spec(spec)
+                try:
+                    spec.loader.exec_module(mod)
+                except Exception as e:  # pylint: disable=broad-exception-caught
+                    output.insert(tk.END, f"❌ Engine import error: {e}\n")
+                    return
+
+                # Get game class
+                game_cls = (
+                    getattr(mod, "ExtendedAdventureGame", None)
+                    or getattr(mod, "EnhancedAdventureGame", None)
+                    or getattr(mod, "AdventureGame", None)
+                )
+                if game_cls is None or not callable(game_cls):
+                    output.insert(tk.END, "❌ Engine missing game class.\n")
+                    return
+
+                # Create game instance with seeded RNG if requested
+                if deterministic_var.get():
+                    random.seed(seed_var.get())
+
+                game_ctor: Callable[[str], Any] = cast(Callable[[str], Any], game_cls)
+                game = game_ctor(str(tmp))  # pylint: disable=not-callable
+                game.load_adventure()
+                game_state["game"] = game
+
+                title = self.adventure.get("title", "Untitled")
+                output.insert(tk.END, f"🎮 Adventure loaded: {title}\n")
+                seed_str = f"{seed_var.get()} (deterministic={deterministic_var.get()})"
+                output.insert(tk.END, f"RNG Seed: {seed_str}\n")
+                output.insert(tk.END, "=" * 60 + "\n\n")
+
+                # Run initial look
+                output.insert(tk.END, "[Initial state]\n")
+                game.state.current_room = game.adventure.get("start_room", 1)
+                look_out = game.look()
+                output.insert(tk.END, look_out + "\n\n")
+
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                output.insert(tk.END, f"❌ Error starting game: {e}\n")
+
+        def send_command() -> None:
+            """Send a command to the game."""
+            cmd = cmd_var.get().strip()
+            if not cmd or not game_state["game"]:
+                return
+
+            try:
+                output.insert(tk.END, f"> {cmd}\n")
+                result = game_state["game"].handle_input(cmd)
+                output.insert(tk.END, result + "\n\n")
+                output.see(tk.END)
+                cmd_var.set("")
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                output.insert(tk.END, f"❌ Error: {e}\n")
+
+        # Start button
+        start_btn = ttk.Button(options_frame, text="Start Game", command=start_game)
+        start_btn.pack(side=tk.RIGHT, padx=5)
+
+        # Bind enter key to send command
+
+        def _on_console_enter(_event):
+            send_command()
+
+        cmd_entry.bind("<Return>", _on_console_enter)
+        send_btn = ttk.Button(input_frame, text="Send", command=send_command)
+        send_btn.pack(side=tk.LEFT, padx=5)
+
+        output.insert(tk.END, "Click 'Start Game' to begin. Then type commands below.\n")
+        help_text = (
+            "Commands: look, go <direction>, take <item>, "
+            "drop <item>, examine <thing>, etc.\n\n"
+        )
+        output.insert(tk.END, help_text)
+        output.configure(state=tk.DISABLED)
+
+    # pylint: disable=too-many-statements,too-many-locals,too-many-branches
     def validate_adventure(self, silent: bool = False):
         """Validate adventure data and update the status badge.
 
@@ -2113,10 +2283,17 @@ class AdventureIDE:
         if any(rid is None for rid in room_ids):
             errors.append("Every room must have an 'id'")
         # Duplicate room ids
-        seen = set()
-        dupes = {rid for rid in room_ids if rid in seen or seen.add(rid)}
+        seen: set[int] = set()
+        dupes: set[int] = set()
+        for rid in room_ids:
+            if not isinstance(rid, int):
+                continue
+            if rid in seen:
+                dupes.add(rid)
+            else:
+                seen.add(rid)
         if dupes:
-            errors.append(f"Duplicate room id(s): {sorted(list(dupes))}")
+            errors.append(f"Duplicate room id(s): {sorted(dupes)}")
 
         room_id_set = {rid for rid in room_ids if rid is not None}
 
@@ -2130,25 +2307,28 @@ class AdventureIDE:
             exits = dict(room.get("exits", {}))
             for direction, target in exits.items():
                 if target not in room_id_set and target != 0:
-                    errors.append(
-                        f"Room {room.get('id')} has exit '{direction}' to non-existent room {target}"
+                    room_id = room.get("id")
+                    error_msg = (
+                        f"Room {room_id} has exit '{direction}' "
+                        f"to non-existent room {target}"
                     )
+                    errors.append(error_msg)
 
         # Items located in valid rooms, if any
         for item in self.adventure.get("items", []):
             loc = item.get("location")
             if isinstance(loc, int) and loc not in room_id_set:
-                errors.append(
-                    f"Item {item.get('id', item.get('name', 'unknown'))} references missing room {loc}"
-                )
+                item_name = item.get("id", item.get("name", "unknown"))
+                error_msg = f"Item {item_name} references missing room {loc}"
+                errors.append(error_msg)
 
         # Monsters placed in valid rooms, if any
         for mon in self.adventure.get("monsters", []):
             mroom = mon.get("room")
             if isinstance(mroom, int) and mroom not in room_id_set:
-                errors.append(
-                    f"Monster {mon.get('id', mon.get('name', 'unknown'))} references missing room {mroom}"
-                )
+                mon_name = mon.get("id", mon.get("name", "unknown"))
+                error_msg = f"Monster {mon_name} references missing room {mroom}"
+                errors.append(error_msg)
 
         # Update UI badges and optionally show dialog
         if errors:
@@ -2169,14 +2349,33 @@ class AdventureIDE:
         # Add simulated playthrough section
         play = self._simulate_playthrough(max_steps=200)
         report["playthrough"] = play
+
+        # Check if mods are active and analyze impact
+        active_mods = self._get_active_mods()
+        if active_mods:
+            report["mods_active"] = active_mods
+            # Optionally add mod analysis to suggestions
+            suggestions = report.get("suggestions", [])
+            mod_str = ", ".join(active_mods)
+            mod_msg = (
+                f"Mods active: {mod_str} - "
+                "verify game behavior with all mods enabled"
+            )
+            suggestions.append(mod_msg)
+            report["suggestions"] = suggestions
+
         errors = report.get("errors", [])
         warnings = report.get("warnings", [])
 
         # Update badges to reflect verification results
         if errors:
-            self.validation_badge_var.set(f"Validation: ⚠ {len(errors)} error(s), {len(warnings)} warning(s)")
+            err_count = len(errors)
+            warn_count = len(warnings)
+            status = f"Validation: ⚠ {err_count} error(s), {warn_count} warning(s)"
+            self.validation_badge_var.set(status)
         elif warnings:
-            self.validation_badge_var.set(f"Validation: ⚠ {len(warnings)} warning(s)")
+            warn_count = len(warnings)
+            self.validation_badge_var.set(f"Validation: ⚠ {warn_count} warning(s)")
         else:
             self.validation_badge_var.set("Validation: ✅ Clean")
 
@@ -2184,17 +2383,263 @@ class AdventureIDE:
         text = self._format_verification_report(report)
         self._show_text_report("Game Verification Report", text)
 
+    def open_command_palette(self):
+        """Quick action launcher for common IDE tasks."""
+        palette = tk.Toplevel(self.root)
+        palette.title("Command Palette")
+        palette.geometry("420x320")
+        palette.configure(bg=self.colors.get("panel", "#222"))
+
+        label_text = "Type to filter commands:"
+        tk.Label(
+            palette,
+            text=label_text,
+            bg=self.colors.get("panel", "#222"),
+            fg=self.colors.get("fg", "#eee"),
+        ).pack(pady=6)
+        query = tk.StringVar()
+        entry = ttk.Entry(palette, textvariable=query)
+        entry.pack(fill=tk.X, padx=10)
+
+        commands = [
+            ("Verify Game (Detailed)", self.verify_game),
+            ("Validate Adventure", self.validate_adventure),
+            ("Auto-Fix Common Issues", self.auto_fix_game),
+            ("Strict Schema Validation", self.strict_schema_validation),
+            ("Play Adventure", self.test_adventure),
+        ]
+
+        frame = tk.Frame(palette, bg=self.colors.get("panel", "#222"))
+        frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=8)
+        listbox = tk.Listbox(frame)
+        listbox.pack(fill=tk.BOTH, expand=True)
+
+        def refresh():
+            term = query.get().lower().strip()
+            listbox.delete(0, tk.END)
+            for label, _ in commands:
+                if not term or term in label.lower():
+                    listbox.insert(tk.END, label)
+
+        def run_selected(_event=None):
+            sel = listbox.curselection()
+            if not sel:
+                return
+            label = listbox.get(sel[0])
+            for cmd_label, fn in commands:
+                if cmd_label == label:
+                    try:
+                        fn()
+                    finally:
+                        palette.destroy()
+                    break
+
+        entry.bind("<KeyRelease>", lambda _e: refresh())
+        listbox.bind("<Double-Button-1>", run_selected)
+        listbox.bind("<Return>", run_selected)
+        refresh()
+        entry.focus_set()
+
+        ttk.Button(palette, text="Run", command=run_selected).pack(pady=6)
+
+    def auto_fix_game(self):
+        """Apply automatic fixes and report what changed."""
+        self.collect_adventure_data()
+
+        fixes = []
+
+        # 1. Add reverse exits
+        rev_count = self._add_reverse_exits()
+        if rev_count > 0:
+            fixes.append(f"Added {rev_count} reverse exit(s)")
+
+        # 2. Normalize direction aliases
+        norm_count = self._normalize_directions()
+        if norm_count > 0:
+            fixes.append(f"Normalized {norm_count} direction alias(es)")
+
+        # 3. Fill missing names/descriptions
+        fill_count = self._fill_placeholders()
+        if fill_count > 0:
+            fixes.append(f"Filled {fill_count} missing name(s)/description(s)")
+
+        if fixes:
+            self.modified = True
+            self.load_adventure_to_ui()
+            messagebox.showinfo("Auto-Fix Complete", "\n".join(fixes))
+        else:
+            messagebox.showinfo("Auto-Fix", "No fixes needed!")
+
+    def _add_reverse_exits(self) -> int:
+        """Add missing reverse exits for reciprocity. Returns count of added exits."""
+        count = 0
+        rooms = self.adventure.get("rooms", [])
+        room_map = {r.get("id"): r for r in rooms if isinstance(r, dict)}
+
+        for r in rooms:
+            if not isinstance(r, dict):
+                continue
+            rid = r.get("id")
+            exits = r.get("exits", {})
+            if not isinstance(exits, dict):
+                continue
+            for direction, target in list(exits.items()):
+                if not isinstance(target, int) or target not in room_map:
+                    continue
+                rev = self._reverse_direction(direction)
+                if not rev:
+                    continue
+                target_room = room_map[target]
+                target_exits = target_room.get("exits", {})
+                if not isinstance(target_exits, dict):
+                    target_room["exits"] = {}
+                    target_exits = target_room["exits"]
+                if target_exits.get(rev) != rid:
+                    target_exits[rev] = rid
+                    count += 1
+        return count
+
+    def _normalize_directions(self) -> int:
+        """Convert direction aliases to full names. Returns count."""
+        aliases = {
+            "n": "north", "s": "south", "e": "east", "w": "west",
+            "ne": "northeast", "nw": "northwest", "se": "southeast", "sw": "southwest",
+            "u": "up", "d": "down"
+        }
+        count = 0
+        for r in self.adventure.get("rooms", []):
+            if not isinstance(r, dict):
+                continue
+            exits = r.get("exits", {})
+            if not isinstance(exits, dict):
+                continue
+            for old_key in list(exits.keys()):
+                if old_key.lower() in aliases:
+                    new_key = aliases[old_key.lower()]
+                    if new_key not in exits:
+                        exits[new_key] = exits.pop(old_key)
+                        count += 1
+        return count
+
+    def _fill_placeholders(self) -> int:
+        """Fill missing names/descriptions with placeholders. Returns count."""
+        count = 0
+        for r in self.adventure.get("rooms", []):
+            if not isinstance(r, dict):
+                continue
+            if not (r.get("name") or "").strip():
+                r["name"] = f"Room {r.get('id', '?')}"
+                count += 1
+            if not (r.get("description") or "").strip():
+                r["description"] = "A mysterious place."
+                count += 1
+        for it in self.adventure.get("items", []):
+            if not isinstance(it, dict):
+                continue
+            if not (it.get("name") or "").strip():
+                it["name"] = f"Item {it.get('id', '?')}"
+                count += 1
+            if not (it.get("description") or "").strip():
+                it["description"] = "An interesting object."
+                count += 1
+        for mon in self.adventure.get("monsters", []):
+            if not isinstance(mon, dict):
+                continue
+            if not (mon.get("name") or "").strip():
+                mon["name"] = f"Creature {mon.get('id', '?')}"
+                count += 1
+            if not (mon.get("description") or "").strip():
+                mon["description"] = "A mysterious being."
+                count += 1
+        return count
+
+    def strict_schema_validation(self):
+        """Run strict JSON schema validation and show detailed field-path errors."""
+        self.collect_adventure_data()
+        errors = self._strict_schema_check()
+
+        if errors:
+            text = "Strict Schema Validation Errors\n" + "=" * 60 + "\n\n"
+            for e in errors:
+                text += f"- {e}\n"
+            self._show_text_report("Strict Schema Validation", text)
+        else:
+            messagebox.showinfo("Strict Validation", "Adventure passes strict schema validation!")
+
+    def _strict_schema_check(self) -> list[str]:  # pylint: disable=too-many-branches
+        """Enforce strict schema rules with field paths."""
+        errors = []
+        adv = self.adventure
+
+        # Top level required fields
+        if "title" not in adv or not isinstance(adv.get("title"), str):
+            errors.append("Root: 'title' must be a non-empty string")
+        if "start_room" not in adv or not isinstance(adv.get("start_room"), int):
+            errors.append("Root: 'start_room' must be an integer")
+        if "rooms" not in adv or not isinstance(adv.get("rooms"), list):
+            errors.append("Root: 'rooms' must be a list")
+        else:
+            for i, r in enumerate(adv["rooms"]):
+                if not isinstance(r, dict):
+                    errors.append(f"rooms[{i}]: must be an object")
+                    continue
+                if "id" not in r or not isinstance(r.get("id"), int):
+                    errors.append(f"rooms[{i}]: 'id' must be an integer")
+                if "name" not in r or not isinstance(r.get("name"), str):
+                    errors.append(f"rooms[{i}]: 'name' must be a string")
+                if "description" not in r or not isinstance(r.get("description"), str):
+                    errors.append(f"rooms[{i}]: 'description' must be a string")
+                if "exits" not in r or not isinstance(r.get("exits"), dict):
+                    errors.append(f"rooms[{i}]: 'exits' must be an object/dict")
+                else:
+                    for k, v in r["exits"].items():
+                        if not isinstance(k, str):
+                            errors.append(f"rooms[{i}].exits: key '{k}' must be a string")
+                        if not isinstance(v, int):
+                            errors.append(f"rooms[{i}].exits.{k}: must be an integer room ID")
+
+        if "items" in adv:
+            if not isinstance(adv["items"], list):
+                errors.append("Root: 'items' must be a list")
+            else:
+                for i, it in enumerate(adv["items"]):
+                    if not isinstance(it, dict):
+                        errors.append(f"items[{i}]: must be an object")
+                        continue
+                    if "name" not in it or not isinstance(it.get("name"), str):
+                        errors.append(f"items[{i}]: 'name' must be a string")
+
+        if "monsters" in adv:
+            if not isinstance(adv["monsters"], list):
+                errors.append("Root: 'monsters' must be a list")
+            else:
+                for i, mon in enumerate(adv["monsters"]):
+                    if not isinstance(mon, dict):
+                        errors.append(f"monsters[{i}]: must be an object")
+                        continue
+                    if "name" not in mon or not isinstance(mon.get("name"), str):
+                        errors.append(f"monsters[{i}]: 'name' must be a string")
+
+        return errors
+
     def _reverse_direction(self, d: str) -> str | None:
         mapping = {
-            "north": "south", "south": "north",
-            "east": "west", "west": "east",
-            "northeast": "southwest", "southwest": "northeast",
-            "northwest": "southeast", "southeast": "northwest",
-            "up": "down", "down": "up",
-            "in": "out", "out": "in",
+            "north": "south",
+            "south": "north",
+            "east": "west",
+            "west": "east",
+            "northeast": "southwest",
+            "southwest": "northeast",
+            "northwest": "southeast",
+            "southeast": "northwest",
+            "up": "down",
+            "down": "up",
+            "in": "out",
+            "out": "in",
         }
         return mapping.get(d.lower())
 
+    # pylint: disable=too-many-statements,too-many-locals,too-many-branches
     def _analyze_adventure(self) -> dict:
         """Compute stats, errors, and warnings for the current adventure."""
         self.collect_adventure_data()
@@ -2244,7 +2689,13 @@ class AdventureIDE:
             else:
                 room_ids.append(rid)
         seen: set[int] = set()
-        dupes = sorted({rid for rid in room_ids if rid in seen or seen.add(rid)})
+        dupes_set: set[int] = set()
+        for rid in room_ids:
+            if rid in seen:
+                dupes_set.add(rid)
+            else:
+                seen.add(rid)
+        dupes = sorted(dupes_set)
         if dupes:
             errors.append(f"Duplicate room id(s): {dupes}")
 
@@ -2285,19 +2736,24 @@ class AdventureIDE:
                     if tr is not None:
                         trexits = tr.get("exits", {})
                         if not isinstance(trexits, dict):
-                            warnings.append(f"Room {target} exits not a dict; skipping reciprocity check")
+                            msg = (
+                                f"Room {target} exits not a dict; "
+                                "skipping reciprocity check"
+                            )
+                            warnings.append(msg)
                             continue
                         if trexits.get(rev) != rid:
                             missing_reverse += 1
-                            warnings.append(
-                                f"Exit {rid}.{direction} -> {target} has no reverse {target}.{rev} -> {rid}"
+                            error_msg = (
+                                f"Exit {rid}.{direction} -> {target} "
+                                f"has no reverse {target}.{rev} -> {rid}"
                             )
+                            warnings.append(error_msg)
 
         # Reachability from start_room (if valid)
         reachable = set()
         if start_room in room_id_set:
             # BFS
-            from collections import deque
             q = deque([start_room])
             reachable.add(start_room)
             exits_map = {r.get("id"): dict(r.get("exits", {})) for r in rooms}
@@ -2311,7 +2767,11 @@ class AdventureIDE:
         unreachable = sorted(list(room_id_set - reachable)) if room_id_set else []
         if unreachable:
             warnings.append(f"Unreachable rooms from start: {unreachable}")
-            suggestions.append("Ensure main story areas are reachable from the start room or provide guidance.")
+            msg = (
+                "Ensure main story areas are reachable from the start "
+                "room or provide guidance."
+            )
+            suggestions.append(msg)
 
         # Room content quality
         for r in rooms:
@@ -2329,7 +2789,11 @@ class AdventureIDE:
                 if degree == 0:
                     warnings.append(f"Room {rid} is isolated (no exits)")
                 elif degree == 1 and rid != start_room:
-                    suggestions.append(f"Room {rid} is a dead-end; consider adding a branch or a clue")
+                    msg = (
+                        f"Room {rid} is a dead-end; consider adding "
+                        "a branch or a clue"
+                    )
+                    suggestions.append(msg)
 
         # Item placement sanity
         item_ids = []
@@ -2351,13 +2815,19 @@ class AdventureIDE:
             if isinstance(loc, int) and loc not in room_id_set:
                 errors.append(f"Item {label} references missing room {loc}")
         # Duplicate item ids (only check when ids present and hashable)
-        try:
-            seen_i = set()
-            dupe_items = sorted({x for x in item_ids if x in seen_i or seen_i.add(x)})
-            if dupe_items:
-                errors.append(f"Duplicate item id(s): {dupe_items}")
-        except Exception:
-            pass
+        seen_i: set[Any] = set()
+        dupe_items_set: set[Any] = set()
+        for x in item_ids:
+            try:
+                if x in seen_i:
+                    dupe_items_set.add(x)
+                else:
+                    seen_i.add(x)
+            except TypeError:
+                continue
+        dupe_items = sorted(dupe_items_set)
+        if dupe_items:
+            errors.append(f"Duplicate item id(s): {dupe_items}")
 
         # Monster placement sanity
         monster_ids = []
@@ -2379,23 +2849,80 @@ class AdventureIDE:
             if isinstance(mroom, int) and mroom not in room_id_set:
                 errors.append(f"Monster {label} references missing room {mroom}")
         # Duplicate monster ids (only check when ids present and hashable)
-        try:
-            seen_m = set()
-            dupe_mon = sorted({x for x in monster_ids if x in seen_m or seen_m.add(x)})
-            if dupe_mon:
-                errors.append(f"Duplicate monster id(s): {dupe_mon}")
-        except Exception:
-            pass
+        seen_m: set[Any] = set()
+        dupe_mon_set: set[Any] = set()
+        for x in monster_ids:
+            try:
+                if x in seen_m:
+                    dupe_mon_set.add(x)
+                else:
+                    seen_m.add(x)
+            except TypeError:
+                continue
+        dupe_mon = sorted(dupe_mon_set)
+        if dupe_mon:
+            errors.append(f"Duplicate monster id(s): {dupe_mon}")
 
         # Duplicate names (soft uniqueness suggestion)
-        room_names = [ (r.get("id"), (r.get("name") or "").strip()) for r in rooms ]
-        name_counts: dict[str,int] = {}
+        room_names = [(r.get("id"), (r.get("name") or "").strip()) for r in rooms]
+        name_counts: dict[str, int] = {}
         for _, nm in room_names:
             if nm:
                 name_counts[nm] = name_counts.get(nm, 0) + 1
-        dup_name_list = sorted([nm for nm,cnt in name_counts.items() if cnt > 1])
+        dup_name_list = sorted([nm for nm, cnt in name_counts.items() if cnt > 1])
         if dup_name_list:
             suggestions.append(f"Duplicate room names found: {dup_name_list}")
+
+        # Path hints for unreachable rooms (BFS from start_room)
+        path_hints = {}
+        if start_room in room_id_set and unreachable:
+            # Find shortest paths to each room from start
+            dist = {start_room: 0}
+            parent = {start_room: None}
+            q = deque([start_room])
+            exits_map = {r.get("id"): dict(r.get("exits", {})) for r in rooms}
+            while q:
+                cur = q.popleft()
+                for tgt in exits_map.get(cur, {}).values():
+                    if isinstance(tgt, int) and tgt in room_id_set and tgt not in dist:
+                        dist[tgt] = dist[cur] + 1
+                        parent[tgt] = cur
+                        q.append(tgt)
+            # For unreachable rooms, find closest reachable room
+            for urid in unreachable:
+                # Check all reachable rooms for exits pointing to unreachable area
+                for rrid in reachable:
+                    rexits = exits_map.get(rrid, {})
+                    for tgt in rexits.values():
+                        if isinstance(tgt, int) and tgt == urid:
+                            path_hints[urid] = f"Add reverse exit from {urid} back to {rrid}"
+                            break
+                    if urid in path_hints:
+                        break
+                if urid not in path_hints:
+                    msg = "No direct link found; consider adding an exit from a reachable room"
+                    path_hints[urid] = msg
+
+        # Pacing analysis: rooms with many vs. sparse exits
+        branch_rooms = []
+        sparse_rooms = []
+        for r in rooms:
+            rid = r.get("id")
+            exits = r.get("exits", {})
+            if isinstance(exits, dict):
+                degree = len([t for t in exits.values() if isinstance(t, int) and t in room_id_set])
+                if degree >= 4:
+                    branch_rooms.append((rid, degree))
+                elif degree <= 1 and rid != start_room:
+                    sparse_rooms.append((rid, degree))
+
+        if branch_rooms:
+            branch_info = list(branch_rooms)
+            suggestions.append(f"High-branch rooms (4+ exits): {branch_info}")
+        if len(sparse_rooms) > len(rooms) * 0.3:
+            sparse_count = len(sparse_rooms)
+            msg = "Many sparse rooms; consider adding more connections"
+            suggestions.append(f"{msg} ({sparse_count})")
 
         # Stats
         stats = {
@@ -2420,8 +2947,10 @@ class AdventureIDE:
             "suggestions": suggestions,
             "stats": stats,
             "engine_info": engine_info,
+            "path_hints": path_hints,
         }
 
+    # pylint: disable=too-many-statements,too-many-locals,too-many-branches
     def _format_verification_report(self, report: dict) -> str:
         lines: list[str] = []
         title = report.get("title", "(untitled)")
@@ -2481,14 +3010,46 @@ class AdventureIDE:
                 lines.append("-" * 60)
                 for e in errs:
                     lines.append(f"- {e}")
+
+            # Coverage metrics from playthrough
+            total_rooms = stats.get('rooms', 0)
+            if total_rooms > 0 and visited:
+                visited_unique = len(set(visited))
+                coverage = (visited_unique / total_rooms) * 100
+                lines.append("")
+                lines.append("Coverage Metrics")
+                lines.append("-" * 60)
+                lines.append(f"Rooms visited: {visited_unique}/{total_rooms} ({coverage:.1f}%)")
+                lines.append(f"Max path depth: {len(visited)}")
+                # Branch factor from steps (transitions between rooms)
+                transitions = [st for st in steps if st.get('to') is not None]
+                if transitions:
+                    lines.append(f"Total transitions: {len(transitions)}")
             lines.append("")
+
+        # Path hints section
+        path_hints = report.get("path_hints", {})
+        if path_hints:
+            lines.append("Path Hints for Unreachable Rooms")
+            lines.append("-" * 60)
+            for room_id, hint in path_hints.items():
+                lines.append(f"Room {room_id}: {hint}")
+            lines.append("")
+
         lines.append("Summary")
         lines.append("-" * 60)
+        rooms_count = stats.get('rooms', 0)
+        exits_count = stats.get('exits', 0)
+        items_count = stats.get('items', 0)
+        monsters_count = stats.get('monsters', 0)
+        summary_line = f"Rooms: {rooms_count} | Exits: {exits_count}"
+        summary_line += f" | Items: {items_count} | Monsters: {monsters_count}"
+        lines.append(summary_line)
+        reachable = stats.get('reachable_rooms', 0)
+        unreachable = stats.get('unreachable_rooms', 0)
+        missing_links = stats.get('missing_reverse_links', 0)
         lines.append(
-            f"Rooms: {stats.get('rooms', 0)} | Exits: {stats.get('exits', 0)} | Items: {stats.get('items', 0)} | Monsters: {stats.get('monsters', 0)}"
-        )
-        lines.append(
-            f"Reachable: {stats.get('reachable_rooms', 0)} | Unreachable: {stats.get('unreachable_rooms', 0)} | Missing reverse links: {stats.get('missing_reverse_links', 0)}"
+            f"Reach: {reachable} | Unreach: {unreachable} | Missing: {missing_links}"
         )
         lines.append("")
 
@@ -2516,7 +3077,7 @@ class AdventureIDE:
         if not errors and not warnings and not suggestions:
             lines.append("No issues found. Your game looks great!")
 
-        lines.append("" )
+        lines.append("")
         return "\n".join(lines)
 
     def _show_text_report(self, title: str, text: str):
@@ -2539,127 +3100,154 @@ class AdventureIDE:
         info: dict = {}
         try:
             # Prepare temp adventure file
-            from pathlib import Path as _Path
-            import json as _json
-            import importlib.util as _importlib
-            adv_path = _Path("adventures")
+            adv_path = Path("adventures")
             adv_path.mkdir(parents=True, exist_ok=True)
             tmp = adv_path / "_verify_temp.json"
             with open(tmp, "w", encoding="utf-8") as f:
-                _json.dump(self.adventure, f, indent=2)
+                json.dump(self.adventure, f, indent=2)
 
             # Load engine
-            engine_path = _Path(__file__).parent.parent.parent.parent / "sagacraft_engine.py"
+            engine_path = (
+                Path(__file__).parent.parent.parent.parent / "sagacraft_engine.py"
+            )
             info["engine_path"] = str(engine_path)
-            spec = _importlib.spec_from_file_location("sagacraft_engine", engine_path)
+            spec = importlib.util.spec_from_file_location("sagacraft_engine", engine_path)
             if spec is None or spec.loader is None:
                 errors.append("Engine load failed: could not create import spec")
                 info["status"] = "spec failure"
                 return errors, info
 
-            mod = _importlib.module_from_spec(spec)
+            mod = importlib.util.module_from_spec(spec)
             try:
                 spec.loader.exec_module(mod)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:  # noqa: BLE001  # pylint: disable=broad-exception-caught
                 errors.append(f"Engine import error: {exc}")
                 info["status"] = "import error"
                 info["details"] = str(exc)
                 return errors, info
 
             # Instantiate and load
-            game_cls = getattr(mod, "ExtendedAdventureGame", None) or getattr(mod, "EnhancedAdventureGame", None) or getattr(mod, "AdventureGame", None)
-            if not game_cls:
-                errors.append("Engine missing game class (Extended/Enhanced/AdventureGame)")
+            game_cls = (
+                getattr(mod, "ExtendedAdventureGame", None) or
+                getattr(mod, "EnhancedAdventureGame", None) or
+                getattr(mod, "AdventureGame", None)
+            )
+            if game_cls is None or not callable(game_cls):
+                errors.append(
+                    "Engine missing game class "
+                    "(Extended/Enhanced/AdventureGame)"
+                )
                 info["status"] = "missing class"
                 return errors, info
 
             try:
-                game = game_cls(str(tmp))
+                game_ctor: Callable[[str], Any] = cast(Callable[[str], Any], game_cls)
+                game = game_ctor(str(tmp))  # pylint: disable=not-callable
                 game.load_adventure()
                 info["status"] = "ok"
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:  # noqa: BLE001  # pylint: disable=broad-exception-caught
                 errors.append(f"Engine load_adventure failed: {exc}")
                 info["status"] = "load error"
                 info["details"] = str(exc)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001  # pylint: disable=broad-exception-caught
             errors.append(f"Verification dry-run error: {exc}")
             info["status"] = "exception"
             info["details"] = str(exc)
         return errors, info
 
+    # pylint: disable=too-many-statements,too-many-locals,too-many-branches
     def _simulate_playthrough(self, max_steps: int = 100) -> dict:
         """Run a bounded, deterministic playthrough: look, traverse exits, collect outputs.
 
         Uses the real engine with the current adventure; walks the graph from start_room
         using a stable direction order. Captures printed output for each action.
         """
-        from pathlib import Path as _Path
-        import json as _json
-        import importlib.util as _importlib
-        from io import StringIO as _StringIO
-        import sys as _sys
-
-        result = {"status": "idle", "steps": [], "visited": [], "errors": []}
+        result: dict[str, Any] = {
+            "status": "idle",
+            "steps": [],
+            "visited": [],
+            "errors": [],
+        }
         try:
             # Write temp adventure
-            adv_path = _Path("adventures")
+            adv_path = Path("adventures")
             adv_path.mkdir(parents=True, exist_ok=True)
             tmp = adv_path / "_verify_play.json"
             with open(tmp, "w", encoding="utf-8") as f:
-                _json.dump(self.adventure, f, indent=2)
+                json.dump(self.adventure, f, indent=2)
 
             # Load engine
-            engine_path = _Path(__file__).parent.parent.parent.parent / "sagacraft_engine.py"
-            spec = _importlib.spec_from_file_location("sagacraft_engine", engine_path)
+            engine_path = (
+                Path(__file__).parent.parent.parent.parent / "sagacraft_engine.py"
+            )
+            spec = importlib.util.spec_from_file_location("sagacraft_engine", engine_path)
             if spec is None or spec.loader is None:
                 result["status"] = "engine-spec-fail"
                 result["errors"].append("Could not create engine spec")
                 return result
-            mod = _importlib.module_from_spec(spec)
+            mod = importlib.util.module_from_spec(spec)
             try:
                 spec.loader.exec_module(mod)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:  # noqa: BLE001  # pylint: disable=broad-exception-caught
                 result["status"] = "engine-import-fail"
                 result["errors"].append(f"Engine import error: {exc}")
                 return result
 
-            game_cls = getattr(mod, "ExtendedAdventureGame", None) or getattr(mod, "EnhancedAdventureGame", None) or getattr(mod, "AdventureGame", None)
-            if not game_cls:
+            game_cls = (
+                getattr(mod, "ExtendedAdventureGame", None) or
+                getattr(mod, "EnhancedAdventureGame", None) or
+                getattr(mod, "AdventureGame", None)
+            )
+            if game_cls is None or not callable(game_cls):
                 result["status"] = "no-game-class"
                 result["errors"].append("Engine missing game class")
                 return result
 
-            game = game_cls(str(tmp))
+            game_ctor: Callable[[str], Any] = cast(Callable[[str], Any], game_cls)
+            game = game_ctor(str(tmp))  # pylint: disable=not-callable
             game.load_adventure()
             result["status"] = "running"
 
             # Helper to capture one engine call
             def capture(callable_, *args, **kwargs):
-                old = _sys.stdout
-                buf = _StringIO()
-                _sys.stdout = buf
+                old = sys.stdout
+                buf = StringIO()
+                sys.stdout = buf
                 err = None
                 try:
                     callable_(*args, **kwargs)
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:  # noqa: BLE001  # pylint: disable=broad-exception-caught
                     err = exc
                 finally:
                     out = buf.getvalue()
-                    _sys.stdout = old
+                    sys.stdout = old
                 return out, err
 
             # Step 0: look at start
             out, err = capture(game.look)
-            result["steps"].append({"action": "look", "output": out.strip(), "error": str(err) if err else None})
+            err_str = str(err) if err else None
+            step_data = {"action": "look", "output": out.strip(), "error": err_str}
+            result["steps"].append(step_data)
             if err:
                 result["status"] = "error"
                 result["errors"].append(f"look failed: {err}")
                 return result
 
             # Traverse rooms breadth-first via exits in stable direction order
-            from collections import deque
-            order = ["north", "south", "east", "west", "up", "down", "in", "out",
-                     "northeast", "northwest", "southeast", "southwest"]
+            order = [
+                "north",
+                "south",
+                "east",
+                "west",
+                "up",
+                "down",
+                "in",
+                "out",
+                "northeast",
+                "northwest",
+                "southeast",
+                "southwest",
+            ]
             visited = set()
             cur = getattr(game.player, "current_room", None)
             start_id = getattr(cur, "id", None)
@@ -2672,14 +3260,17 @@ class AdventureIDE:
             result["visited"].append(start_id)
 
             # Map id -> exits from current adventure
-            exits_map = {r.get("id"): dict(r.get("exits", {})) for r in self.adventure.get("rooms", [])}
+            rooms = self.adventure.get("rooms", [])
+            exits_map = {r.get("id"): dict(r.get("exits", {})) for r in rooms}
             steps = 0
 
             while q and steps < max_steps:
                 rid = q.popleft()
                 exits = exits_map.get(rid, {})
                 # Try exits in stable order first, then any others
-                dirs = [d for d in order if d in exits] + [d for d in exits.keys() if d not in order]
+                stable_dirs = [d for d in order if d in exits]
+                other_dirs = [d for d in exits.keys() if d not in order]
+                dirs = stable_dirs + other_dirs
                 for d in dirs:
                     tgt = exits.get(d)
                     if not isinstance(tgt, int):
@@ -2687,11 +3278,15 @@ class AdventureIDE:
                     # Issue move command
                     cmd = d
                     out, err = capture(game.process_command, cmd)
-                    result["steps"].append({"action": cmd, "from": rid, "to": tgt, "output": out.strip(), "error": str(err) if err else None})
+                    step = {"action": cmd, "from": rid, "to": tgt, "output": out.strip()}
+                    step["error"] = str(err) if err else None
+                    result["steps"].append(step)
                     steps += 1
                     if err:
                         result["status"] = "error"
-                        result["errors"].append(f"move '{cmd}' failed from {rid} to {tgt}: {err}")
+                        result["errors"].append(
+                            f"move '{cmd}' failed from {rid} to {tgt}: {err}"
+                        )
                         if steps >= max_steps:
                             break
                         continue
@@ -2707,14 +3302,14 @@ class AdventureIDE:
 
             # Final look
             out, err = capture(game.look)
-            result["steps"].append({"action": "look", "output": out.strip(), "error": str(err) if err else None})
+            err_str = str(err) if err else None
+            final_step = {"action": "look", "output": out.strip(), "error": err_str}
+            result["steps"].append(final_step)
             result["status"] = "ok" if not result["errors"] else "error"
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001  # pylint: disable=broad-exception-caught
             result["status"] = "exception"
             result["errors"].append(str(exc))
         return result
-
-        return errors
 
     # DSK import functionality removed
 
@@ -2813,13 +3408,12 @@ F5 - Test Adventure
             self.print_game("")
             self.test_badge_var.set("Play: Adventure Loaded")
             self.validation_badge_var.set("Validation: —")
-        except Exception as exc:
+        except Exception as exc:  # pylint: disable=broad-exception-caught
             print(f"ERROR in load_for_play: {exc}")
-            import traceback
             traceback.print_exc()
             messagebox.showerror("Load Error", f"Failed to load adventure:\n{exc}")
 
-    def start_game(self):
+    def start_game(self):  # pylint: disable=too-many-statements
         """Start playing the loaded adventure"""
         try:
             # Immediate UI feedback that the button was clicked
@@ -2840,8 +3434,7 @@ F5 - Test Adventure
                 )
                 self.test_badge_var.set("Play: Error")
                 return
-            else:
-                self.validation_badge_var.set("Validation: ✅ Clean")
+            self.validation_badge_var.set("Validation: ✅ Clean")
 
             Path("adventures").mkdir(parents=True, exist_ok=True)
             self.test_badge_var.set("Play: Starting...")
@@ -2924,9 +3517,8 @@ F5 - Test Adventure
                 self.command_entry.focus()
             self.update_status("Game started - enter commands below")
             self.test_badge_var.set("Play: Running")
-        except Exception as exc:
+        except Exception as exc:  # pylint: disable=broad-exception-caught
             print(f"UNHANDLED ERROR in start_game: {exc}")
-            import traceback
             traceback.print_exc()
             self._fail_play(f"Unexpected error:\n{exc}")
 
@@ -2953,9 +3545,8 @@ F5 - Test Adventure
 
             self.command_entry.delete(0, tk.END)
             self._process_game_command(command, echo=True)
-        except Exception as exc:
+        except Exception as exc:  # pylint: disable=broad-exception-caught
             print(f"ERROR in send_command: {exc}")
-            import traceback
             traceback.print_exc()
             messagebox.showerror("Command Error", f"Failed to process command:\n{exc}")
 
@@ -3004,15 +3595,8 @@ F5 - Test Adventure
 
     def _capture_engine_output(self, func, *args, **kwargs):
         """Capture engine output so it appears in the play console."""
-        old_stdout = sys.stdout
-        buffer = StringIO()
-        sys.stdout = buffer
-        try:
-            result = func(*args, **kwargs)
-        finally:
-            sys.stdout = old_stdout
-
-        output = buffer.getvalue().strip()
+        result, raw = capture_stdout(func, *args, **kwargs)
+        output = raw.strip()
         if output:
             self.print_game(output)
         return result
@@ -3031,18 +3615,7 @@ F5 - Test Adventure
             self.test_badge_var.set("Play: Ended")
             return
 
-        old_stdout = sys.stdout
-        buffer = StringIO()
-        sys.stdout = buffer
-        error: Exception | None = None
-
-        try:
-            self.game_instance.process_command(command)
-        except (RuntimeError, ValueError, AttributeError, OSError) as exc:
-            error = exc
-        finally:
-            output = buffer.getvalue()
-            sys.stdout = old_stdout
+        output, error = run_engine_command(self.game_instance, command)
 
         if error is not None:
             self.print_game(f"\nError: {error}")
@@ -3073,19 +3646,15 @@ F5 - Test Adventure
         config_path = Path(__file__).resolve().parents[3] / "config" / "engine.json"
         if not config_path.exists():
             return
-        try:
-            with open(config_path, "r", encoding="utf-8") as handle:
-                data = json.load(handle)
-            ui_cfg = data.get("ui", {})
-        except (OSError, json.JSONDecodeError):
-            return
+        data = safe_read_json_mapping(config_path)
+        ui_cfg = data.get("ui", {}) if isinstance(data.get("ui", {}), dict) else {}
 
         theme_name = ui_cfg.get("theme")
         if isinstance(theme_name, str):
-            for candidate in self.themes:
+            for candidate, colors in self.themes.items():
                 if candidate.lower() == theme_name.lower():
                     self.current_theme = candidate
-                    self.colors = self.themes[candidate]
+                    self.colors = colors
                     break
 
         font_family = ui_cfg.get("font_family")
@@ -3107,31 +3676,23 @@ F5 - Test Adventure
     def _save_ui_preferences(self):
         """Persist UI theme and font selections to config/engine.json."""
         config_path = Path(__file__).resolve().parents[3] / "config" / "engine.json"
-        data = {}
-        if config_path.exists():
-            try:
-                with open(config_path, "r", encoding="utf-8") as handle:
-                    data = json.load(handle)
-            except (OSError, json.JSONDecodeError):
-                data = {}
+        data = safe_read_json_mapping(config_path) if config_path.exists() else {}
 
-        data.setdefault("ui", {})
-        data["ui"].update(
-            {
-                "theme": self.current_theme,
-                "font_family": self.current_font_family,
-                "font_size": self.current_font_size,
+        update_ui_preferences(
+            data,
+            theme=self.current_theme,
+            font_family=self.current_font_family,
+            font_size=self.current_font_size,
+            extra={
                 "editor_font_family": self.editor_font_family,
                 "editor_font_size": self.editor_font_size,
-            }
+            },
         )
 
         try:
-            config_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(config_path, "w", encoding="utf-8") as handle:
-                json.dump(data, handle, indent=2)
+            write_json_mapping(config_path, data)
         except OSError:
-            return
+            pass
 
     def change_theme(self, theme_name):
         """Change the color theme"""
@@ -3349,14 +3910,705 @@ F5 - Test Adventure
         self.apply_editor_fonts()
         self.update_status("View settings reset to defaults")
 
-    def quit_ide(self):
-        """Quit the IDE"""
-        if self.modified and not messagebox.askyesno(
-            "Unsaved Changes", "You have unsaved changes. Quit anyway?"
-        ):
-            return
+    def _get_active_mods(self) -> list[str]:
+        """Detect which mods are currently active/enabled in the adventure."""
+        if not isinstance(self.adventure, dict):
+            return []
+        mods = self.adventure.get("mods", [])
+        if not isinstance(mods, list):
+            return []
+        active: list[str] = []
+        for m in mods:
+            if isinstance(m, dict) and m.get("enabled", False):
+                active.append(m.get("name", "unknown"))
+        return active
 
-        self.root.quit()
+    # pylint: disable=too-many-statements,too-many-locals,too-many-branches
+    def show_reachability_map(self):
+        """Display a simple text-based reachability map showing room connectivity."""
+        win = tk.Toplevel(self.root)
+        win.title("Reachability Map")
+        win.geometry("500x600")
+
+        bg_color = self.colors.get("panel", "#222")
+        fg_color = self.colors.get("fg", "#eee")
+        text = scrolledtext.ScrolledText(win, wrap=tk.WORD, bg=bg_color, fg=fg_color)
+        text.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+        # Compute reachability from start room
+        rooms = self.adventure.get("rooms", [])
+        room_ids = {r.get("id") for r in rooms}
+        start_room = self.adventure.get("start_room", 1)
+
+        visited = set()
+        q = deque([start_room])
+        visited.add(start_room)
+
+        while q:
+            cur = q.popleft()
+            cur_room = next((r for r in rooms if r.get("id") == cur), None)
+            if not cur_room:
+                continue
+            exits = cur_room.get("exits", {})
+            if isinstance(exits, dict):
+                for direction, target in exits.items():
+                    if isinstance(target, int) and target in room_ids and target not in visited:
+                        visited.add(target)
+                        q.append(target)
+
+        unreachable = room_ids - visited
+
+        # Format output
+        lines = ["REACHABILITY MAP", "=" * 50, ""]
+        lines.append(f"Start room: {start_room}")
+        lines.append(f"Total rooms: {len(rooms)}")
+        lines.append(f"Reachable: {len(visited)} | Unreachable: {len(unreachable)}")
+        lines.append("")
+
+        lines.append("REACHABLE ROOMS:")
+        lines.append("-" * 50)
+        for room in sorted(rooms, key=lambda r: r.get("id", 0)):
+            rid = room.get("id")
+            if rid in visited:
+                name = room.get("name", "?")
+                exits = room.get("exits", {})
+                exit_str = ", ".join(exits.keys()) if isinstance(exits, dict) else ""
+                lines.append(f"  #{rid}: {name} [exits: {exit_str}]")
+
+        if unreachable:
+            lines.append("")
+            lines.append("UNREACHABLE ROOMS (⚠️  Need connections):")
+            lines.append("-" * 50)
+            for room in sorted(rooms, key=lambda r: r.get("id", 0)):
+                rid = room.get("id")
+                if rid in unreachable:
+                    name = room.get("name", "?")
+                    lines.append(f"  #{rid}: {name} ⚠️")
+
+        lines.append("")
+        lines.append("MISSING REVERSE EXITS:")
+        lines.append("-" * 50)
+        missing = 0
+        for room in rooms:
+            rid = room.get("id")
+            exits = room.get("exits", {})
+            if not isinstance(exits, dict):
+                continue
+            for direction, target in exits.items():
+                if not isinstance(target, int) or target not in room_ids:
+                    continue
+                rev = self._reverse_direction(direction)
+                if rev:
+                    target_room = next((r for r in rooms if r.get("id") == target), None)
+                    if target_room and rev not in target_room.get("exits", {}):
+                        lines.append(f"  #{rid} →{direction}→ #{target} (missing ←{rev}←)")
+                        missing += 1
+        if missing == 0:
+            lines.append("  ✅ All reciprocal exits present!")
+
+        text.insert(tk.END, "\n".join(lines))
+        text.configure(state=tk.DISABLED)
+
+    # pylint: disable=too-many-statements,too-many-locals,too-many-branches
+    def show_graph_analytics(self):
+        """Display graph analytics: branching factor heatmap, articulation points, dead ends."""
+        win = tk.Toplevel(self.root)
+        win.title("Graph Analytics")
+        win.geometry("600x700")
+
+        text = scrolledtext.ScrolledText(
+            win,
+            wrap=tk.WORD,
+            bg=self.colors.get("panel", "#222"),
+            fg=self.colors.get("fg", "#eee"),
+        )
+        text.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+        rooms = self.adventure.get("rooms", [])
+        room_ids = {r.get("id") for r in rooms}
+        start_room = self.adventure.get("start_room", 1)
+
+        lines = ["GRAPH ANALYTICS", "=" * 60, ""]
+
+        # Compute branching factor (out-degree)
+        branch_factor = {}
+        in_degree = {}
+        for room in rooms:
+            rid = room.get("id")
+            exits = room.get("exits", {})
+            if isinstance(exits, dict):
+                degree = sum(
+                    1
+                    for t in exits.values()
+                    if isinstance(t, int) and t in room_ids
+                )
+            else:
+                degree = 0
+            branch_factor[rid] = degree
+            if rid not in in_degree:
+                in_degree[rid] = 0
+
+        # Count in-degrees (reverse paths)
+        for room in rooms:
+            rid = room.get("id")
+            exits = room.get("exits", {})
+            if isinstance(exits, dict):
+                for _direction, target in exits.items():
+                    if isinstance(target, int) and target in room_ids:
+                        in_degree[target] = in_degree.get(target, 0) + 1
+
+        # Find articulation points via cutset analysis
+        articulation = []
+        for test_room in rooms:
+            test_rid = test_room.get("id")
+            if test_rid == start_room:
+                continue
+            # Simple check: if removing this room disconnects any other reachable rooms
+            visited = set()
+            q = deque([start_room])
+            visited.add(start_room)
+            while q:
+                cur = q.popleft()
+                if cur == test_rid:
+                    continue
+                cur_room = next((r for r in rooms if r.get("id") == cur), None)
+                if not cur_room:
+                    continue
+                exits = cur_room.get("exits", {})
+                if isinstance(exits, dict):
+                    for target in exits.values():
+                        if (
+                            isinstance(target, int)
+                            and target in room_ids
+                            and target not in visited
+                            and target != test_rid
+                        ):
+                            visited.add(target)
+                            q.append(target)
+            # If removing test_room isolates any other rooms, it's an articulation point
+            full_reachable = set()
+            q = deque([start_room])
+            full_reachable.add(start_room)
+            while q:
+                cur = q.popleft()
+                cur_room = next((r for r in rooms if r.get("id") == cur), None)
+                if not cur_room:
+                    continue
+                exits = cur_room.get("exits", {})
+                if isinstance(exits, dict):
+                    for target in exits.values():
+                        if (
+                            isinstance(target, int)
+                            and target in room_ids
+                            and target not in full_reachable
+                        ):
+                            full_reachable.add(target)
+                            q.append(target)
+
+            if len(visited) < len(full_reachable):
+                articulation.append((test_rid, test_room.get("name", "?")))
+
+        # Branching heatmap
+        lines.append("BRANCHING FACTOR HEATMAP (out-degree):")
+        lines.append("-" * 60)
+        high_branch = [(rid, deg) for rid, deg in branch_factor.items() if deg >= 4]
+        medium_branch = [(rid, deg) for rid, deg in branch_factor.items() if 2 <= deg < 4]
+        low_branch = [(rid, deg) for rid, deg in branch_factor.items() if 0 < deg < 2]
+        dead_ends = [(rid, deg) for rid, deg in branch_factor.items() if deg == 0]
+
+        if high_branch:
+            lines.append("  🔴 HIGH BRANCHING (4+ exits) - Choice hubs:")
+            for rid, deg in sorted(high_branch):
+                room_name = next(
+                    (r.get("name", "?") for r in rooms if r.get("id") == rid),
+                    "?",
+                )
+                lines.append(f"    #{rid}: {room_name} ({deg} exits)")
+
+        if medium_branch:
+            lines.append("  🟡 MEDIUM BRANCHING (2-3 exits) - Normal exploration:")
+            for rid, deg in sorted(medium_branch):
+                room_name = next(
+                    (r.get("name", "?") for r in rooms if r.get("id") == rid),
+                    "?",
+                )
+                lines.append(f"    #{rid}: {room_name} ({deg} exits)")
+
+        if low_branch:
+            lines.append("  🟢 LOW BRANCHING (1 exit) - Linear sections:")
+            for rid, deg in sorted(low_branch):
+                room_name = next((r.get("name", "?") for r in rooms if r.get("id") == rid), "?")
+                lines.append(f"    #{rid}: {room_name} ({deg} exit)")
+
+        if dead_ends:
+            lines.append("  ⚫ DEAD ENDS (0 exits) - Terminal rooms:")
+            for rid, deg in sorted(dead_ends):
+                room_name = next((r.get("name", "?") for r in rooms if r.get("id") == rid), "?")
+                lines.append(f"    #{rid}: {room_name}")
+
+        # Articulation points
+        lines.append("")
+        lines.append("ARTICULATION POINTS (critical for connectivity):")
+        lines.append("-" * 60)
+        if articulation:
+            for rid, name in articulation:
+                in_deg = in_degree.get(rid, 0)
+                out_deg = branch_factor.get(rid, 0)
+                lines.append(f"  ⚠️  #{rid}: {name} (in={in_deg}, out={out_deg})")
+            lines.append("  → Removing any of these isolates other rooms!")
+        else:
+            lines.append("  ✅ No critical articulation points found.")
+
+        # Summary and suggestions
+        lines.append("")
+        lines.append("SUMMARY & SUGGESTIONS:")
+        lines.append("-" * 60)
+        avg_branch = sum(branch_factor.values()) / len(branch_factor) if branch_factor else 0
+        lines.append(f"  Total rooms: {len(rooms)}")
+        lines.append(f"  Average branching factor: {avg_branch:.2f}")
+        lines.append(f"  Dead ends: {len(dead_ends)}")
+
+        if len(dead_ends) > len(rooms) * 0.4:
+            lines.append("  💡 Many dead ends—consider adding more exits for exploration.")
+
+        if avg_branch < 1.5 and len(rooms) > 5:
+            lines.append(
+                "  💡 Low branching suggests linear gameplay—add shortcuts for replayability."
+            )
+
+        if len(high_branch) > len(rooms) * 0.3:
+            lines.append(
+                "  💡 Many high-branch rooms—may be overwhelming; simplify key choice points."
+            )
+
+        if articulation:
+            lines.append("  💡 Critical bottlenecks exist—consider alternate paths for robustness.")
+
+        text.insert(tk.END, "\n".join(lines))
+        text.configure(state=tk.DISABLED)
+
+    def show_asset_browser(self):  # pylint: disable=too-many-statements
+        """Browse and preview visual assets from assets/visual."""
+
+        win = tk.Toplevel(self.root)
+        win.title("Asset Browser")
+        win.geometry("800x600")
+
+        assets_dir = Path("assets/visual")
+        if not assets_dir.exists():
+            assets_dir.mkdir(parents=True, exist_ok=True)
+
+        # Left panel: file list
+        left_frame = ttk.Frame(win)
+        left_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+        ttk.Label(left_frame, text="Assets:").pack(anchor=tk.W)
+
+        asset_listbox = tk.Listbox(left_frame, height=20, width=30)
+        asset_listbox.pack(fill=tk.BOTH, expand=True)
+
+        scrollbar = ttk.Scrollbar(left_frame, orient=tk.VERTICAL, command=asset_listbox.yview)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        asset_listbox.config(yscrollcommand=scrollbar.set)
+
+        # Right panel: preview
+        right_frame = ttk.Frame(win)
+        right_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+        ttk.Label(right_frame, text="Preview:").pack(anchor=tk.W)
+
+        preview_text = scrolledtext.ScrolledText(
+            right_frame,
+            height=20,
+            width=40,
+            wrap=tk.WORD,
+            bg=self.colors.get("text_bg", "#1a1a1a"),
+            fg=self.colors.get("fg", "#eee"),
+        )
+        preview_text.pack(fill=tk.BOTH, expand=True)
+
+        def load_assets():
+            """Populate asset list."""
+            asset_listbox.delete(0, tk.END)
+            if not assets_dir.exists():
+                asset_listbox.insert(tk.END, "(no assets/visual directory)")
+                return
+
+            assets = sorted(assets_dir.glob("*"))
+            for asset in assets:
+                if asset.is_file():
+                    size_kb = asset.stat().st_size / 1024
+                    asset_listbox.insert(tk.END, f"{asset.name} ({size_kb:.1f}KB)")
+
+        def preview_asset(_event=None):
+            """Preview selected asset."""
+            sel = asset_listbox.curselection()
+            if not sel:
+                return
+
+            asset_name = asset_listbox.get(sel[0]).split()[0]
+            asset_path = assets_dir / asset_name
+
+            preview_text.configure(state=tk.NORMAL)
+            preview_text.delete(1.0, tk.END)
+
+            try:
+                if asset_path.suffix.lower() in [".ppm", ".txt"]:
+                    with open(asset_path, "r", encoding="utf-8", errors="ignore") as f:
+                        content = f.read(1000)
+                    header = (
+                        f"File: {asset_name}\n"
+                        f"Size: {asset_path.stat().st_size} bytes\n"
+                        f"Type: {asset_path.suffix}\n\n"
+                    )
+                    preview_text.insert(tk.END, header)
+                    preview_text.insert(
+                        tk.END,
+                        "Content (first 1000 chars):\n" + "=" * 40 + "\n\n" + content,
+                    )
+                else:
+                    preview_text.insert(
+                        tk.END,
+                        (
+                            f"File: {asset_name}\n"
+                            f"Size: {asset_path.stat().st_size} bytes\n"
+                            f"Type: {asset_path.suffix}\n\n"
+                            "Binary file (preview not available)"
+                        ),
+                    )
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                preview_text.insert(tk.END, f"Error reading asset: {e}")
+
+            preview_text.configure(state=tk.DISABLED)
+
+        asset_listbox.bind("<<ListboxSelect>>", preview_asset)
+
+        # Bottom buttons
+        btn_frame = ttk.Frame(win)
+        btn_frame.pack(fill=tk.X, padx=10, pady=10)
+
+        ttk.Button(btn_frame, text="Refresh", command=load_assets).pack(side=tk.LEFT, padx=5)
+        ttk.Button(
+            btn_frame,
+            text="Open Folder",
+            command=lambda: __import__("webbrowser").open(str(assets_dir)),
+        ).pack(side=tk.LEFT, padx=5)
+
+        load_assets()
+
+    def show_mod_sandbox(self):  # pylint: disable=too-many-statements
+        """Load mods and show delta changes to the game state."""
+        win = tk.Toplevel(self.root)
+        win.title("Mod Sandbox")
+        win.geometry("700x600")
+
+        # Top section: mod selection
+        top_frame = ttk.Frame(win)
+        top_frame.pack(fill=tk.X, padx=10, pady=10)
+
+        ttk.Label(top_frame, text="Mods:").pack(anchor=tk.W)
+
+        mods_dir = Path("mods/examples")
+        available_mods = []
+        if mods_dir.exists():
+            available_mods = [
+                f.stem
+                for f in mods_dir.glob("*.py")
+                if f.name not in ["__init__.py", "README.md"]
+            ]
+
+        # Current mods in adventure
+        current_mods = self.adventure.get("mods", [])
+        enabled_mod_names = {
+            m.get("name")
+            for m in current_mods
+            if isinstance(m, dict) and m.get("enabled")
+        }
+
+        mod_vars = {}
+        for mod_name in available_mods:
+            var = tk.BooleanVar(value=mod_name in enabled_mod_names)
+            mod_vars[mod_name] = var
+            ttk.Checkbutton(top_frame, text=mod_name, variable=var).pack(anchor=tk.W, pady=2)
+
+        # Output area
+        output_frame = ttk.Frame(win)
+        output_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+
+        output = scrolledtext.ScrolledText(
+            output_frame,
+            wrap=tk.WORD,
+            bg=self.colors.get("text_bg", "#1a1a1a"),
+            fg=self.colors.get("fg", "#eee"),
+        )
+        output.pack(fill=tk.BOTH, expand=True)
+
+        def analyze_mods():  # pylint: disable=too-many-statements,too-many-locals,too-many-branches
+            """Load selected mods and show deltas."""
+            output.configure(state=tk.NORMAL)
+            output.delete(1.0, tk.END)
+
+            selected = [name for name, var in mod_vars.items() if var.get()]
+
+            if not selected:
+                output.insert(tk.END, "No mods selected.")
+                output.configure(state=tk.DISABLED)
+                return
+
+            lines = ["MOD SANDBOX ANALYSIS", "=" * 60, ""]
+
+            # Get baseline stats
+            baseline_rooms = len(self.adventure.get("rooms", []))
+            baseline_items = len(self.adventure.get("items", []))
+            baseline_monsters = len(self.adventure.get("monsters", []))
+
+            lines.append("BASELINE (no mods):")
+            lines.append(f"  Rooms: {baseline_rooms}")
+            lines.append(f"  Items: {baseline_items}")
+            lines.append(f"  Monsters: {baseline_monsters}")
+            lines.append("")
+
+            # Try to load and analyze each mod
+            lines.append("MODS TO LOAD:")
+            lines.append("-" * 60)
+
+            for mod_name in selected:
+                mod_path = mods_dir / f"{mod_name}.py"
+                if not mod_path.exists():
+                    lines.append(f"  ❌ {mod_name}: file not found")
+                    continue
+
+                lines.append(f"  📦 {mod_name}")
+
+                try:
+                    spec = importlib.util.spec_from_file_location(mod_name, mod_path)
+                    if spec is None or spec.loader is None:
+                        lines.append("     ⚠️  Could not load module spec")
+                        continue
+
+                    mod = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(mod)
+
+                    # Check for apply_mod or modify_game function
+                    if hasattr(mod, "apply_mod"):
+                        lines.append("     ✓ apply_mod() found")
+                    elif hasattr(mod, "modify_game"):
+                        lines.append("     ✓ modify_game() found")
+                    else:
+                        lines.append("     ⚠️  No apply_mod() or modify_game() function")
+
+                    # Check for events hook
+                    if hasattr(mod, "on_event"):
+                        lines.append("     ✓ Event handlers registered")
+
+                    # List any new commands or items
+                    if hasattr(mod, "__doc__") and mod.__doc__:
+                        doc_lines = mod.__doc__.split("\n")
+                        for doc_line in doc_lines[:3]:
+                            if doc_line.strip():
+                                lines.append(f"     {doc_line.strip()}")
+
+                except Exception as e:  # pylint: disable=broad-exception-caught
+                    lines.append(f"     ❌ Error loading: {e}")
+
+            lines.append("")
+            lines.append("DELTA IMPACT:")
+            lines.append("-" * 60)
+            lines.append("  ⚠️  Run 'Play in IDE' to test mods with actual gameplay")
+            lines.append(f"  💡 Load order: {', '.join(selected)}")
+            lines.append("  💡 Monitor console for mod events and conflicts")
+
+            output.insert(tk.END, "\n".join(lines))
+            output.configure(state=tk.DISABLED)
+
+        # Bottom buttons
+        btn_frame = ttk.Frame(win)
+        btn_frame.pack(fill=tk.X, padx=10, pady=10)
+
+        ttk.Button(btn_frame, text="Analyze", command=analyze_mods).pack(side=tk.LEFT, padx=5)
+        ttk.Button(
+            btn_frame,
+            text="Play with Mods",
+            command=lambda: (analyze_mods(), self.play_in_ide_console()),
+        ).pack(side=tk.LEFT, padx=5)
+
+        analyze_mods()
+
+    def show_snippets_menu(self):
+        """Show snippet insertion menu with templates."""
+        snippets_win = tk.Toplevel(self.root)
+        snippets_win.title("Snippets & Templates")
+        snippets_win.geometry("500x400")
+
+        ttk.Label(snippets_win, text="Quick Snippets:").pack(anchor=tk.W, padx=10, pady=10)
+
+        # Available templates
+        templates = {
+            "Simple Room": {
+                "id": 1,
+                "name": "Room Name",
+                "description": "A simple room.",
+                "exits": {},
+                "is_dark": False,
+            },
+            "Dark Room": {
+                "id": 1,
+                "name": "Dark Chamber",
+                "description": "It is pitch black. You can't see anything.",
+                "exits": {},
+                "is_dark": True,
+            },
+            "Hub Room (4 exits)": {
+                "id": 1,
+                "name": "Central Hub",
+                "description": "A central hub with exits in all directions.",
+                "exits": {"north": 2, "south": 3, "east": 4, "west": 5},
+                "is_dark": False,
+            },
+            "Dead End": {
+                "id": 1,
+                "name": "Dead End",
+                "description": "You've reached a dead end.",
+                "exits": {},
+                "is_dark": False,
+            },
+        }
+
+        item_templates = {
+            "Key": {
+                "id": "key",
+                "name": "Key",
+                "description": "A brass key.",
+                "location": 1,
+                "takeable": True,
+            },
+            "Treasure": {
+                "id": "treasure",
+                "name": "Treasure Chest",
+                "description": "A chest filled with gold.",
+                "location": 1,
+                "takeable": False,
+            },
+            "Sword": {
+                "id": "sword",
+                "name": "Sword",
+                "description": "A sharp iron sword.",
+                "location": 1,
+                "takeable": True,
+            },
+        }
+
+        frame = ttk.Frame(snippets_win)
+        frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+        ttk.Label(frame, text="Rooms:").pack(anchor=tk.W, pady=5)
+
+        def make_insert_room(template: dict):
+            def insert_room():
+                new_id = (
+                    max(
+                        (r.get("id", 0) for r in self.adventure.get("rooms", [])),
+                        default=0,
+                    )
+                    + 1
+                )
+                data_copy = dict(template)
+                data_copy["id"] = new_id
+                self.adventure["rooms"].append(data_copy)
+                self.modified = True
+                self.refresh_rooms_list()
+                self.update_status(f"Inserted room: {template.get('name', '')}")
+                snippets_win.destroy()
+
+            return insert_room
+
+        for template_name, template_data in templates.items():
+            ttk.Button(
+                frame,
+                text=f"  → {template_name}",
+                command=make_insert_room(template_data),
+            ).pack(anchor=tk.W, pady=2)
+
+        ttk.Label(frame, text="Items:").pack(anchor=tk.W, pady=5)
+
+        def make_insert_item(template: dict):
+            def insert_item():
+                new_id = (
+                    f"{template.get('id', 'item')}_"
+                    f"{len(self.adventure.get('items', []))}"
+                )
+                data_copy = dict(template)
+                data_copy["id"] = new_id
+                self.adventure["items"].append(data_copy)
+                self.modified = True
+                self.refresh_items_list()
+                self.update_status(f"Inserted item: {template.get('name', '')}")
+                snippets_win.destroy()
+
+            return insert_item
+
+        for template_name, template_data in item_templates.items():
+            ttk.Button(
+                frame,
+                text=f"  → {template_name}",
+                command=make_insert_item(template_data),
+            ).pack(anchor=tk.W, pady=2)
+
+        ttk.Label(frame, text="Starter Layouts:").pack(anchor=tk.W, pady=5)
+
+        def use_hub_spoke():
+            """Create a hub-and-spoke adventure layout."""
+            if len(self.adventure.get("rooms", [])) > 1:
+                if not messagebox.askyesno(
+                    "Overwrite", "This will replace current rooms. Continue?"
+                ):
+                    return
+            self.adventure["rooms"] = [
+                {
+                    "id": 1,
+                    "name": "Hub",
+                    "description": "Central hub.",
+                    "exits": {"north": 2, "east": 3, "south": 4, "west": 5},
+                    "is_dark": False,
+                },
+                {
+                    "id": 2,
+                    "name": "North Wing",
+                    "description": "Northern area.",
+                    "exits": {"south": 1},
+                    "is_dark": False,
+                },
+                {
+                    "id": 3,
+                    "name": "East Wing",
+                    "description": "Eastern area.",
+                    "exits": {"west": 1},
+                    "is_dark": False,
+                },
+                {
+                    "id": 4,
+                    "name": "South Wing",
+                    "description": "Southern area.",
+                    "exits": {"north": 1},
+                    "is_dark": False,
+                },
+                {
+                    "id": 5,
+                    "name": "West Wing",
+                    "description": "Western area.",
+                    "exits": {"east": 1},
+                    "is_dark": False,
+                },
+            ]
+            self.adventure["start_room"] = 1
+            self.modified = True
+            self.refresh_rooms_list()
+            self.update_status("Created hub-and-spoke layout")
+            snippets_win.destroy()
+
+        ttk.Button(frame, text="  → Hub & Spoke (5 rooms)", command=use_hub_spoke).pack(
+            anchor=tk.W, pady=2
+        )
 
 
 def main():

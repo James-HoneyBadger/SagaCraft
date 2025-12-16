@@ -139,7 +139,7 @@ class RoomState:
 class EnvironmentalSystem:
     """Manages environmental effects and dynamic world state"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.current_time = TimeOfDay.MORNING
         self.current_weather = Weather.CLEAR
         self.turn_count = 0
@@ -151,7 +151,7 @@ class EnvironmentalSystem:
         self.turns_per_hour = 20
         self.weather_change_chance = 0.05
 
-    def advance_time(self):
+    def advance_time(self) -> None:
         """Progress time based on turns"""
         self.turn_count += 1
 
@@ -161,14 +161,14 @@ class EnvironmentalSystem:
         if random.random() < self.weather_change_chance:
             self._change_weather()
 
-    def _progress_time_of_day(self):
+    def _progress_time_of_day(self) -> None:
         """Move to next time period"""
         times = list(TimeOfDay)
         current_idx = times.index(self.current_time)
         next_idx = (current_idx + 1) % len(times)
         self.current_time = times[next_idx]
 
-    def _change_weather(self):
+    def _change_weather(self) -> None:
         """Randomly change weather"""
         weathers = list(Weather)
         # Favor transitions between similar conditions

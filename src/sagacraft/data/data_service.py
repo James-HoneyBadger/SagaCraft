@@ -5,7 +5,7 @@ Data service for managing game entities (rooms, items, monsters)
 from typing import Any, Dict, List, Optional
 import logging
 
-from core.services import Service
+from sagacraft.core.services import Service
 
 
 class DataService(Service):
@@ -19,7 +19,7 @@ class DataService(Service):
     - Custom entities
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.logger = logging.getLogger("DataService")
         self._data_store: Dict[str, Dict[int, Any]] = {
             "rooms": {},
@@ -27,16 +27,16 @@ class DataService(Service):
             "monsters": {},
         }
 
-    def initialize(self, config: Dict[str, Any]):
+    def initialize(self, config: Dict[str, Any]) -> None:
         """Initialize the data service"""
         self.logger.info("Data service initialized")
 
-    def shutdown(self):
+    def shutdown(self) -> None:
         """Cleanup"""
         self._data_store.clear()
 
     # Room operations
-    def add_room(self, room_id: int, room_data: Any):
+    def add_room(self, room_id: int, room_data: Any) -> None:
         """Add a room to the data store"""
         self._data_store["rooms"][room_id] = room_data
 
@@ -48,13 +48,13 @@ class DataService(Service):
         """Get all rooms"""
         return self._data_store["rooms"].copy()
 
-    def remove_room(self, room_id: int):
+    def remove_room(self, room_id: int) -> None:
         """Remove a room"""
         if room_id in self._data_store["rooms"]:
             del self._data_store["rooms"][room_id]
 
     # Item operations
-    def add_item(self, item_id: int, item_data: Any):
+    def add_item(self, item_id: int, item_data: Any) -> None:
         """Add an item to the data store"""
         self._data_store["items"][item_id] = item_data
 

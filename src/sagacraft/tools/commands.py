@@ -12,12 +12,12 @@ import difflib
 class CommandHistory:
     """Tracks and provides command history with auto-complete"""
 
-    def __init__(self, max_size: int = 100):
+    def __init__(self, max_size: int = 100) -> None:
         self.history: deque = deque(maxlen=max_size)
         self.position: int = 0
         self.common_commands: Dict[str, int] = {}
 
-    def add(self, command: str):
+    def add(self, command: str) -> None:
         """Add command to history"""
         if command and command.strip():
             self.history.append(command)
@@ -66,7 +66,7 @@ class CommandHistory:
 class CommandPredictor:
     """Provides intelligent command suggestions"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.context_commands: Dict[str, List[str]] = {
             "combat": ["attack", "flee", "use potion", "cast spell", "defend"],
             "exploration": [
@@ -148,10 +148,10 @@ class CommandPredictor:
 class CommandMacro:
     """Allows creating shortcuts for complex commands"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.macros: Dict[str, List[str]] = {}
 
-    def add_macro(self, name: str, commands: List[str]):
+    def add_macro(self, name: str, commands: List[str]) -> None:
         """Create a macro"""
         self.macros[name] = commands
 
@@ -240,7 +240,7 @@ class SmartCommandSystem:
 
         return user_input
 
-    def add_to_history(self, command: str):
+    def add_to_history(self, command: str) -> None:
         """Add command to history"""
         self.history.add(command)
 
@@ -261,7 +261,7 @@ class SmartCommandSystem:
 
         return all_suggestions[:5]  # Top 5
 
-    def create_macro(self, name: str, commands: List[str]):
+    def create_macro(self, name: str, commands: List[str]) -> None:
         """Create a command macro"""
         self.macros.add_macro(name, commands)
 

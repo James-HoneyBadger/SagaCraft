@@ -113,7 +113,9 @@ class MapAnnotation:
 class QuestHint:
     """Contextual hint for quest progression"""
 
-    def __init__(self, quest_id: str, hint_text: str, condition: Optional[str] = None):
+    def __init__(
+        self, quest_id: str, hint_text: str, condition: Optional[str] = None
+    ) -> None:
         self.quest_id = quest_id
         self.hint_text = hint_text
         self.condition = condition  # Condition when hint should show
@@ -132,7 +134,7 @@ class QuestHint:
 class AdventureJournal:
     """Complete journal system for tracking adventure progress"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.entries: List[JournalEntry] = []
         self.next_entry_id = 1
         self.map_annotations: Dict[int, MapAnnotation] = {}
@@ -151,7 +153,7 @@ class AdventureJournal:
         title: str,
         content: str,
         importance: EntryImportance = EntryImportance.NORMAL,
-        tags: List[str] = None,
+        tags: Optional[List[str]] = None,
         **kwargs,
     ) -> JournalEntry:
         """Add a new journal entry"""
@@ -169,7 +171,7 @@ class AdventureJournal:
         self.next_entry_id += 1
         return entry
 
-    def add_manual_note(self, note: str, tags: List[str] = None) -> JournalEntry:
+    def add_manual_note(self, note: str, tags: Optional[List[str]] = None) -> JournalEntry:
         """Add a manual note from the player"""
         return self.add_entry(
             JournalEntryType.MANUAL_NOTE, "Personal Note", note, tags=tags or []
@@ -252,7 +254,7 @@ class AdventureJournal:
 
     def annotate_room(
         self, room_id: int, annotation: str, icon: str = "📍", color: str = "yellow"
-    ):
+    ) -> None:
         """Add map annotation for a room"""
         self.map_annotations[room_id] = MapAnnotation(room_id, annotation, icon, color)
 
@@ -299,12 +301,12 @@ class AdventureJournal:
         """Get important entries"""
         return [e for e in self.entries if e.importance.value >= min_importance.value]
 
-    def bookmark_entry(self, entry_id: int):
+    def bookmark_entry(self, entry_id: int) -> None:
         """Bookmark an entry"""
         if entry_id not in self.bookmarks:
             self.bookmarks.append(entry_id)
 
-    def unbookmark_entry(self, entry_id: int):
+    def unbookmark_entry(self, entry_id: int) -> None:
         """Remove bookmark"""
         if entry_id in self.bookmarks:
             self.bookmarks.remove(entry_id)
@@ -313,14 +315,14 @@ class AdventureJournal:
         """Get bookmarked entries"""
         return [e for e in self.entries if e.id in self.bookmarks]
 
-    def add_quest_hint(self, quest_id: str, hint: QuestHint):
+    def add_quest_hint(self, quest_id: str, hint: QuestHint) -> None:
         """Add hint for a quest"""
         if quest_id not in self.quest_hints:
             self.quest_hints[quest_id] = []
         self.quest_hints[quest_id].append(hint)
 
     def get_quest_hints(
-        self, quest_id: str, quest_state: Dict[str, Any] = None
+        self, quest_id: str, quest_state: Optional[Dict[str, Any]] = None
     ) -> List[QuestHint]:
         """Get available hints for quest"""
         hints = self.quest_hints.get(quest_id, [])
@@ -328,7 +330,7 @@ class AdventureJournal:
             return [h for h in hints if not h.shown]
         return [h for h in hints if h.should_show(quest_state)]
 
-    def show_hint(self, quest_id: str, hint_index: int):
+    def show_hint(self, quest_id: str, hint_index: int) -> None:
         """Mark hint as shown"""
         hints = self.quest_hints.get(quest_id, [])
         if 0 <= hint_index < len(hints):
@@ -347,7 +349,7 @@ class AdventureJournal:
             if e.related_npc and e.related_npc.lower() == npc_lower
         ]
 
-    def clear_entries(self):
+    def clear_entries(self) -> None:
         """Clear all journal entries (for new adventure)"""
         self.entries.clear()
         self.next_entry_id = 1

@@ -193,6 +193,7 @@ class EnemyAI:
         self, enemies: List[Combatant], self_combatant: Combatant
     ) -> Optional[Combatant]:
         """Choose target based on AI tactic"""
+        _ = self_combatant
         alive_enemies = [e for e in enemies if e.health > 0]
         if not alive_enemies:
             return None
@@ -200,18 +201,18 @@ class EnemyAI:
         if self.tactic == CombatTactic.AGGRESSIVE:
             # Attack highest health target
             return max(alive_enemies, key=lambda e: e.health)
-        elif self.tactic == CombatTactic.OPPORTUNISTIC:
+        if self.tactic == CombatTactic.OPPORTUNISTIC:
             # Attack weakest target
             return min(alive_enemies, key=lambda e: e.health)
-        elif self.tactic == CombatTactic.DEFENSIVE:
+        if self.tactic == CombatTactic.DEFENSIVE:
             # Attack whoever attacked last (if tracked)
             # For now, random front-line target
             front_line = [
                 e for e in alive_enemies if e.position == CombatPosition.FRONT
             ]
             return random.choice(front_line if front_line else alive_enemies)
-        else:
-            return random.choice(alive_enemies)
+
+        return random.choice(alive_enemies)
 
     def should_flee(self, combatant: Combatant) -> bool:
         """Check if AI should flee"""
@@ -224,6 +225,7 @@ class EnemyAI:
         self, combatant: Combatant, allies: List[Combatant], enemies: List[Combatant]
     ) -> str:
         """Decide what action to take"""
+        _ = enemies
         # Check if should flee
         if self.should_flee(combatant):
             return "flee"
@@ -281,26 +283,26 @@ class CombatNarrator:
                 f"{action.actor} {verb} {action.target} "
                 f"for {action.damage} damage! *CRITICAL HIT*"
             )
-        elif action.dodged:
+        if action.dodged:
             return f"{action.target} dodges {action.actor}'s attack!"
-        elif action.blocked:
+        if action.blocked:
             return f"{action.target} blocks {action.actor}'s attack!"
-        elif action.damage > 0:
+        if action.damage > 0:
             verb = random.choice(self.attack_verbs)
             return (
                 f"{action.actor} {verb} {action.target} " f"for {action.damage} damage!"
             )
-        else:
-            verb = random.choice(self.miss_verbs)
-            return f"{action.actor} {verb} {action.target}!"
+
+        verb = random.choice(self.miss_verbs)
+        return f"{action.actor} {verb} {action.target}!"
 
     def narrate_combo(self, attacker: str, combo_count: int) -> str:
         """Narrate combo attacks"""
         if combo_count == 2:
             return f"{attacker} chains attacks together!"
-        elif combo_count == 3:
+        if combo_count == 3:
             return f"{attacker} unleashes a flurry of strikes!"
-        elif combo_count >= 4:
+        if combo_count >= 4:
             return f"{attacker} is on an unstoppable rampage!"
         return ""
 
@@ -308,7 +310,7 @@ class CombatNarrator:
 class CombatEncounter:
     """Manages a complete combat encounter"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.player_side: List[Combatant] = []
         self.enemy_side: List[Combatant] = []
         self.turn_count = 0
@@ -316,13 +318,13 @@ class CombatEncounter:
         self.narrator = CombatNarrator()
         self.enemy_ai: Dict[str, EnemyAI] = {}
 
-    def add_player_combatant(self, combatant: Combatant):
+    def add_player_combatant(self, combatant: Combatant) -> None:
         """Add player or companion to combat"""
         self.player_side.append(combatant)
 
     def add_enemy_combatant(
         self, combatant: Combatant, ai_tactic: CombatTactic = CombatTactic.AGGRESSIVE
-    ):
+    ) -> None:
         """Add enemy to combat"""
         self.enemy_side.append(combatant)
         self.enemy_ai[combatant.name] = EnemyAI(ai_tactic)
@@ -414,13 +416,19 @@ class CombatEncounter:
                         messages.append(f"{combatant.name} flees!")
                         combatant.health = 0
                         continue
-                    elif action == "defend":
+                    if action == "defend":
                         combatant.is_defending = True
                         messages.append(f"{combatant.name} takes a defensive stance!")
                         continue
 
                 # Choose target and attack
-                target = ai.choose_target(self.player_side, combatant)
+                if ai:
+                    target = ai.choose_target(self.player_side, combatant)
+                else:
+                    target = next(
+                        (c for c in self.player_side if c.health > 0),
+                        None,
+                    )
                 if target:
                     attack_action = self.resolve_attack(combatant, target)
                     messages.append(self.narrator.narrate_attack(attack_action))

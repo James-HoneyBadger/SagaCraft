@@ -171,7 +171,7 @@ class PlayerStatistics:
 class AchievementSystem:
     """Manages achievements and statistics"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.achievements: Dict[str, Achievement] = {}
         self.statistics = PlayerStatistics()
         self.custom_flags: Dict[str, bool] = {}
@@ -180,7 +180,7 @@ class AchievementSystem:
         # Register default achievements
         self._register_default_achievements()
 
-    def _register_default_achievements(self):
+    def _register_default_achievements(self) -> None:
         """Register built-in achievements"""
         default_achievements = [
             Achievement(
@@ -388,21 +388,21 @@ class AchievementSystem:
     def save_global_stats(self):
         """Save statistics to global file"""
         try:
-            with open(self.global_stats_file, "w") as f:
-                json.dump(self.to_dict(), f, indent=2)
-        except Exception as e:
-            print(f"Warning: Could not save global stats: {e}")
+            with open(self.global_stats_file, "w", encoding="utf-8") as handle:
+                json.dump(self.to_dict(), handle, indent=2)
+        except (OSError, TypeError) as exc:
+            print(f"Warning: Could not save global stats: {exc}")
 
     def load_global_stats(self):
         """Load statistics from global file"""
         try:
-            with open(self.global_stats_file, "r") as f:
-                data = json.load(f)
+            with open(self.global_stats_file, "r", encoding="utf-8") as handle:
+                data = json.load(handle)
                 loaded = self.from_dict(data)
                 self.achievements = loaded.achievements
                 self.statistics = loaded.statistics
                 self.custom_flags = loaded.custom_flags
         except FileNotFoundError:
             pass  # No global stats yet
-        except Exception as e:
-            print(f"Warning: Could not load global stats: {e}")
+        except (OSError, json.JSONDecodeError, TypeError, ValueError) as exc:
+            print(f"Warning: Could not load global stats: {exc}")

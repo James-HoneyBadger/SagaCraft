@@ -7,15 +7,29 @@ adventures. Supports theme + font selection and save/load slots.
 
 from __future__ import annotations
 
-import json
 import sys
 import importlib.util
+from functools import partial
+from collections.abc import Callable
 from dataclasses import dataclass
 from io import StringIO
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional, cast
 import tkinter as tk
 from tkinter import filedialog, scrolledtext, ttk
+
+from sagacraft.ui.config_io import (
+    safe_read_json_mapping,
+    update_basic_ui_preferences,
+    write_json_mapping,
+)
+from sagacraft.ui.engine_runner import capture_stdout, run_engine_command
+from sagacraft.ui.menu_helpers import (
+    add_font_family_commands,
+    add_font_size_commands,
+    create_styled_menu,
+)
+from sagacraft.ui.theme import get_default_themes
 
 
 CONFIG_PATH = Path(__file__).resolve().parents[3] / "config" / "engine.json"
@@ -32,7 +46,7 @@ class UISettings:
     font_size: int = 10
 
 
-class SagaCraftPlayer:
+class SagaCraftPlayer:  # pylint: disable=too-many-instance-attributes
     """Lightweight play-only SagaCraft client."""
 
     def __init__(self, root: tk.Tk) -> None:
@@ -41,93 +55,19 @@ class SagaCraftPlayer:
         self.root.geometry("960x760")
 
         # Theme palette (shared with IDE)
-        self.themes = {
-            "Dark": {
-                "bg": "#2b2b2b",
-                "fg": "#ffffff",
-                "accent": "#4a90e2",
-                "accent_dark": "#357abd",
-                "success": "#5cb85c",
-                "warning": "#f0ad4e",
-                "danger": "#d9534f",
-                "sidebar": "#3c3c3c",
-                "panel": "#353535",
-                "border": "#4a4a4a",
-                "text_bg": "#252525",
-                "button": "#4a90e2",
-                "button_hover": "#357abd",
-            },
-            "Light": {
-                "bg": "#f5f5f5",
-                "fg": "#333333",
-                "accent": "#4a90e2",
-                "accent_dark": "#357abd",
-                "success": "#5cb85c",
-                "warning": "#f0ad4e",
-                "danger": "#d9534f",
-                "sidebar": "#e0e0e0",
-                "panel": "#ffffff",
-                "border": "#cccccc",
-                "text_bg": "#ffffff",
-                "button": "#4a90e2",
-                "button_hover": "#357abd",
-            },
-            "Dracula": {
-                "bg": "#282a36",
-                "fg": "#f8f8f2",
-                "accent": "#bd93f9",
-                "accent_dark": "#9d73d9",
-                "success": "#50fa7b",
-                "warning": "#f1fa8c",
-                "danger": "#ff5555",
-                "sidebar": "#1e1f28",
-                "panel": "#44475a",
-                "border": "#6272a4",
-                "text_bg": "#1e1f28",
-                "button": "#bd93f9",
-                "button_hover": "#9d73d9",
-            },
-            "Nord": {
-                "bg": "#2e3440",
-                "fg": "#eceff4",
-                "accent": "#88c0d0",
-                "accent_dark": "#5e81ac",
-                "success": "#a3be8c",
-                "warning": "#ebcb8b",
-                "danger": "#bf616a",
-                "sidebar": "#3b4252",
-                "panel": "#434c5e",
-                "border": "#4c566a",
-                "text_bg": "#2e3440",
-                "button": "#88c0d0",
-                "button_hover": "#5e81ac",
-            },
-            "Monokai": {
-                "bg": "#272822",
-                "fg": "#f8f8f2",
-                "accent": "#66d9ef",
-                "accent_dark": "#46b9cf",
-                "success": "#a6e22e",
-                "warning": "#e6db74",
-                "danger": "#f92672",
-                "sidebar": "#1e1f1c",
-                "panel": "#3e3d32",
-                "border": "#75715e",
-                "text_bg": "#1e1f1c",
-                "button": "#66d9ef",
-                "button_hover": "#46b9cf",
-            },
-        }
+        self.themes = get_default_themes()
 
         self.settings = UISettings()
         self._load_ui_preferences()
 
-        self.current_theme = self.settings.theme if self.settings.theme in self.themes else "Dark"
+        self.current_theme = (
+            self.settings.theme if self.settings.theme in self.themes else "Dark"
+        )
         self.colors = self.themes[self.current_theme]
         self.current_font_family = self.settings.font_family
         self.current_font_size = self.settings.font_size
 
-        self.game_instance = None
+        self.game_instance: Any | None = None
         self.game_loaded = False
         self.current_file: Optional[Path] = None
 
@@ -150,29 +90,36 @@ class SagaCraftPlayer:
         style.configure("TMenubutton", padding=4)
 
     def _build_menu(self) -> None:
-        menubar = tk.Menu(self.root, bg=self.colors["panel"], fg=self.colors["fg"], activebackground=self.colors["accent"])
+        menubar = create_styled_menu(self.root, self.colors)
 
-        file_menu = tk.Menu(menubar, tearoff=0, bg=self.colors["panel"], fg=self.colors["fg"], activebackground=self.colors["accent"])
+        file_menu = create_styled_menu(menubar, self.colors, tearoff=0)
         file_menu.add_command(label="Open Adventure...", command=self.open_adventure)
         file_menu.add_separator()
-        file_menu.add_command(label="Save Game (slot 1)", command=lambda: self.save_game(1))
-        file_menu.add_command(label="Load Game (slot 1)", command=lambda: self.load_game(1))
+        file_menu.add_command(
+            label="Save Game (slot 1)",
+            command=cast(Callable[[], Any], partial(self.save_game, 1)),
+        )
+        file_menu.add_command(
+            label="Load Game (slot 1)",
+            command=cast(Callable[[], Any], partial(self.load_game, 1)),
+        )
         file_menu.add_separator()
         file_menu.add_command(label="Exit", command=self.root.quit)
         menubar.add_cascade(label="File", menu=file_menu)
 
-        options_menu = tk.Menu(menubar, tearoff=0, bg=self.colors["panel"], fg=self.colors["fg"], activebackground=self.colors["accent"])
-        theme_menu = tk.Menu(options_menu, tearoff=0, bg=self.colors["panel"], fg=self.colors["fg"], activebackground=self.colors["accent"])
+        options_menu = create_styled_menu(menubar, self.colors, tearoff=0)
+        theme_menu = create_styled_menu(options_menu, self.colors, tearoff=0)
         for theme_name in self.themes:
-            theme_menu.add_command(label=theme_name, command=lambda t=theme_name: self.change_theme(t))
+            theme_menu.add_command(
+                label=theme_name,
+                command=cast(Callable[[], Any], partial(self.change_theme, theme_name)),
+            )
         options_menu.add_cascade(label="Theme", menu=theme_menu)
 
-        font_menu = tk.Menu(options_menu, tearoff=0, bg=self.colors["panel"], fg=self.colors["fg"], activebackground=self.colors["accent"])
-        for family in ["Segoe UI", "Arial", "Helvetica", "Verdana", "Tahoma", "Calibri"]:
-            font_menu.add_command(label=family, command=lambda f=family: self.change_font_family(f))
-        font_size_menu = tk.Menu(font_menu, tearoff=0, bg=self.colors["panel"], fg=self.colors["fg"], activebackground=self.colors["accent"])
-        for size in [9, 10, 11, 12, 14, 16]:
-            font_size_menu.add_command(label=f"{size}pt", command=lambda s=size: self.change_font_size(s))
+        font_menu = create_styled_menu(options_menu, self.colors, tearoff=0)
+        add_font_family_commands(font_menu, self.change_font_family)
+        font_size_menu = create_styled_menu(font_menu, self.colors, tearoff=0)
+        add_font_size_commands(font_size_menu, self.change_font_size)
         font_menu.add_cascade(label="Font Size", menu=font_size_menu)
         options_menu.add_cascade(label="Font", menu=font_menu)
 
@@ -191,32 +138,65 @@ class SagaCraftPlayer:
 
         ttk.Label(top, text="Theme:").pack(side=tk.LEFT, padx=(0, 4))
         self.theme_var = tk.StringVar(value=self.current_theme)
-        theme_box = ttk.Combobox(top, textvariable=self.theme_var, values=list(self.themes.keys()), state="readonly", width=12)
-        theme_box.bind("<<ComboboxSelected>>", lambda _e: self.change_theme(self.theme_var.get()))
+        theme_box = ttk.Combobox(
+            top,
+            textvariable=self.theme_var,
+            values=list(self.themes.keys()),
+            state="readonly",
+            width=12,
+        )
+        theme_box.bind(
+            "<<ComboboxSelected>>",
+            lambda _e: self.change_theme(self.theme_var.get()),
+        )
         theme_box.pack(side=tk.LEFT, padx=4)
 
         ttk.Label(top, text="Font:").pack(side=tk.LEFT, padx=(12, 4))
         self.font_var = tk.StringVar(value=self.current_font_family)
-        font_box = ttk.Combobox(top, textvariable=self.font_var, values=["Segoe UI", "Arial", "Helvetica", "Verdana", "Tahoma", "Calibri"], state="readonly", width=12)
-        font_box.bind("<<ComboboxSelected>>", lambda _e: self.change_font_family(self.font_var.get()))
+        font_box = ttk.Combobox(
+            top,
+            textvariable=self.font_var,
+            values=["Segoe UI", "Arial", "Helvetica", "Verdana", "Tahoma", "Calibri"],
+            state="readonly",
+            width=12,
+        )
+        font_box.bind(
+            "<<ComboboxSelected>>",
+            lambda _e: self.change_font_family(self.font_var.get()),
+        )
         font_box.pack(side=tk.LEFT, padx=4)
 
         ttk.Label(top, text="Size:").pack(side=tk.LEFT, padx=(12, 4))
         self.size_var = tk.IntVar(value=self.current_font_size)
-        size_spin = ttk.Spinbox(top, from_=8, to=18, textvariable=self.size_var, width=4, command=lambda: self.change_font_size(self.size_var.get()))
+        size_spin = ttk.Spinbox(
+            top,
+            from_=8,
+            to=18,
+            textvariable=self.size_var,
+            width=4,
+            command=lambda: self.change_font_size(self.size_var.get()),
+        )
         size_spin.pack(side=tk.LEFT)
 
         action_row = ttk.Frame(self.root)
         action_row.pack(fill=tk.X, padx=10, pady=(0, 10))
 
-        ttk.Button(action_row, text="Open Adventure", command=self.open_adventure).pack(side=tk.LEFT)
-        ttk.Button(action_row, text="Save Slot 1", command=lambda: self.save_game(1)).pack(side=tk.LEFT, padx=6)
-        ttk.Button(action_row, text="Load Slot 1", command=lambda: self.load_game(1)).pack(side=tk.LEFT, padx=6)
+        ttk.Button(action_row, text="Open Adventure", command=self.open_adventure).pack(
+            side=tk.LEFT
+        )
+        ttk.Button(action_row, text="Save Slot 1", command=lambda: self.save_game(1)).pack(
+            side=tk.LEFT, padx=6
+        )
+        ttk.Button(action_row, text="Load Slot 1", command=lambda: self.load_game(1)).pack(
+            side=tk.LEFT, padx=6
+        )
 
         console_frame = ttk.Frame(self.root)
         console_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
 
-        self.game_output = scrolledtext.ScrolledText(console_frame, wrap=tk.WORD, height=24, state=tk.DISABLED)
+        self.game_output = scrolledtext.ScrolledText(
+            console_frame, wrap=tk.WORD, height=24, state=tk.DISABLED
+        )
         self.game_output.pack(fill=tk.BOTH, expand=True)
 
         entry_row = ttk.Frame(self.root)
@@ -227,8 +207,14 @@ class SagaCraftPlayer:
         self.command_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
         self.command_entry.bind("<Return>", lambda _e: self.run_command())
 
-        ttk.Button(entry_row, text="Send", command=self.run_command).pack(side=tk.LEFT, padx=6)
-        ttk.Button(entry_row, text="Look", command=lambda: self._process_command("look", echo=True)).pack(side=tk.LEFT)
+        ttk.Button(entry_row, text="Send", command=self.run_command).pack(
+            side=tk.LEFT, padx=6
+        )
+        ttk.Button(
+            entry_row,
+            text="Look",
+            command=lambda: self._process_command("look", echo=True),
+        ).pack(side=tk.LEFT)
 
         status_bar = ttk.Frame(self.root)
         status_bar.pack(fill=tk.X, padx=10, pady=(0, 10))
@@ -240,8 +226,10 @@ class SagaCraftPlayer:
             self._style_widget(widget)
         self._apply_fonts()
 
-    def _style_widget(self, widget: tk.Widget) -> None:
-        if isinstance(widget, (ttk.Frame, ttk.Label, ttk.Button, ttk.Combobox, ttk.Spinbox)):
+    def _style_widget(self, widget: tk.Misc) -> None:
+        if isinstance(
+            widget, (ttk.Frame, ttk.Label, ttk.Button, ttk.Combobox, ttk.Spinbox)
+        ):
             for child in widget.winfo_children():
                 self._style_widget(child)
         if isinstance(widget, tk.Tk):
@@ -276,53 +264,42 @@ class SagaCraftPlayer:
 
     # Persistence -----------------------------------------------------------
     def _load_ui_preferences(self) -> None:
+        """Load UI preferences from `CONFIG_PATH` if present."""
         if not CONFIG_PATH.exists():
             return
-        try:
-            with open(CONFIG_PATH, "r", encoding="utf-8") as handle:
-                data = json.load(handle)
-            ui = data.get("ui", {})
-            theme = ui.get("theme")
-            if isinstance(theme, str):
-                # Accept case-insensitive values
-                for name in self.themes:
-                    if name.lower() == theme.lower():
-                        self.settings.theme = name
-                        break
-            font_family = ui.get("font_family")
-            if isinstance(font_family, str):
-                self.settings.font_family = font_family
-            font_size = ui.get("font_size")
-            if isinstance(font_size, int) and 6 <= font_size <= 24:
-                self.settings.font_size = font_size
-        except (OSError, json.JSONDecodeError):
-            return
+        data = safe_read_json_mapping(CONFIG_PATH)
+        ui = data.get("ui", {}) if isinstance(data.get("ui", {}), dict) else {}
+        theme = ui.get("theme")
+        if isinstance(theme, str):
+            # Accept case-insensitive values
+            for name in self.themes:
+                if name.lower() == theme.lower():
+                    self.settings.theme = name
+                    break
+        font_family = ui.get("font_family")
+        if isinstance(font_family, str):
+            self.settings.font_family = font_family
+        font_size = ui.get("font_size")
+        if isinstance(font_size, int) and 6 <= font_size <= 24:
+            self.settings.font_size = font_size
 
     def _save_ui_preferences(self) -> None:
-        data = {}
-        if CONFIG_PATH.exists():
-            try:
-                with open(CONFIG_PATH, "r", encoding="utf-8") as handle:
-                    data = json.load(handle)
-            except (OSError, json.JSONDecodeError):
-                data = {}
-        data.setdefault("ui", {})
-        data["ui"].update(
-            {
-                "theme": self.current_theme,
-                "font_family": self.current_font_family,
-                "font_size": self.current_font_size,
-            }
+        """Persist current UI preferences to `CONFIG_PATH`."""
+        data = safe_read_json_mapping(CONFIG_PATH) if CONFIG_PATH.exists() else {}
+        update_basic_ui_preferences(
+            data,
+            theme=self.current_theme,
+            font_family=self.current_font_family,
+            font_size=self.current_font_size,
         )
         try:
-            CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-            with open(CONFIG_PATH, "w", encoding="utf-8") as handle:
-                json.dump(data, handle, indent=2)
+            write_json_mapping(CONFIG_PATH, data)
         except OSError:
-            return
+            pass
 
     # Adventure management --------------------------------------------------
     def open_adventure(self) -> None:
+        """Open an adventure JSON file and load it."""
         path = filedialog.askopenfilename(
             parent=self.root,
             initialdir=ADVENTURES_DIR,
@@ -334,6 +311,7 @@ class SagaCraftPlayer:
         self._load_adventure(Path(path))
 
     def _load_adventure(self, path: Path) -> None:
+        """Load an adventure via the dynamically loaded engine."""
         self.game_instance = None
         self.game_loaded = False
         self.current_file = path
@@ -344,14 +322,23 @@ class SagaCraftPlayer:
             return
 
         try:
-            game_cls = getattr(engine_module, 'ExtendedAdventureGame', None) or getattr(engine_module, 'EnhancedAdventureGame', None)
-            if game_cls is None:
+            game_ctor_obj = getattr(
+                engine_module, "ExtendedAdventureGame", None
+            ) or getattr(engine_module, "EnhancedAdventureGame", None)
+            if game_ctor_obj is None or not callable(game_ctor_obj):
                 self._set_status("Engine missing game class.")
                 return
-            instance = game_cls(str(path))
+            game_ctor: Callable[..., Any] = game_ctor_obj
+            instance = game_ctor(str(path))  # pylint: disable=not-callable
             instance.load_adventure()
             self.game_instance = instance
-        except Exception as exc:  # pragma: no cover - UI feedback
+        except (
+            OSError,
+            RuntimeError,
+            ValueError,
+            AttributeError,
+            TypeError,
+        ) as exc:  # pragma: no cover
             self._set_status(f"Failed to load adventure: {exc}")
             return
 
@@ -361,16 +348,20 @@ class SagaCraftPlayer:
         self.file_label.config(text=f"Adventure: {path.name}")
         self.game_loaded = True
         # Show starting room
+        assert self.game_instance is not None
         self._capture_output(self.game_instance.look)
 
     def _print_header(self) -> None:
+        """Print the adventure title + intro block."""
         if not self.game_instance:
             return
         title = getattr(self.game_instance, "adventure_title", "Adventure")
         intro = getattr(self.game_instance, "adventure_intro", "")
-        self._append(f"={'='*58}\n  {title.upper()}\n={'='*58}\n\n{intro}\n\n{'='*58}")
+        rule = "=" * 58
+        self._append(f"={rule}\n  {title.upper()}\n={rule}\n\n{intro}\n\n{rule}")
 
     def save_game(self, slot: int = 1) -> None:
+        """Save the current game state to a slot."""
         if not self.game_loaded or not self.game_instance:
             self._set_status("Load an adventure first.")
             return
@@ -382,6 +373,7 @@ class SagaCraftPlayer:
             self._set_status(f"Save failed (slot {slot})")
 
     def load_game(self, slot: int = 1) -> None:
+        """Load a previously saved game state from a slot."""
         if not self.game_loaded or not self.game_instance:
             self._set_status("Load an adventure first.")
             return
@@ -394,6 +386,7 @@ class SagaCraftPlayer:
 
     # Command handling ------------------------------------------------------
     def run_command(self) -> None:
+        """Send the current command entry to the engine."""
         command = self.command_var.get().strip()
         if not command:
             return
@@ -401,6 +394,7 @@ class SagaCraftPlayer:
         self._process_command(command, echo=True)
 
     def _process_command(self, command: str, echo: bool = False) -> None:
+        """Process a single command via the loaded engine."""
         if not self.game_loaded or not self.game_instance:
             self._set_status("Load an adventure first.")
             return
@@ -410,18 +404,7 @@ class SagaCraftPlayer:
             self._append("Thanks for playing!")
             self._set_status("Game ended")
             return
-        error: Optional[Exception] = None
-        output = ""
-        old_stdout = sys.stdout
-        buffer = StringIO()
-        sys.stdout = buffer
-        try:
-            self.game_instance.process_command(command)
-        except (RuntimeError, ValueError, AttributeError, OSError) as exc:
-            error = exc
-        finally:
-            output = buffer.getvalue()
-            sys.stdout = old_stdout
+        output, error = run_engine_command(self.game_instance, command)
         if error is not None:
             self._append(f"Error: {error}")
             self._set_status("Command error")
@@ -434,45 +417,45 @@ class SagaCraftPlayer:
 
     # Helpers ---------------------------------------------------------------
     def _load_engine_module(self):
+        """Dynamically load the engine module from `ENGINE_PATH`."""
         spec = importlib.util.spec_from_file_location("sagacraft_engine", ENGINE_PATH)
         if spec is None or spec.loader is None:
             return None
         module = importlib.util.module_from_spec(spec)
         try:
             spec.loader.exec_module(module)
-        except Exception:  # pragma: no cover - UI feedback path
+        except (ImportError, OSError, RuntimeError):  # pragma: no cover
             return None
         return module
 
     def _capture_output(self, func, *args, **kwargs):
-        old_stdout = sys.stdout
-        buffer = StringIO()
-        sys.stdout = buffer
-        try:
-            result = func(*args, **kwargs)
-        finally:
-            sys.stdout = old_stdout
-        text = buffer.getvalue().strip()
+        """Run a callable while capturing stdout into the UI output box."""
+        result, raw = capture_stdout(func, *args, **kwargs)
+        text = raw.strip()
         if text:
             self._append(text)
         return result
 
     def _append(self, text: str) -> None:
+        """Append text to the output console."""
         self.game_output.configure(state=tk.NORMAL)
         self.game_output.insert(tk.END, text + "\n")
         self.game_output.see(tk.END)
         self.game_output.configure(state=tk.DISABLED)
 
     def _clear_output(self) -> None:
+        """Clear the output console."""
         self.game_output.configure(state=tk.NORMAL)
         self.game_output.delete("1.0", tk.END)
         self.game_output.configure(state=tk.DISABLED)
 
     def _set_status(self, message: str) -> None:
+        """Update the status bar."""
         self.status_var.set(message)
 
     # Theme + font changes --------------------------------------------------
     def change_theme(self, theme_name: str) -> None:
+        """Apply a named UI theme."""
         if theme_name not in self.themes:
             return
         self.current_theme = theme_name
@@ -483,6 +466,7 @@ class SagaCraftPlayer:
         self._set_status(f"Theme: {theme_name}")
 
     def change_font_family(self, family: str) -> None:
+        """Set the UI font family."""
         self.current_font_family = family
         self.font_var.set(family)
         self._apply_fonts()
@@ -490,6 +474,7 @@ class SagaCraftPlayer:
         self._set_status(f"Font: {family}")
 
     def change_font_size(self, size: int) -> None:
+        """Set the UI font size."""
         try:
             size_int = int(size)
         except (TypeError, ValueError):
@@ -501,44 +486,57 @@ class SagaCraftPlayer:
         self._set_status(f"Font size: {self.current_font_size}pt")
 
 
-def main() -> None:
+# pylint: disable=too-many-locals,too-many-branches,too-many-statements
+# pylint: disable=too-many-return-statements,inconsistent-return-statements
+def main() -> Optional[SagaCraftPlayer]:
+    """Entry point for the player UI (and CLI debug modes)."""
     # Headless check mode: initialize nothing, just verify engine loads
     if "--check" in sys.argv:
         try:
-            spec = importlib.util.spec_from_file_location("sagacraft_engine", ENGINE_PATH)
+            spec = importlib.util.spec_from_file_location(
+                "sagacraft_engine", ENGINE_PATH
+            )
             if spec is None or spec.loader is None:
                 print("CHECK: engine spec load failed")
-                return
+                return None
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
             # Basic sanity: required class exists
-            ok = hasattr(module, "EnhancedAdventureGame") or hasattr(module, "ExtendedAdventureGame")
+            ok = hasattr(module, "EnhancedAdventureGame") or hasattr(
+                module, "ExtendedAdventureGame"
+            )
             print("CHECK: engine import OK" if ok else "CHECK: engine missing game class")
-        except Exception as exc:
+        except (ImportError, OSError, RuntimeError) as exc:
             print(f"CHECK: import error: {exc}")
-        return
+        return None
 
     # Headless load mode: load an adventure JSON and print intro + first look
     if "--load" in sys.argv:
         try:
             idx = sys.argv.index("--load")
-            adventure_path = Path(sys.argv[idx + 1]) if idx + 1 < len(sys.argv) else None
+            adventure_path = (
+                Path(sys.argv[idx + 1]) if idx + 1 < len(sys.argv) else None
+            )
         except (ValueError, IndexError):
             adventure_path = None
         if not adventure_path or not Path(adventure_path).exists():
             print("LOAD: missing or invalid path")
-            return
+            return None
         try:
-            spec = importlib.util.spec_from_file_location("sagacraft_engine", ENGINE_PATH)
+            spec = importlib.util.spec_from_file_location(
+                "sagacraft_engine", ENGINE_PATH
+            )
             if spec is None or spec.loader is None:
                 print("LOAD: engine spec load failed")
-                return
+                return None
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
-            game_cls = getattr(module, "ExtendedAdventureGame", None) or getattr(module, "EnhancedAdventureGame", None)
-            if game_cls is None:
+            game_ctor_obj = getattr(module, "ExtendedAdventureGame", None) or getattr(
+                module, "EnhancedAdventureGame", None
+            )
+            if game_ctor_obj is None or not callable(game_ctor_obj):
                 print("LOAD: engine game class missing")
-                return
+                return None
             # Optional seed for deterministic runs: --seed <int>
             seed = None
             if "--seed" in sys.argv:
@@ -548,21 +546,26 @@ def main() -> None:
                     seed = int(seed_s) if seed_s is not None else None
                 except (ValueError, IndexError):
                     seed = None
-            instance = game_cls(str(adventure_path), seed=seed)
+            game_ctor: Callable[..., Any] = game_ctor_obj
+            instance = game_ctor(str(adventure_path), seed=seed)  # pylint: disable=not-callable
             instance.load_adventure()
             title = getattr(instance, "adventure_title", "Adventure")
             intro = getattr(instance, "adventure_intro", "")
-            header = f"={'='*58}\n  {title.upper()}\n={'='*58}\n\n{intro}\n\n{'='*58}"
+            rule = "=" * 58
+            header = f"={rule}\n  {title.upper()}\n={rule}\n\n{intro}\n\n{rule}"
             transcript_out = None
             # Optional transcript file: --transcript <file>
             if "--transcript" in sys.argv:
                 try:
                     tidx = sys.argv.index("--transcript")
-                    transcript_out = Path(sys.argv[tidx + 1]) if tidx + 1 < len(sys.argv) else None
+                    transcript_out = (
+                        Path(sys.argv[tidx + 1]) if tidx + 1 < len(sys.argv) else None
+                    )
                 except (ValueError, IndexError):
                     transcript_out = None
 
             def _print(text: str):
+                """Print to stdout (and optional transcript file)."""
                 print(text)
                 if transcript_out:
                     try:
@@ -591,7 +594,7 @@ def main() -> None:
                     cmd = None
                 if not cmd:
                     print("CMD: missing command string")
-                    return
+                    return None
                 buf2 = StringIO()
                 old2 = sys.stdout
                 sys.stdout = buf2
@@ -611,14 +614,23 @@ def main() -> None:
                     cmds_path = None
                 if not cmds_path or not cmds_path.exists():
                     print("CMDS: missing or invalid file path")
-                    return
+                    return None
                 try:
                     with open(cmds_path, "r", encoding="utf-8") as fh:
-                        lines = [ln.strip() for ln in fh if ln.strip() and not ln.strip().startswith("#")]
+                        lines = [
+                            ln.strip()
+                            for ln in fh
+                            if ln.strip() and not ln.strip().startswith("#")
+                        ]
                 except OSError as exc:
                     print(f"CMDS: read error: {exc}")
-                    return
-                _print("CMDS: running " + str(len(lines)) + " commands from " + str(cmds_path))
+                    return None
+                _print(
+                    "CMDS: running "
+                    + str(len(lines))
+                    + " commands from "
+                    + str(cmds_path)
+                )
                 for line in lines:
                     _print("> " + line)
                     buf3 = StringIO()
@@ -668,9 +680,9 @@ def main() -> None:
                     sys.stdout = old5
                 out5 = buf5.getvalue().strip()
                 _print(out5 if out5 else f"LOAD-SLOT: {slot}")
-        except Exception as exc:
+        except Exception as exc:  # pylint: disable=broad-exception-caught
             print(f"LOAD: error: {exc}")
-        return
+        return None
 
     # Normal GUI run
     root = tk.Tk()

@@ -5,14 +5,16 @@ Extended features for rich interactive fiction experiences.
 """
 
 import json
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from dataclasses import dataclass, field, asdict
 from enum import Enum
 from datetime import datetime
 
+from sagacraft.core.adventure_loader import read_adventure_data
 
-# Import original types for compatibility
-from sagacraft_engine import ItemType, MonsterStatus, Item, Monster, Room, Player
+
+# Import core engine types for compatibility
+from sagacraft.core.engine import ItemType, MonsterStatus, Item, Monster, Room, Player
 
 
 class PuzzleType(Enum):
@@ -75,6 +77,7 @@ class ExtendedItem(Item):
         item_type = ItemType(data.get("type", "normal"))
 
         # Create with all fields, using defaults for missing extended fields
+        # pylint: disable=unexpected-keyword-arg
         return cls(
             id=data["id"],
             name=data["name"],
@@ -134,6 +137,7 @@ class ExtendedMonster(Monster):
         """Create ExtendedMonster from dict"""
         friendliness = MonsterStatus(data.get("friendliness", "neutral"))
 
+        # pylint: disable=unexpected-keyword-arg
         return cls(
             id=data["id"],
             name=data["name"],
@@ -184,6 +188,7 @@ class ExtendedRoom(Room):
     @classmethod
     def from_dict(cls, data: dict):
         """Create ExtendedRoom from dict"""
+        # pylint: disable=unexpected-keyword-arg
         return cls(
             id=data["id"],
             name=data["name"],
@@ -312,6 +317,7 @@ class QuestObjective:
     description: str = ""
 
     def is_complete(self) -> bool:
+        """Return True when the objective progress meets the requirement."""
         return self.current_progress >= self.quantity
 
 
@@ -364,6 +370,7 @@ class Quest:
 @dataclass
 class ExtendedPlayer(Player):
     """Extended player with progression system"""
+    max_hardiness: int = 0
 
     experience: int = 0
     level: int = 1
@@ -374,6 +381,11 @@ class ExtendedPlayer(Player):
     completed_quests: List[int] = field(default_factory=list)
     discovered_rooms: List[int] = field(default_factory=list)
     flags: Dict[str, bool] = field(default_factory=dict)  # For conditional events
+
+    def __post_init__(self):
+        super().__post_init__()
+        if self.max_hardiness <= 0:
+            self.max_hardiness = self.hardiness
 
     def add_experience(self, amount: int):
         """Add experience and handle leveling up"""
@@ -393,86 +405,228 @@ class ExtendedPlayer(Player):
         self.agility += 2
 
 
+@dataclass
+class _ExtendedWorld:
+    rooms: Dict[int, "ExtendedRoom"] = field(default_factory=dict)
+    items: Dict[int, "ExtendedItem"] = field(default_factory=dict)
+    monsters: Dict[int, "ExtendedMonster"] = field(default_factory=dict)
+    puzzles: Dict[int, "Puzzle"] = field(default_factory=dict)
+    dialogues: Dict[int, "Dialogue"] = field(default_factory=dict)
+    quests: Dict[int, "Quest"] = field(default_factory=dict)
+
+
+@dataclass
+class _ExtendedAdventureMeta:
+    title: str = ""
+    intro: str = ""
+
+
+@dataclass
+class _ExtendedAdventureRuntime:
+    turn_count: int = 0
+    game_over: bool = False
+    last_loaded_state: Any | None = None
+
+
+@dataclass
+class _ExtendedAdventureFeatures:
+    allow_save: bool = True
+    has_puzzles: bool = False
+    has_quests: bool = False
+    has_dialogues: bool = False
+
+
 class ExtendedAdventureGame:
     """Game engine with extended features"""
 
     def __init__(self, adventure_file: str):
         self.adventure_file = adventure_file
-        self.rooms: Dict[int, ExtendedRoom] = {}
-        self.items: Dict[int, ExtendedItem] = {}
-        self.monsters: Dict[int, ExtendedMonster] = {}
-        self.puzzles: Dict[int, Puzzle] = {}
-        self.dialogues: Dict[int, Dialogue] = {}
-        self.quests: Dict[int, Quest] = {}
+        self.world = _ExtendedWorld()
         self.player: ExtendedPlayer = ExtendedPlayer()
+        self.meta = _ExtendedAdventureMeta()
+        self.runtime = _ExtendedAdventureRuntime()
+        self.features = _ExtendedAdventureFeatures()
 
-        self.adventure_title: str = ""
-        self.adventure_intro: str = ""
-        self.turn_count: int = 0
-        self.game_over: bool = False
+    # Compatibility properties: preserve the old public attribute API while
+    # keeping actual state grouped under a few objects.
+    # pylint: disable=missing-function-docstring
+    @property
+    def rooms(self) -> Dict[int, ExtendedRoom]:
+        return self.world.rooms
 
-        # Extended settings
-        self.allow_save: bool = True
-        self.has_puzzles: bool = False
-        self.has_quests: bool = False
-        self.has_dialogues: bool = False
+    @rooms.setter
+    def rooms(self, value: Dict[int, ExtendedRoom]) -> None:
+        self.world.rooms = value
+
+    @property
+    def items(self) -> Dict[int, ExtendedItem]:
+        return self.world.items
+
+    @items.setter
+    def items(self, value: Dict[int, ExtendedItem]) -> None:
+        self.world.items = value
+
+    @property
+    def monsters(self) -> Dict[int, ExtendedMonster]:
+        return self.world.monsters
+
+    @monsters.setter
+    def monsters(self, value: Dict[int, ExtendedMonster]) -> None:
+        self.world.monsters = value
+
+    @property
+    def puzzles(self) -> Dict[int, Puzzle]:
+        return self.world.puzzles
+
+    @puzzles.setter
+    def puzzles(self, value: Dict[int, Puzzle]) -> None:
+        self.world.puzzles = value
+
+    @property
+    def dialogues(self) -> Dict[int, Dialogue]:
+        return self.world.dialogues
+
+    @dialogues.setter
+    def dialogues(self, value: Dict[int, Dialogue]) -> None:
+        self.world.dialogues = value
+
+    @property
+    def quests(self) -> Dict[int, Quest]:
+        return self.world.quests
+
+    @quests.setter
+    def quests(self, value: Dict[int, Quest]) -> None:
+        self.world.quests = value
+
+    @property
+    def adventure_title(self) -> str:
+        return self.meta.title
+
+    @adventure_title.setter
+    def adventure_title(self, value: str) -> None:
+        self.meta.title = value
+
+    @property
+    def adventure_intro(self) -> str:
+        return self.meta.intro
+
+    @adventure_intro.setter
+    def adventure_intro(self, value: str) -> None:
+        self.meta.intro = value
+
+    @property
+    def turn_count(self) -> int:
+        return self.runtime.turn_count
+
+    @turn_count.setter
+    def turn_count(self, value: int) -> None:
+        self.runtime.turn_count = value
+
+    @property
+    def game_over(self) -> bool:
+        return self.runtime.game_over
+
+    @game_over.setter
+    def game_over(self, value: bool) -> None:
+        self.runtime.game_over = value
+
+    @property
+    def _last_loaded_state(self) -> Any | None:
+        return self.runtime.last_loaded_state
+
+    @_last_loaded_state.setter
+    def _last_loaded_state(self, value: Any | None) -> None:
+        self.runtime.last_loaded_state = value
+
+    @property
+    def allow_save(self) -> bool:
+        return self.features.allow_save
+
+    @allow_save.setter
+    def allow_save(self, value: bool) -> None:
+        self.features.allow_save = value
+
+    @property
+    def has_puzzles(self) -> bool:
+        return self.features.has_puzzles
+
+    @has_puzzles.setter
+    def has_puzzles(self, value: bool) -> None:
+        self.features.has_puzzles = value
+
+    @property
+    def has_quests(self) -> bool:
+        return self.features.has_quests
+
+    @has_quests.setter
+    def has_quests(self, value: bool) -> None:
+        self.features.has_quests = value
+
+    @property
+    def has_dialogues(self) -> bool:
+        return self.features.has_dialogues
+
+    @has_dialogues.setter
+    def has_dialogues(self, value: bool) -> None:
+        self.features.has_dialogues = value
+
+    # pylint: enable=missing-function-docstring
 
     def load_adventure(self):
         """Load adventure with additional features"""
         try:
-            with open(self.adventure_file, "r") as f:
-                data = json.load(f)
+            data = read_adventure_data(self.adventure_file)
 
-            self.adventure_title = data.get("title", "Untitled Adventure")
-            self.adventure_intro = data.get("intro", "")
+            self.meta.title = data.get("title", "Untitled Adventure")
+            self.meta.intro = data.get("intro", "")
 
             # Load extended settings if present
             settings = data.get("settings", {})
-            self.allow_save = settings.get("allow_save", True)
+            self.features.allow_save = settings.get("allow_save", True)
 
             # Load rooms (extended or original)
             for room_data in data.get("rooms", []):
                 room = ExtendedRoom.from_dict(room_data)
-                self.rooms[room.id] = room
+                self.world.rooms[room.id] = room
 
             # Load items (extended or original)
             for item_data in data.get("items", []):
                 item = ExtendedItem.from_dict(item_data)
-                self.items[item.id] = item
+                self.world.items[item.id] = item
 
             # Load monsters (extended or original)
             for mon_data in data.get("monsters", []):
                 monster = ExtendedMonster.from_dict(mon_data)
-                self.monsters[monster.id] = monster
+                self.world.monsters[monster.id] = monster
 
             # Load puzzles if present
             if "puzzles" in data:
-                self.has_puzzles = True
+                self.features.has_puzzles = True
                 for puzzle_data in data["puzzles"]:
                     puzzle = Puzzle.from_dict(puzzle_data)
-                    self.puzzles[puzzle.id] = puzzle
+                    self.world.puzzles[puzzle.id] = puzzle
 
             # Load dialogues if present
             if "dialogues" in data:
-                self.has_dialogues = True
+                self.features.has_dialogues = True
                 for dialogue_data in data["dialogues"]:
                     dialogue = Dialogue.from_dict(dialogue_data)
-                    self.dialogues[dialogue.npc_id] = dialogue
+                    self.world.dialogues[dialogue.npc_id] = dialogue
 
             # Load quests if present
             if "quests" in data:
-                self.has_quests = True
+                self.features.has_quests = True
                 for quest_data in data["quests"]:
                     quest = Quest.from_dict(quest_data)
-                    self.quests[quest.id] = quest
+                    self.world.quests[quest.id] = quest
 
             # Set player starting position
             self.player.current_room = data.get("start_room", 1)
 
             return True
 
-        except Exception as e:
-            print(f"Error loading adventure: {e}")
+        except (OSError, json.JSONDecodeError, TypeError, ValueError) as exc:
+            print(f"Error loading adventure: {exc}")
             return False
 
     def save_game(self, slot: int = 1) -> bool:
@@ -495,31 +649,31 @@ class ExtendedAdventureGame:
 
         try:
             save_file = f"saves/save_slot_{slot}.json"
-            with open(save_file, "w") as f:
-                json.dump(save_data, f, indent=2)
+            with open(save_file, "w", encoding="utf-8") as handle:
+                json.dump(save_data, handle, indent=2)
             print(f"\n✓ Game saved to slot {slot}")
             return True
-        except Exception as e:
-            print(f"\n✗ Error saving game: {e}")
+        except (OSError, TypeError, ValueError) as exc:
+            print(f"\n✗ Error saving game: {exc}")
             return False
 
     def load_game(self, slot: int = 1) -> bool:
         """Load saved game state"""
         try:
             save_file = f"saves/save_slot_{slot}.json"
-            with open(save_file, "r") as f:
-                save_data = json.load(f)
+            with open(save_file, "r", encoding="utf-8") as handle:
+                save_data = json.load(handle)
 
                 # Restore game state
                 # (Implementation would restore all objects)
-                self._last_loaded_state = save_data
+                self.runtime.last_loaded_state = save_data
             print(f"\n✓ Game loaded from slot {slot}")
             return True
         except FileNotFoundError:
             print(f"\n✗ No save file found in slot {slot}")
             return False
-        except Exception as e:
-            print(f"\n✗ Error loading game: {e}")
+        except (OSError, json.JSONDecodeError, TypeError, ValueError) as exc:
+            print(f"\n✗ Error loading game: {exc}")
             return False
 
     # Additional extended methods would go here

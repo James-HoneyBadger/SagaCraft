@@ -15,7 +15,7 @@ from src.sagacraft.core.event_bus import Event
 # Import the original achievement classes (we're reusing the data structures)
 # In a full refactor, these would also be moved to this module
 try:
-    from acs_achievements import (
+    from acs_achievements import (  # type: ignore
         Achievement,
         AchievementCategory,
         PlayerStatistics,
@@ -50,7 +50,7 @@ class AchievementsPlugin(BasePlugin):
     - command.input: Track command usage
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         metadata = PluginMetadata(
             name="achievements",
             version="3.0.0",
@@ -66,7 +66,7 @@ class AchievementsPlugin(BasePlugin):
         self.achievements: Dict[str, Achievement] = {}
         self.statistics = None
 
-    def initialize(self, state, event_bus, services):
+    def initialize(self, state: Any, event_bus: Any, services: Any) -> None:
         """Initialize the achievement system"""
         super().initialize(state, event_bus, services)
 
@@ -78,6 +78,9 @@ class AchievementsPlugin(BasePlugin):
 
         # Register default achievements
         self._register_default_achievements()
+
+        if event_bus is None:  # type: ignore
+            self.logger.warning("event_bus is None")
 
         # Register event subscriptions with the event bus
         if event_bus:
@@ -225,14 +228,15 @@ class AchievementsPlugin(BasePlugin):
         achievement.unlock_time = datetime.now()
 
         # Emit event
-        self.event_bus.publish(
-            "achievement.unlocked",
-            {
-                "achievement_id": achievement_id,
-                "name": achievement.name,
-                "points": achievement.points,
-            },
-        )
+        if self.event_bus:  # type: ignore
+            self.event_bus.publish(
+                "achievement.unlocked",
+                {
+                    "achievement_id": achievement_id,
+                    "name": achievement.name,
+                    "points": achievement.points,
+                },
+            )
 
         self.logger.info("Achievement unlocked: %s", achievement.name)
         return True

@@ -212,7 +212,7 @@ class NPCContext:
 class NPCContextManager:
     """Manages context for all NPCs in the game"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.npc_contexts: Dict[int, NPCContext] = {}
 
     def get_or_create_context(self, npc_id: int, npc_name: str) -> NPCContext:
@@ -225,7 +225,7 @@ class NPCContextManager:
         """Get context for NPC if it exists"""
         return self.npc_contexts.get(npc_id)
 
-    def record_conversation(self, npc_id: int, topic: str):
+    def record_conversation(self, npc_id: int, topic: str) -> None:
         """Record that player talked to NPC about topic"""
         if npc_id in self.npc_contexts:
             self.npc_contexts[npc_id].memory.add_topic(topic)
@@ -236,17 +236,17 @@ class NPCContextManager:
         context = self.get_context(npc_id)
         return context.memory.has_discussed(topic) if context else False
 
-    def set_npc_emotion(self, npc_id: int, emotion: EmotionalState):
+    def set_npc_emotion(self, npc_id: int, emotion: EmotionalState) -> None:
         """Set emotional state for NPC"""
         if npc_id in self.npc_contexts:
             self.npc_contexts[npc_id].set_emotion(emotion)
 
-    def improve_relationship(self, npc_id: int, amount: int = 1):
+    def improve_relationship(self, npc_id: int, amount: int = 1) -> None:
         """Improve player's relationship with NPC"""
         if npc_id in self.npc_contexts:
             self.npc_contexts[npc_id].improve_relationship(amount)
 
-    def damage_relationship(self, npc_id: int, amount: int = 1):
+    def damage_relationship(self, npc_id: int, amount: int = 1) -> None:
         """Damage player's relationship with NPC"""
         if npc_id in self.npc_contexts:
             self.npc_contexts[npc_id].damage_relationship(amount)

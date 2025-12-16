@@ -5,6 +5,7 @@ Provides improved command parsing with better sentence understanding and support
 for party/companion system.
 """
 
+import random
 import re
 from typing import List, Optional, Dict, Any
 from enum import Enum
@@ -198,7 +199,7 @@ class NaturalLanguageParser:
         verb_index = 0
 
         # Check for multi-word verbs first
-        for i in range(len(words)):
+        for i, word in enumerate(words):
             # Try 2-word combinations
             if i < len(words) - 1:
                 two_word = f"{words[i]} {words[i+1]}"
@@ -209,7 +210,7 @@ class NaturalLanguageParser:
                     break
 
             # Try single word
-            normalized = self.normalize_verb(words[i])
+            normalized = self.normalize_verb(word)
             if normalized in self.verb_map:
                 verb = normalized
                 verb_index = i + 1
@@ -227,9 +228,9 @@ class NaturalLanguageParser:
             if len(words) > 1:
                 # Multiple words with unknown verb -> examine the target
                 return {"action": "look", "target": " ".join(words[1:])}
-            else:
-                # Single unknown word -> examine it
-                return {"action": "look", "target": " ".join(words)}
+
+            # Single unknown word -> examine it
+            return {"action": "look", "target": " ".join(words)}
 
         # Extract rest of sentence after verb
         rest = " ".join(words[verb_index:])
@@ -238,7 +239,7 @@ class NaturalLanguageParser:
         if verb == "go":
             if rest in ["in", "inside"]:
                 return {"action": "move", "direction": "in"}
-            elif rest in ["out", "outside"]:
+            if rest in ["out", "outside"]:
                 return {"action": "move", "direction": "out"}
 
         # Check for direction (movement commands)
@@ -262,7 +263,7 @@ class NaturalLanguageParser:
                     "order": parts[1].strip() if len(parts) > 1 else "",
                 }
             # If no "to" pattern, and it's "tell", treat as talk
-            elif verb == "tell":
+            if verb == "tell":
                 return {"action": "talk", "target": rest.strip()}
 
         # Special handling for enter/exit with targets -> movement
@@ -437,7 +438,7 @@ class Companion:
         # AI and behavior
         self.stance = CompanionStance.AGGRESSIVE
         self.is_waiting = False  # If told to wait somewhere
-        self.wait_location = None  # Room ID where waiting
+        self.wait_location: Optional[int] = None  # Room ID where waiting
         self.auto_loot = True  # Automatically pick up items
         self.auto_heal_threshold = 30  # % health to auto-heal at
 
@@ -473,14 +474,13 @@ class Companion:
 
         self.stance = self.default_stance
 
-        self.inventory = []
-        self.equipped_weapon = None
+        self.inventory: List[int] = []
+        self.equipped_weapon: Optional[int] = None
 
     def take_damage(self, amount: int):
         """Companion takes damage"""
         self.current_health -= amount
-        if self.current_health < 0:
-            self.current_health = 0
+        self.current_health = max(self.current_health, 0)
 
     def heal(self, amount: int):
         """Heal the companion"""
@@ -492,8 +492,6 @@ class Companion:
 
     def get_attack_damage(self) -> int:
         """Calculate attack damage"""
-        import random
-
         base_damage = random.randint(1, 6) + self.attack_bonus
         return base_damage
 

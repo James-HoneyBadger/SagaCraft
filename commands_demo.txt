@@ -1,6 +1,0 @@
-# Demo command script for SagaCraft headless run
-look
-take field satchel
-inventory
-north
-look

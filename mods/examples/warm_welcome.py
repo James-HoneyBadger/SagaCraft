@@ -6,7 +6,11 @@ summary: Adds a friendly greeting when the player enters the starting room.
 """
 
 # pylint: disable=import-error
-from sagacraft.tools.modding import CustomCommand, EventType, ScriptHook
+from sagacraft.tools.modding import (  # type: ignore
+    CustomCommand,
+    EventType,
+    ScriptHook,
+)
 
 if "register_hook" not in globals():  # pragma: no cover
 

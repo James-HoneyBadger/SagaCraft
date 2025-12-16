@@ -6,24 +6,16 @@ consistent initialization, lifecycle management, and event handling.
 """
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
-from enum import IntEnum
-from typing import TYPE_CHECKING, Any, Dict, List
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Any, Callable, Dict, Protocol, cast
+
+from .priorities import Priority as PluginPriority
 
 
 if TYPE_CHECKING:
     from .event_bus import EventBus
     from .game_state import GameState
     from .services import ServiceRegistry
-
-
-class PluginPriority(IntEnum):
-    """Plugin initialization and event processing order"""
-
-    CRITICAL = 0  # Core systems (state, IO)
-    HIGH = 10  # Game logic (combat, items)
-    NORMAL = 50  # Features (achievements, journal)
-    LOW = 100  # UI/UX (tutorial, accessibility)
 
 
 @dataclass
@@ -34,13 +26,9 @@ class PluginMetadata:
     version: str
     author: str = "SagaCraft Team"
     description: str = ""
-    dependencies: List[str] = None
+    dependencies: list[str] = field(default_factory=list)
     priority: PluginPriority = PluginPriority.NORMAL
     enabled: bool = True
-
-    def __post_init__(self):
-        if self.dependencies is None:
-            self.dependencies = []
 
 
 class BasePlugin(ABC):
@@ -63,9 +51,9 @@ class BasePlugin(ABC):
         self.metadata = metadata
         self._initialized = False
         self._enabled = metadata.enabled
-        self.state = None
-        self.event_bus = None
-        self.services = None
+        self.state: "GameState | None" = None
+        self.event_bus: "EventBus | None" = None
+        self.services: "ServiceRegistry | None" = None
 
     @abstractmethod
     def initialize(
@@ -85,7 +73,7 @@ class BasePlugin(ABC):
         self._initialized = True
 
     @abstractmethod
-    def get_event_subscriptions(self) -> Dict[str, callable]:
+    def get_event_subscriptions(self) -> Dict[str, Callable[..., Any]]:
         """
         Return map of event names to handler methods
 
@@ -145,7 +133,8 @@ class BasePlugin(ABC):
         if self.services:
             config_service = self.services.get("config")
             if config_service:
-                return config_service.get_plugin_config(
+                typed_config_service = cast(_PluginConfigService, config_service)
+                return typed_config_service.get_plugin_config(
                     self.metadata.name, key, default
                 )
         return default
@@ -161,10 +150,23 @@ class BasePlugin(ABC):
         if self.services:
             config_service = self.services.get("config")
             if config_service:
-                config_service.set_plugin_config(self.metadata.name, key, value)
+                typed_config_service = cast(_PluginConfigService, config_service)
+                typed_config_service.set_plugin_config(self.metadata.name, key, value)
 
     def __repr__(self) -> str:
         return (
             f"<{self.__class__.__name__} "
             f"'{self.metadata.name}' v{self.metadata.version}>"
         )
+
+
+class _PluginConfigService(Protocol):
+    # Protocol stubs intentionally use ellipsis.
+    # pylint: disable=unnecessary-ellipsis
+    def get_plugin_config(self, plugin_name: str, key: str, default: Any = None) -> Any:
+        """Return the plugin's config value for key (or default)."""
+        ...
+
+    def set_plugin_config(self, plugin_name: str, key: str, value: Any) -> None:
+        """Persist a plugin config value."""
+        ...
