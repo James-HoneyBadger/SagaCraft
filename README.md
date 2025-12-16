@@ -8,6 +8,10 @@ A streamlined, text-first adventure engine and player.
 - `docs/Game_Designer_Manual.md`
 - `docs/Technical_Reference.md`
 
+## Community
+
+- Code of Conduct: `CODE_OF_CONDUCT.md`
+
 ## Quickstart
 
 Run the SagaCraft player:
