@@ -15,7 +15,7 @@ from datetime import datetime
 
 # Import original types for compatibility
 try:
-    from sagacraft.core.engine import (
+    from sagacraft.core.engine import (  # type: ignore
         ItemType,
         MonsterStatus,
         Item,
@@ -26,7 +26,7 @@ try:
     )
 except ModuleNotFoundError:  # pragma: no cover - interactive launch path fix
     sys.path.insert(0, str(Path(__file__).parent / "src"))
-    from sagacraft.core.engine import (
+    from sagacraft.core.engine import (  # type: ignore
         ItemType,
         MonsterStatus,
         Item,
@@ -428,13 +428,22 @@ class ExtendedPlayer(Player):
         self.max_hardiness += 5
         self.agility += 2
 
-    def apply_save_state(self, snapshot: Dict[str, Any]):
+    def apply_save_state(self, snapshot: Dict[str, Any]):  # type: ignore[no-untyped-def]
         """Update primary stats from a saved snapshot."""
         # pylint: disable=no-member,attribute-defined-outside-init
-        self.current_room = snapshot.get("current_room", self.current_room)
-        self.gold = snapshot.get("gold", self.gold)
-        self.inventory = snapshot.get("inventory", self.inventory)
-        self.current_health = snapshot.get("current_health", self.current_health)
+        # Inherited attributes from parent AdventureGame class
+        self.current_room: Any = snapshot.get(  # type: ignore[assignment]
+            "current_room", self.current_room  # type: ignore[attr-defined]
+        )
+        self.gold: Any = snapshot.get(  # type: ignore[assignment]
+            "gold", self.gold  # type: ignore[attr-defined]
+        )
+        self.inventory: Any = snapshot.get(  # type: ignore[assignment]
+            "inventory", self.inventory  # type: ignore[attr-defined]
+        )
+        self.current_health: Any = snapshot.get(  # type: ignore[assignment]
+            "current_health", self.current_health  # type: ignore[attr-defined]
+        )
 
 
 class ExtendedAdventureGame(AdventureGame):
@@ -464,7 +473,7 @@ class ExtendedAdventureGame(AdventureGame):
                 data = json.load(handle)
         except (OSError, json.JSONDecodeError) as exc:
             print(f"Error loading adventure: {exc}")
-            return False
+            return
 
         self.adventure_title = data.get("title", "Untitled Adventure")
         self.adventure_intro = data.get("intro", "")
@@ -513,8 +522,6 @@ class ExtendedAdventureGame(AdventureGame):
         # pylint: disable=attribute-defined-outside-init
         self.player.current_room = data.get("start_room", 1)
 
-        return True
-
     def save_game(self, slot: int = 1) -> bool:
         """Save current game state"""
         if not self.allow_save:
@@ -524,10 +531,9 @@ class ExtendedAdventureGame(AdventureGame):
         def _json_default(o):
             try:
                 # Support Enum values
-                from enum import Enum
                 if isinstance(o, Enum):
                     return o.value if hasattr(o, "value") else o.name
-            except Exception:
+            except (AttributeError, ValueError):  # type: ignore[misc]
                 pass
             # Fallback: string repr
             return str(o)
@@ -571,7 +577,7 @@ class ExtendedAdventureGame(AdventureGame):
 
         # Minimal restoration to keep feature usable without full state clone.
         player_data = save_data.get("player", {})
-        if player_data:
+        if player_data and isinstance(self.player, ExtendedPlayer):
             self.player.apply_save_state(player_data)
 
         self.turn_count = save_data.get("turn_count", self.turn_count)
