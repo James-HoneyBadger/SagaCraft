@@ -11,8 +11,8 @@
   },
   "ui": {
     "theme": "Monokai",
-    "font_size": 12,
+    "font_size": 10,
     "color_enabled": true,
-    "font_family": "Calibri"
+    "font_family": "Verdana"
   }
 }
