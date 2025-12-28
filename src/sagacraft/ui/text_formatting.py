@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """SagaCraft - Rich Text Formatting System
 
-Provides text formatting, coloring, ASCII art support, and dynamic text wrapping
-for immersive text output.
+Provides text formatting, coloring, ASCII art support,
+and dynamic text wrapping for immersive text output.
 """
 
 from enum import Enum
-from typing import Optional, List, Dict, Tuple
+from typing import Optional, List, Dict
 import textwrap
 import re
 
@@ -110,14 +110,17 @@ class RichTextFormatter:
         
         return "".join(codes) + text + TextColor.RESET.value
     
-    def format_status_line(self, label: str, value: str, color: TextColor = TextColor.BRIGHT_BLUE) -> str:
+    def format_status_line(
+        self, label: str, value: str,
+        color: TextColor = TextColor.BRIGHT_BLUE
+    ) -> str:
         """Format a status line with label and value"""
         if not self.enabled:
             return f"{label}: {value}"
         
         return f"{color.value}{label}:{TextColor.RESET.value} {value}"
     
-    def format_header(self, text: str, color: TextColor = TextColor.BRIGHT_CYAN) -> str:
+    def format_header(self, text: str) -> str:
         """Format a header with bold and color"""
         return self.colorize(text, TextCategory.SYSTEM, bold=True)
     
@@ -297,7 +300,9 @@ class ASCIIArt:
         if title:
             title_text = f" {title} "
             padding = (width - 2 - len(title_text)) // 2
-            lines[0] = "┌" + "─" * padding + title_text + "─" * (width - 2 - padding - len(title_text)) + "┐"
+            right_padding = width - 2 - padding - len(title_text)
+            lines[0] = ("┌" + "─" * padding + title_text +
+                        "─" * right_padding + "┐")
         
         wrapped = textwrap.wrap(content, width=width - 4)
         for line in wrapped:
