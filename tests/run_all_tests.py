@@ -24,6 +24,8 @@ def main():
         "test_phase_1_ui_ux.py",
         "test_phase_1_integration.py",
         "test_phase_2_progression.py",
+        "test_phase_3_combat.py",
+        "test_phase_4_dialogue.py",
     ]
     
     print("\n" + "="*70)
