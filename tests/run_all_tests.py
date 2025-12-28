@@ -28,6 +28,7 @@ def main():
         "test_phase_4_dialogue.py",
         "test_phase_5_procedural.py",
         "test_phase_6_persistence.py",
+        "test_phase_7_companions.py",
     ]
     
     print("\n" + "="*70)
