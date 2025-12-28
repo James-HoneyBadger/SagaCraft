@@ -10,9 +10,11 @@
     "difficulty": "normal"
   },
   "ui": {
-    "theme": "Monokai",
+    "theme": "Light",
     "font_size": 10,
     "color_enabled": true,
-    "font_family": "Verdana"
+    "font_family": "Verdana",
+    "editor_font_family": "Consolas",
+    "editor_font_size": 11
   }
 }
