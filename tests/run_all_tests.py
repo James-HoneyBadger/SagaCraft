@@ -31,6 +31,7 @@ def main():
         "test_phase_7_companions.py",
         "test_phase_8_quests.py",
         "test_phase_9_cloud.py",
+        "test_phase_10_final.py",
     ]
     
     print("\n" + "="*70)
