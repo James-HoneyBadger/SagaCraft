@@ -27,6 +27,7 @@ def main():
         "test_phase_3_combat.py",
         "test_phase_4_dialogue.py",
         "test_phase_5_procedural.py",
+        "test_phase_6_persistence.py",
     ]
     
     print("\n" + "="*70)
