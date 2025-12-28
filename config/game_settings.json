@@ -1,5 +1,5 @@
 {
-  "enable_colors": true,
+  "enable_colors": false,
   "enable_emoji": true,
   "text_size": "normal",
   "enable_ascii_art": true,
@@ -20,6 +20,6 @@
   "verbose_descriptions": false,
   "reduce_animations": false,
   "limit_fps": 0,
-  "last_updated": "2025-12-28T14:00:32.843513",
+  "last_updated": "2025-12-28T14:38:17.434271",
   "version": "2.0"
 }
