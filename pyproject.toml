@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sagacraft"
+description = "SagaCraft: a zero-dependency text-adventure RPG engine"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [{ name = "James-HoneyBadger" }]
+dynamic = ["version"]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.dynamic]
+version = { attr = "sagacraft.__version__" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["sagacraft*"]
