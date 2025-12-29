@@ -1,7 +1,9 @@
 """PvP Arenas System - seasonal ranked combat with matchmaking."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
+import random
+import time
 from typing import Dict, List, Optional, Tuple
 
 
@@ -53,6 +55,10 @@ class PvPArenaSystem:
         self.next_match_id = 0
         self.elo_k_factor = 32  # Rating change per match
 
+        # Enhanced feature state (kept explicit to avoid dynamic hasattr state)
+        self.tournaments: Dict[str, Dict] = {}
+        self.spectators: Dict[str, List[str]] = {}
+
     def get_stats(self, player_id: str) -> PvPStats:
         """Get PvP stats for a player."""
         if player_id not in self.player_stats:
@@ -88,7 +94,7 @@ class PvPArenaSystem:
             player2_id=player2,
             winner_id=player1,  # Placeholder
             rating_change=0,
-            timestamp=int(__import__("time").time()),
+            timestamp=int(time.time()),
             duration_seconds=0,
         )
 
@@ -180,9 +186,6 @@ class PvPArenaSystem:
         self, tournament_id: str, name: str, max_players: int = 8, prize_pool: Dict = None
     ) -> Tuple[bool, str]:
         """Create a tournament with bracket system."""
-        if not hasattr(self, "tournaments"):
-            self.tournaments = {}
-
         if tournament_id in self.tournaments:
             return False, "Tournament already exists"
 
@@ -203,7 +206,7 @@ class PvPArenaSystem:
 
     def register_for_tournament(self, tournament_id: str, player_id: str) -> Tuple[bool, str]:
         """Register player for tournament."""
-        if not hasattr(self, "tournaments") or tournament_id not in self.tournaments:
+        if tournament_id not in self.tournaments:
             return False, "Tournament not found"
 
         tournament = self.tournaments[tournament_id]
@@ -233,7 +236,6 @@ class PvPArenaSystem:
 
         # Create bracket (simple single-elimination)
         players = tournament["players"].copy()
-        import random
         random.shuffle(players)
 
         bracket = []
@@ -253,7 +255,7 @@ class PvPArenaSystem:
         self, tournament_id: str, match_id: str, winner_id: str
     ) -> Tuple[bool, Dict]:
         """Complete a tournament match."""
-        if not hasattr(self, "tournaments") or tournament_id not in self.tournaments:
+        if tournament_id not in self.tournaments:
             return False, {}
 
         tournament = self.tournaments[tournament_id]
@@ -297,7 +299,7 @@ class PvPArenaSystem:
 
     def get_tournament_bracket(self, tournament_id: str) -> Dict:
         """Get tournament bracket information."""
-        if not hasattr(self, "tournaments") or tournament_id not in self.tournaments:
+        if tournament_id not in self.tournaments:
             return {}
 
         tournament = self.tournaments[tournament_id]
@@ -311,9 +313,6 @@ class PvPArenaSystem:
 
     def start_spectating(self, spectator_id: str, match_id: str) -> Tuple[bool, str]:
         """Start spectating a match."""
-        if not hasattr(self, "spectators"):
-            self.spectators = {}
-
         if match_id not in self.spectators:
             self.spectators[match_id] = []
 
@@ -325,7 +324,7 @@ class PvPArenaSystem:
 
     def stop_spectating(self, spectator_id: str, match_id: str) -> Tuple[bool, str]:
         """Stop spectating a match."""
-        if not hasattr(self, "spectators") or match_id not in self.spectators:
+        if match_id not in self.spectators:
             return False, "Not spectating this match"
 
         if spectator_id in self.spectators[match_id]:
@@ -336,18 +335,14 @@ class PvPArenaSystem:
 
     def get_spectators(self, match_id: str) -> List[str]:
         """Get list of spectators for a match."""
-        if not hasattr(self, "spectators") or match_id not in self.spectators:
+        if match_id not in self.spectators:
             return []
 
         return self.spectators[match_id].copy()
 
     def get_live_matches(self) -> List[Dict]:
         """Get list of matches available for spectating."""
-        # Return recent matches that are considered "live"
-        import time
-        current_time = int(time.time())
-        live_threshold = 300  # 5 minutes
-
+        # Return recent matches that are considered "live" (in progress)
         live_matches = []
         for match in self.match_history[-10:]:  # Last 10 matches
             if match.duration_seconds == 0:  # Still in progress

@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass, field
 from enum import Enum
+import time
 from typing import Dict, List, Optional, Tuple
 
 
@@ -66,6 +67,12 @@ class SeasonalContentSystem:
         self.events: Dict[str, SeasonalEvent] = {}
         self.player_progress: Dict[str, PlayerSeasonProgress] = {}
 
+        # Enhanced feature state (kept explicit to avoid dynamic hasattr state)
+        self.tournament_registrations: Dict[str, List[str]] = {}
+        self.boss_health: Dict[str, Dict[str, int]] = {}
+        self.boss_contributions: Dict[str, Dict[str, int]] = {}
+        self.season_xp: Dict[str, int] = {}
+
     def create_season(self, season: Season) -> None:
         """Create a new season."""
         self.seasons[season.season_id] = season
@@ -83,7 +90,7 @@ class SeasonalContentSystem:
 
     def get_active_events(self) -> List[SeasonalEvent]:
         """Get all currently active events."""
-        current_time = int(__import__("time").time())
+        current_time = int(time.time())
         season = self.get_current_season()
         if not season:
             return []
@@ -96,7 +103,7 @@ class SeasonalContentSystem:
         if not event:
             return False, "Event not found"
 
-        current_time = int(__import__("time").time())
+        current_time = int(time.time())
         if not (event.start_date <= current_time <= event.end_date):
             return False, "Event is not currently active"
 
@@ -188,7 +195,6 @@ class SeasonalContentSystem:
         if event_id in self.events:
             return False, "Tournament already exists"
 
-        import time
         event = SeasonalEvent(
             event_id=event_id,
             name=name,
@@ -200,7 +206,7 @@ class SeasonalContentSystem:
         )
 
         self.events[event_id] = event
-        
+
         # Add to current season if exists
         if self.current_season_id and self.current_season_id in self.seasons:
             self.seasons[self.current_season_id].events.append(event)
@@ -213,9 +219,6 @@ class SeasonalContentSystem:
         if not event or event.event_type != EventType.TOURNAMENT:
             return False, "Tournament not found"
 
-        if not hasattr(self, "tournament_registrations"):
-            self.tournament_registrations = {}
-        
         if event_id not in self.tournament_registrations:
             self.tournament_registrations[event_id] = []
 
@@ -232,7 +235,6 @@ class SeasonalContentSystem:
         if event_id in self.events:
             return False, "Boss event already exists"
 
-        import time
         event = SeasonalEvent(
             event_id=event_id,
             name=f"World Boss: {boss_name}",
@@ -244,9 +246,6 @@ class SeasonalContentSystem:
         )
 
         self.events[event_id] = event
-
-        if not hasattr(self, "boss_health"):
-            self.boss_health = {}
 
         self.boss_health[event_id] = {"current": health, "max": health}
 
@@ -262,15 +261,13 @@ class SeasonalContentSystem:
         if not event or event.event_type != EventType.WORLD_BOSS:
             return False, {}
 
-        if not hasattr(self, "boss_health") or event_id not in self.boss_health:
+        if event_id not in self.boss_health:
             return False, {}
 
         boss = self.boss_health[event_id]
         boss["current"] = max(0, boss["current"] - damage)
 
         # Track contributions
-        if not hasattr(self, "boss_contributions"):
-            self.boss_contributions = {}
         if event_id not in self.boss_contributions:
             self.boss_contributions[event_id] = {}
 
@@ -314,9 +311,6 @@ class SeasonalContentSystem:
 
     def earn_season_xp(self, player_id: str, xp_amount: int) -> Tuple[bool, Dict]:
         """Award season XP that progresses the pass."""
-        if not hasattr(self, "season_xp"):
-            self.season_xp = {}
-
         current_xp = self.season_xp.get(player_id, 0)
         new_xp = current_xp + xp_amount
         self.season_xp[player_id] = new_xp
@@ -340,7 +334,6 @@ class SeasonalContentSystem:
         if event_id in self.events:
             return False, "Storyline already exists"
 
-        import time
         event = SeasonalEvent(
             event_id=event_id,
             name=name,

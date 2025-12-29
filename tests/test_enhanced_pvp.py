@@ -177,7 +177,8 @@ class TestEnhancedPvPArenas(unittest.TestCase):
         success, msg = self.system.register_for_tournament("tourney_1", "player3")
 
         self.assertFalse(success)
-        self.assertIn("full", msg.lower())
+        # Tournament auto-starts when full, so registration is closed
+        self.assertIn("closed", msg.lower())
 
     def test_duplicate_spectator_fails(self):
         """Test duplicate spectator registration fails."""
