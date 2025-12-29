@@ -49,3 +49,6 @@ adventures/_*.json
 # OS
 .DS_Store
 Thumbs.db
+
+# Rust
+rust/target/
