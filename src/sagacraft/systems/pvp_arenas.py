@@ -173,3 +173,230 @@ class PvPArenaSystem:
             if m.player1_id == player_id or m.player2_id == player_id
         ]
         return matches[-limit:]
+
+    # Enhanced Features: Tournaments and Spectator Mode
+
+    def create_tournament(
+        self, tournament_id: str, name: str, max_players: int = 8, prize_pool: Dict = None
+    ) -> Tuple[bool, str]:
+        """Create a tournament with bracket system."""
+        if not hasattr(self, "tournaments"):
+            self.tournaments = {}
+
+        if tournament_id in self.tournaments:
+            return False, "Tournament already exists"
+
+        tournament = {
+            "tournament_id": tournament_id,
+            "name": name,
+            "max_players": max_players,
+            "players": [],
+            "bracket": [],
+            "current_round": 0,
+            "prize_pool": prize_pool or {"1st": "Champion Title", "2nd": "Runner-up Trophy"},
+            "status": "registration",  # registration, in_progress, completed
+            "winner": None,
+        }
+
+        self.tournaments[tournament_id] = tournament
+        return True, f"Tournament '{name}' created"
+
+    def register_for_tournament(self, tournament_id: str, player_id: str) -> Tuple[bool, str]:
+        """Register player for tournament."""
+        if not hasattr(self, "tournaments") or tournament_id not in self.tournaments:
+            return False, "Tournament not found"
+
+        tournament = self.tournaments[tournament_id]
+
+        if tournament["status"] != "registration":
+            return False, "Tournament registration is closed"
+
+        if player_id in tournament["players"]:
+            return False, "Already registered"
+
+        if len(tournament["players"]) >= tournament["max_players"]:
+            return False, "Tournament is full"
+
+        tournament["players"].append(player_id)
+
+        # Auto-start if full
+        if len(tournament["players"]) == tournament["max_players"]:
+            self._start_tournament(tournament_id)
+
+        return True, f"Registered for '{tournament['name']}'"
+
+    def _start_tournament(self, tournament_id: str) -> None:
+        """Start tournament and generate bracket."""
+        tournament = self.tournaments[tournament_id]
+        tournament["status"] = "in_progress"
+        tournament["current_round"] = 1
+
+        # Create bracket (simple single-elimination)
+        players = tournament["players"].copy()
+        import random
+        random.shuffle(players)
+
+        bracket = []
+        for i in range(0, len(players), 2):
+            if i + 1 < len(players):
+                bracket.append({
+                    "match_id": f"{tournament_id}_r1_m{i//2}",
+                    "player1": players[i],
+                    "player2": players[i + 1],
+                    "winner": None,
+                    "round": 1,
+                })
+
+        tournament["bracket"] = bracket
+
+    def complete_tournament_match(
+        self, tournament_id: str, match_id: str, winner_id: str
+    ) -> Tuple[bool, Dict]:
+        """Complete a tournament match."""
+        if not hasattr(self, "tournaments") or tournament_id not in self.tournaments:
+            return False, {}
+
+        tournament = self.tournaments[tournament_id]
+        
+        # Find and update match
+        match = next((m for m in tournament["bracket"] if m["match_id"] == match_id), None)
+        if not match:
+            return False, {}
+
+        match["winner"] = winner_id
+
+        # Check if round complete
+        current_round = tournament["current_round"]
+        round_matches = [m for m in tournament["bracket"] if m["round"] == current_round]
+        
+        if all(m["winner"] for m in round_matches):
+            # Advance to next round
+            winners = [m["winner"] for m in round_matches]
+            
+            if len(winners) == 1:
+                # Tournament complete
+                tournament["status"] = "completed"
+                tournament["winner"] = winners[0]
+                return True, {"tournament_complete": True, "winner": winners[0]}
+            
+            # Create next round
+            tournament["current_round"] += 1
+            next_round = tournament["current_round"]
+            
+            for i in range(0, len(winners), 2):
+                if i + 1 < len(winners):
+                    tournament["bracket"].append({
+                        "match_id": f"{tournament_id}_r{next_round}_m{i//2}",
+                        "player1": winners[i],
+                        "player2": winners[i + 1],
+                        "winner": None,
+                        "round": next_round,
+                    })
+
+        return True, {"round_complete": False}
+
+    def get_tournament_bracket(self, tournament_id: str) -> Dict:
+        """Get tournament bracket information."""
+        if not hasattr(self, "tournaments") or tournament_id not in self.tournaments:
+            return {}
+
+        tournament = self.tournaments[tournament_id]
+        return {
+            "name": tournament["name"],
+            "status": tournament["status"],
+            "current_round": tournament["current_round"],
+            "bracket": tournament["bracket"],
+            "winner": tournament.get("winner"),
+        }
+
+    def start_spectating(self, spectator_id: str, match_id: str) -> Tuple[bool, str]:
+        """Start spectating a match."""
+        if not hasattr(self, "spectators"):
+            self.spectators = {}
+
+        if match_id not in self.spectators:
+            self.spectators[match_id] = []
+
+        if spectator_id in self.spectators[match_id]:
+            return False, "Already spectating this match"
+
+        self.spectators[match_id].append(spectator_id)
+        return True, f"Now spectating match {match_id}"
+
+    def stop_spectating(self, spectator_id: str, match_id: str) -> Tuple[bool, str]:
+        """Stop spectating a match."""
+        if not hasattr(self, "spectators") or match_id not in self.spectators:
+            return False, "Not spectating this match"
+
+        if spectator_id in self.spectators[match_id]:
+            self.spectators[match_id].remove(spectator_id)
+            return True, "Stopped spectating"
+
+        return False, "Not spectating this match"
+
+    def get_spectators(self, match_id: str) -> List[str]:
+        """Get list of spectators for a match."""
+        if not hasattr(self, "spectators") or match_id not in self.spectators:
+            return []
+
+        return self.spectators[match_id].copy()
+
+    def get_live_matches(self) -> List[Dict]:
+        """Get list of matches available for spectating."""
+        # Return recent matches that are considered "live"
+        import time
+        current_time = int(time.time())
+        live_threshold = 300  # 5 minutes
+
+        live_matches = []
+        for match in self.match_history[-10:]:  # Last 10 matches
+            if match.duration_seconds == 0:  # Still in progress
+                live_matches.append({
+                    "match_id": match.match_id,
+                    "player1_id": match.player1_id,
+                    "player2_id": match.player2_id,
+                    "timestamp": match.timestamp,
+                    "spectators": len(self.get_spectators(match.match_id)),
+                })
+
+        return live_matches
+
+    def get_seasonal_rankings(self, rank: Optional[ArenaRank] = None) -> List[Dict]:
+        """Get seasonal rankings, optionally filtered by rank."""
+        rankings = []
+        
+        for player_id, stats in self.player_stats.items():
+            if rank is None or stats.current_rank == rank:
+                rankings.append({
+                    "player_id": player_id,
+                    "rating": stats.rating,
+                    "rank": stats.current_rank.value,
+                    "wins": stats.seasonal_wins,
+                    "losses": stats.seasonal_losses,
+                    "win_rate": (stats.seasonal_wins / (stats.seasonal_wins + stats.seasonal_losses) * 100)
+                    if (stats.seasonal_wins + stats.seasonal_losses) > 0 else 0,
+                })
+
+        return sorted(rankings, key=lambda x: x["rating"], reverse=True)
+
+    def reset_season(self) -> None:
+        """Reset seasonal stats for all players."""
+        for stats in self.player_stats.values():
+            stats.seasonal_wins = 0
+            stats.seasonal_losses = 0
+            stats.matches_this_season = 0
+            stats.win_streak = 0
+            stats.loss_streak = 0
+            # Soft reset rating (move 50% toward 1500)
+            stats.rating = int(stats.rating + (1500 - stats.rating) * 0.5)
+            stats.current_rank = self._rating_to_rank(stats.rating)
+
+    def get_rank_distribution(self) -> Dict[str, int]:
+        """Get distribution of players across ranks."""
+        distribution = {rank.value: 0 for rank in ArenaRank}
+        
+        for stats in self.player_stats.values():
+            distribution[stats.current_rank.value] += 1
+
+        return distribution
+
