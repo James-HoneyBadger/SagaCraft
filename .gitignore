@@ -51,4 +51,5 @@ adventures/_*.json
 Thumbs.db
 
 # Rust
+target/
 rust/target/
