@@ -1,0 +1,10 @@
+[package]
+name = "sagacraft_ide_tui"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1"
+crossterm = "0.28"
+ratatui = "0.29"
+sagacraft_rs = { path = "../sagacraft_rs" }

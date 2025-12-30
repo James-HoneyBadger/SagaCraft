@@ -1,6 +1,7 @@
 use crate::command::Command;
+use crate::adventure::{Adventure, AdventureError};
 use crate::game_state::GameState;
-use crate::systems::{BasicWorldSystem, InventorySystem, System};
+// use crate::systems::{BasicWorldSystem, InventorySystem, System};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EngineOutput {
@@ -57,6 +58,26 @@ impl Engine {
         systems.push(Box::new(BasicWorldSystem::default()));
 
         Self { state, systems }
+    }
+
+    pub fn from_adventure(
+        player_name: impl Into<String>,
+        adventure: Adventure,
+    ) -> Result<Self, AdventureError> {
+        let state = GameState::from_adventure(player_name, adventure)?;
+        let mut systems: Vec<Box<dyn System>> = Vec::new();
+        systems.push(Box::new(InventorySystem::default()));
+        systems.push(Box::new(BasicWorldSystem::default()));
+
+        Ok(Self { state, systems })
+    }
+
+    pub fn load_from_path(
+        player_name: impl Into<String>,
+        path: impl AsRef<std::path::Path>,
+    ) -> Result<Self, AdventureError> {
+        let adv = Adventure::load_json_file(path)?;
+        Self::from_adventure(player_name, adv)
     }
 
     pub fn add_system(&mut self, system: Box<dyn System>) {
