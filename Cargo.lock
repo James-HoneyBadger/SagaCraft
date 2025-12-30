@@ -3036,14 +3036,14 @@ dependencies = [
 
 [[package]]
 name = "sagacraft_player"
-version = "0.1.0"
+version = "4.0.0"
 dependencies = [
  "sagacraft_rs",
 ]
 
 [[package]]
 name = "sagacraft_rs"
-version = "0.1.0"
+version = "4.0.0"
 dependencies = [
  "chrono",
  "rand",
