@@ -297,7 +297,7 @@ Complete adventure specification:
   "title": "Example Adventure",
   "description": "A sample adventure for demonstration",
   "author": "Game Designer",
-  "version": "1.0.0",
+  "version": "4.0.0",
   "start_room": "entrance",
   "player_start_inventory": [
     {
@@ -392,7 +392,7 @@ Complete adventure specification:
 
 ```json
 {
-  "version": "1.0",
+  "version": "4.0",
   "timestamp": "2024-01-15T10:30:00Z",
   "adventure_id": "example_adventure",
   "game_state": {

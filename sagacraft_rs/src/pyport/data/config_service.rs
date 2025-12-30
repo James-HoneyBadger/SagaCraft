@@ -154,7 +154,7 @@ fn default_engine_config() -> Map<String, Value> {
     let v = serde_json::json!({
         "engine": {
             "name": "SagaCraft",
-            "version": "3.0.0",
+            "version": "4.0.0",
             "enable_event_history": false
         },
         "gameplay": {

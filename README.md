@@ -4,7 +4,7 @@
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Build Status](https://img.shields.io/badge/Build-Passing-green.svg)]()
 [![Documentation](https://img.shields.io/badge/Docs-Complete-blue.svg)](docs/)
-[![Version](https://img.shields.io/badge/Version-1.0.0-green.svg)]()
+[![Version](https://img.shields.io/badge/Version-4.0.0-green.svg)]()
 
 > A high-performance, text-based adventure game engine and development suite written in Rust. Create, edit, and play interactive fiction adventures with a focus on simplicity, extensibility, and performance.
 

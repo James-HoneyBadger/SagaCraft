@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.0.0] - 2025-12-29
+
+### Added
+- **Epic Demo Game**: "The Shattered Realms: Chronicles of the Eternal Flame" - a massive 15-room professional-quality RPG adventure
+- **Enhanced World Building**: Complex interconnected regions including Eldoria (wounded capital), Ancient Forest, Crystal Caves, and Harbor's Rest
+- **Advanced Item System**: 17 unique items including weapons, quest items, treasures, and magical artifacts
+- **Rich Combat System**: 4 monster types with full stats (health, attack, defense, experience)
+- **Deep Lore Integration**: Comprehensive backstory with the Cataclysm, Eternal Flame cult, and multiple factions
+- **Multiple Story Paths**: Branching narratives with player choice consequences
+- **Professional Game Design**: Epic fantasy setting with atmospheric descriptions and immersive storytelling
+
+### Changed
+- **Major Version Bump**: Updated to version 4.0.0 to reflect the significant expansion and professional-quality content
+- **Enhanced Documentation**: Updated all version references across the codebase
+- **Improved Game Engine**: Optimized for large-scale adventures with complex world structures
+
+### Fixed
+- **JSON Loading**: Fixed numeric ID system for proper game state management
+- **Demo Content**: Resolved compatibility issues with extensive adventure files
+
+## [1.0.0] - 2024-01-15
+
 ### Added
 - Comprehensive documentation suite including User Manual, Technical Reference, Game Designer Manual, Installation Guide, Development Guide, and API Reference
 - Enhanced modding system with plugin architecture
