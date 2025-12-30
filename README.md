@@ -1,6 +1,6 @@
 # SagaCraft
 
-A streamlined, text-first adventure engine and player.
+A streamlined, text-first adventure engine and player. **Now implemented in Rust for performance and reliability.**
 
 ## Manuals
 
@@ -20,57 +20,23 @@ Run the SagaCraft player:
 ./Play.sh
 ```
 
-Open the SagaCraft Adventure IDE:
+Open the SagaCraft Adventure IDE (TUI):
 
 ```bash
 ./Saga.sh
 ```
 
-## Headless Usage
+## Building
 
-Run the player without GUI for automation, CI, or servers.
-
-- `--check`: Verify engine import.
-  ```bash
-  PYTHONPATH=src python -m sagacraft.ui.player --check
-  ```
-- `--load <path>`: Load an adventure and print intro + first look.
-  ```bash
-  PYTHONPATH=src python -m sagacraft.ui.player --load adventures/infinite_archive.json
-  ```
-- `--cmd "<command>"`: Execute one command after load.
-  ```bash
-  PYTHONPATH=src python -m sagacraft.ui.player --load adventures/infinite_archive.json --cmd "look"
-  ```
-- `--cmds <file>`: Execute a sequence of commands from a file (non-empty lines; `#` for comments).
-  ```bash
-  PYTHONPATH=src python -m sagacraft.ui.player --load adventures/infinite_archive.json --cmds commands_demo.txt
-  ```
-- `--save <slot>`: Save the current state to `saves/save_slot_<slot>.json`.
-  ```bash
-  PYTHONPATH=src python -m sagacraft.ui.player --load adventures/infinite_archive.json --cmds commands_demo.txt --save 1
-  ```
-- `--load-slot <slot>`: Load a saved slot and print current room.
-  ```bash
-  PYTHONPATH=src python -m sagacraft.ui.player --load adventures/infinite_archive.json --load-slot 1
-  ```
-- `--transcript <file>`: Append all output to a transcript file while printing to stdout.
-  ```bash
-  PYTHONPATH=src python -m sagacraft.ui.player --load adventures/infinite_archive.json --cmds commands_demo.txt --transcript transcripts/run.txt
-  ```
-- `--seed <int>`: Set random seed for deterministic gameplay (optional with any headless flag).
-  ```bash
-  PYTHONPATH=src python -m sagacraft.ui.player --load adventures/infinite_archive.json --seed 42
-  ```
-
-Example end-to-end:
+This project uses Cargo. To build all components:
 
 ```bash
-PYTHONPATH=src python -m sagacraft.ui.player \
-  --load adventures/infinite_archive.json \
-  --cmds commands_demo.txt \
-  --save 1 \
-  --load-slot 1 \
-  --transcript transcripts/run2.txt \
-  --seed 42
+cargo build --release
 ```
+
+## Components
+
+- `sagacraft_player`: Terminal-based game player
+- `sagacraft_ide_tui`: Terminal UI adventure editor
+- `sagacraft_ide_gui`: Graphical adventure editor (requires display)
+- `sagacraft_rs`: Core library
