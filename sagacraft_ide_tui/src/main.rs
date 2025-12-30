@@ -12,7 +12,7 @@ use ratatui::text::{Line, Span, Text};
 use ratatui::widgets::{Block, Borders, List, ListItem, Paragraph, Wrap};
 use ratatui::Terminal;
 
-use sagacraft_rs::{Adventure, AdventureError, AdventureItem, AdventureRoom};
+use sagacraft_rs::{Adventure, AdventureItem, AdventureRoom};
 
 fn main() -> anyhow::Result<()> {
     let args = Args::parse(std::env::args().skip(1).collect());

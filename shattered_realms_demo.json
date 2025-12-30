@@ -1,0 +1,340 @@
+{
+  "id": "shattered_realms",
+  "title": "The Shattered Realms: Chronicles of the Eternal Flame",
+  "description": "An epic fantasy adventure spanning shattered kingdoms, where ancient magic collides with modern ambition.",
+  "start_room": 1,
+  "rooms": [
+    {
+      "id": 1,
+      "name": "Waking Village - The Morning After",
+      "description": "You awaken in the smoldering ruins of what was once a peaceful farming village. The air is thick with smoke and the metallic tang of blood. Scattered around you are the remnants of homes, shattered wagons, and the bodies of villagers who never stood a chance.\n\nTo the north, a dirt road leads toward the capital city of Eldoria. To the east, dense forest whispers secrets of ancient magic. To the south, the coastal town of Harbor's Rest might offer refuge. Your choice will shape the fate of the Shattered Realms.",
+      "exits": {
+        "north": 2,
+        "east": 3,
+        "south": 4
+      },
+      "items": [1, 2, 3]
+    },
+    {
+      "id": 2,
+      "name": "Kingsroad to Eldoria",
+      "description": "The ancient Kingsroad stretches northward, its cobblestones cracked and overgrown with weeds. Merchant caravans once traveled this route daily, but now only the wind carries tales of the capital. Bandits and worse things are said to roam these lands.",
+      "exits": {
+        "north": 5,
+        "south": 1,
+        "east": 6
+      },
+      "items": [4, 5]
+    },
+    {
+      "id": 3,
+      "name": "Ancient Forest Entrance",
+      "description": "The forest looms before you like a living entity, its ancient trees forming a natural cathedral. Vines as thick as a man's arm twist around trunks older than the kingdoms of men. The air is thick with the scent of moss and magic.",
+      "exits": {
+        "west": 1,
+        "north": 7
+      },
+      "items": [6]
+    },
+    {
+      "id": 4,
+      "name": "Coastal Road to Harbor's Rest",
+      "description": "The coastal road winds southward along dramatic cliffs, offering breathtaking views of the crashing waves below. Seabirds cry overhead, and the salty tang of the ocean fills the air.",
+      "exits": {
+        "north": 1,
+        "south": 8
+      },
+      "items": [7]
+    },
+    {
+      "id": 5,
+      "name": "Gates of Eldoria - The Wounded Capital",
+      "description": "The massive iron gates of Eldoria loom before you, scarred by siege weapons and magical blasts. The walls, once gleaming white marble, are now blackened and cracked. Guards in battered armor stand watch, their eyes hollow from sleepless nights.",
+      "exits": {
+        "south": 2,
+        "gates": 9
+      }
+    },
+    {
+      "id": 6,
+      "name": "Bandit Camp",
+      "description": "Tucked away in a small canyon off the Kingsroad, this bandit camp shows signs of recent abandonment. Tents flap in the wind, cooking fires still smolder, and scattered gear suggests a hasty retreat.",
+      "exits": {
+        "west": 2
+      },
+      "items": [8]
+    },
+    {
+      "id": 7,
+      "name": "Crystal Caves Entrance",
+      "description": "The entrance to the Crystal Caves glows with an otherworldly light. Massive crystal formations jut from the earth like frozen lightning. The air hums with contained power.",
+      "exits": {
+        "south": 3,
+        "oracle": 10
+      }
+    },
+    {
+      "id": 8,
+      "name": "Gates of Harbor's Rest",
+      "description": "Harbor's Rest stands as a beacon of civilization in these dark times. Its walls are sturdy but not oppressive, decorated with seashells and coral.",
+      "exits": {
+        "north": 4,
+        "city": 11
+      }
+    },
+    {
+      "id": 9,
+      "name": "Eldoria Main Square",
+      "description": "The grand square of Eldoria was once a place of celebration and commerce. Now it's a battlefield. Crumbling statues of ancient kings lie toppled, their stone faces cracked.",
+      "exits": {
+        "south": 5,
+        "palace": 12
+      },
+      "items": [9]
+    },
+    {
+      "id": 10,
+      "name": "Oracle's Chamber",
+      "description": "You stand in a vast cavern illuminated by a single crystal of pure light, floating at its center. The Oracle herself appears as a being of living crystal, her form shifting between human and elemental.",
+      "exits": {
+        "south": 7
+      },
+      "items": [10, 11]
+    },
+    {
+      "id": 11,
+      "name": "Harbor's Rest Docks",
+      "description": "The docks bustle with activity as sailors, merchants, and travelers from across the known world conduct their business. Ships from distant lands fill the harbor.",
+      "exits": {
+        "city": 8
+      },
+      "items": [12]
+    },
+    {
+      "id": 12,
+      "name": "Royal Palace Entrance",
+      "description": "The grand entrance to the Royal Palace stands defiant against the chaos. Marble columns support a portico adorned with golden eagles. Royal guards stand watch, their faces grim.",
+      "exits": {
+        "south": 9,
+        "throne": 13
+      }
+    },
+    {
+      "id": 13,
+      "name": "Throne Room",
+      "description": "The throne room is a cavernous hall of marble and gold, lit by massive crystal chandeliers that cast eerie shadows. The throne itself is empty, but signs of recent occupation are everywhere.",
+      "exits": {
+        "south": 12,
+        "secret": 14
+      },
+      "items": [13, 14]
+    },
+    {
+      "id": 14,
+      "name": "Underground Lair",
+      "description": "You descend into darkness, following a hidden passage from the throne room. The air grows thick and foul, carrying the scent of brimstone and decay.",
+      "exits": {
+        "surface": 13,
+        "inner": 15
+      },
+      "items": [15, 16]
+    },
+    {
+      "id": 15,
+      "name": "Flame Lord's Chamber",
+      "description": "The chamber is vast, its ceiling lost in smoke and shadow. A throne of blackened bones sits at the far end, occupied by a figure wreathed in flames.",
+      "exits": {
+        "retreat": 14
+      },
+      "items": [17]
+    }
+  ],
+  "items": [
+    {
+      "id": 1,
+      "name": "Rusty Dagger",
+      "description": "A weathered blade, dulled by time but still capable of drawing blood.",
+      "type": "weapon",
+      "weight": 1,
+      "value": 5,
+      "is_weapon": true,
+      "weapon_type": 1,
+      "weapon_dice": 1,
+      "weapon_sides": 4
+    },
+    {
+      "id": 2,
+      "name": "Bloodstained Note",
+      "description": "A hastily scribbled note clutched in a villager's hand: 'The shadows came at midnight. They spoke of the Eternal Flame. Find the Oracle in the Crystal Caves.'",
+      "type": "readable",
+      "weight": 0,
+      "value": 0
+    },
+    {
+      "id": 3,
+      "name": "Wild Healing Herb",
+      "description": "A vibrant green plant with restorative properties. Chewing it might help with wounds.",
+      "type": "edible",
+      "weight": 0,
+      "value": 2
+    },
+    {
+      "id": 4,
+      "name": "Abandoned Backpack",
+      "description": "A leather backpack containing travel rations, a map of the region, and 15 gold coins.",
+      "type": "container",
+      "weight": 2,
+      "value": 15
+    },
+    {
+      "id": 5,
+      "name": "Broken Longsword",
+      "description": "A finely crafted blade, snapped in half during battle. The hilt bears the crest of the Eldorian Royal Guard.",
+      "type": "weapon",
+      "weight": 3,
+      "value": 20,
+      "is_weapon": true,
+      "weapon_type": 2,
+      "weapon_dice": 1,
+      "weapon_sides": 8
+    },
+    {
+      "id": 6,
+      "name": "Glowing Fey Blossom",
+      "description": "A rare flower that blooms only under moonlight. Its petals shimmer with inner light and are said to ward off evil spirits.",
+      "type": "treasure",
+      "weight": 0,
+      "value": 50
+    },
+    {
+      "id": 7,
+      "name": "Merchant's Manifest",
+      "description": "A list of goods being transported to Harbor's Rest. Includes exotic spices, fine wines, and mysterious crates marked 'Handle with Care'.",
+      "type": "readable",
+      "weight": 0,
+      "value": 0
+    },
+    {
+      "id": 8,
+      "name": "Bandit Journal",
+      "description": "A leather-bound journal belonging to the bandit leader. It contains notes about the Eternal Flame cult and their plans.",
+      "type": "readable",
+      "weight": 1,
+      "value": 10
+    },
+    {
+      "id": 9,
+      "name": "Royal Proclamation",
+      "description": "An official decree from King Eldric IV, calling all able-bodied citizens to arms against the Eternal Flame. Dated three days ago.",
+      "type": "readable",
+      "weight": 0,
+      "value": 0
+    },
+    {
+      "id": 10,
+      "name": "Crystal of Light",
+      "description": "A fragment of the Oracle's power. It glows with inner light and reveals hidden truths.",
+      "type": "treasure",
+      "weight": 0,
+      "value": 200
+    },
+    {
+      "id": 11,
+      "name": "Scroll of Prophecy",
+      "description": "The Oracle's vision of the future, written in glowing runes. It speaks of three paths: Warrior, Mage, and Seeker.",
+      "type": "readable",
+      "weight": 0,
+      "value": 0
+    },
+    {
+      "id": 12,
+      "name": "Tattered Nautical Chart",
+      "description": "A map showing uncharted islands and dangerous currents. One island is marked with a flame symbol.",
+      "type": "readable",
+      "weight": 0,
+      "value": 25
+    },
+    {
+      "id": 13,
+      "name": "Royal Seal of Eldoria",
+      "description": "The king's personal seal, used to authenticate royal decrees. This one bears traces of dark magic.",
+      "type": "treasure",
+      "weight": 0,
+      "value": 100
+    },
+    {
+      "id": 14,
+      "name": "Scroll of the Eternal Flame",
+      "description": "A forbidden text describing the ritual to summon the Eternal Flame. Reading it fills your mind with visions of fire and madness.",
+      "type": "readable",
+      "weight": 0,
+      "value": 0
+    },
+    {
+      "id": 15,
+      "name": "Ceremonial Dagger",
+      "description": "A blade etched with flames, still warm from recent use. It hums with contained power.",
+      "type": "weapon",
+      "weight": 1,
+      "value": 150,
+      "is_weapon": true,
+      "weapon_type": 1,
+      "weapon_dice": 2,
+      "weapon_sides": 6
+    },
+    {
+      "id": 16,
+      "name": "Tome of Eternal Fire",
+      "description": "A book bound in dragon hide, containing the secrets of flame magic. Reading it risks madness.",
+      "type": "readable",
+      "weight": 5,
+      "value": 300
+    },
+    {
+      "id": 17,
+      "name": "Crown of Eternal Flame",
+      "description": "The source of the Flame Lord's power. It pulses with destructive energy.",
+      "type": "treasure",
+      "weight": 2,
+      "value": 1000
+    }
+  ],
+  "monsters": [
+    {
+      "id": 1,
+      "name": "Flame Acolyte",
+      "description": "A devoted follower of the Eternal Flame, their body marked with ritual scars and their eyes glowing with fanatic zeal.",
+      "health": 25,
+      "attack": 8,
+      "defense": 3,
+      "experience": 50
+    },
+    {
+      "id": 2,
+      "name": "Dire Wolf",
+      "description": "A massive wolf with glowing red eyes, corrupted by the Cataclysm's dark energies.",
+      "health": 35,
+      "attack": 12,
+      "defense": 5,
+      "experience": 75
+    },
+    {
+      "id": 3,
+      "name": "Bandit",
+      "description": "A desperate outlaw turned to crime by the chaos of the Shattered Realms.",
+      "health": 20,
+      "attack": 6,
+      "defense": 2,
+      "experience": 25
+    },
+    {
+      "id": 4,
+      "name": "Flame Lord",
+      "description": "What was once King Eldric is now a being of pure flame and madness. His form shifts between human and elemental fire, radiating destructive power.",
+      "health": 150,
+      "attack": 25,
+      "defense": 15,
+      "experience": 1000
+    }
+  ]
+}

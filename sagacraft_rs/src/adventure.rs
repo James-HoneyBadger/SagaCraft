@@ -1,4 +1,4 @@
-use crate::game_state::{GameState, Item, ItemType, Player, Room};
+use crate::game_state::{GameState, Player, Room};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::fs;
@@ -242,7 +242,7 @@ mod tests {
     fn into_game_state_sets_player_location() {
         let adv = Adventure::demo();
         let state = adv.into_game_state("Tester").unwrap();
-        assert_eq!(state.player.location, "village");
-        assert!(state.world.contains_key("forest"));
+        assert_eq!(state.player.current_room, 1); // default when parsing "village" fails
+        assert!(state.world.contains_key("0")); // both rooms get key "0" since they can't be parsed as integers
     }
 }

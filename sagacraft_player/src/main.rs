@@ -111,16 +111,3 @@ fn print_help() {
     println!("  help, h                   Show this help");
     println!("  quit, q, exit             Exit game");
 }
-
-fn print_inventory(game: &AdventureGame) {
-    if game.player.inventory.is_empty() {
-        println!("Your inventory is empty.");
-    } else {
-        println!("Inventory:");
-        for &item_id in &game.player.inventory {
-            if let Some(item) = game.items.get(&item_id) {
-                println!("  - {}", item.name);
-            }
-        }
-    }
-}
