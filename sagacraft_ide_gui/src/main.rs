@@ -252,23 +252,23 @@ impl eframe::App for SagaCraftIDE {
 
 impl SagaCraftIDE {
     fn show_menu_bar(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
-        egui::menu::bar(ui, |ui| {
+        egui::MenuBar::new().ui(ui, |ui| {
             ui.menu_button("File", |ui| {
                 if ui.button("New Adventure").clicked() {
                     self.new_adventure();
-                    ui.close_menu();
+                    ui.close();
                 }
                 if ui.button("Open Adventure...").clicked() {
                     self.open_adventure();
-                    ui.close_menu();
+                    ui.close();
                 }
                 if ui.button("Save Adventure").clicked() {
                     self.save_adventure();
-                    ui.close_menu();
+                    ui.close();
                 }
                 if ui.button("Save Adventure As...").clicked() {
                     self.save_adventure_as();
-                    ui.close_menu();
+                    ui.close();
                 }
                 ui.separator();
                 if ui.button("Exit").clicked() {
@@ -279,11 +279,11 @@ impl SagaCraftIDE {
             ui.menu_button("Tools", |ui| {
                 if ui.button("Validate Adventure").clicked() {
                     self.validate_adventure();
-                    ui.close_menu();
+                    ui.close();
                 }
                 if ui.button("Export to JSON").clicked() {
                     self.export_to_json();
-                    ui.close_menu();
+                    ui.close();
                 }
             });
 
@@ -300,7 +300,7 @@ impl SagaCraftIDE {
             ui.menu_button("Help", |ui| {
                 if ui.button("About SagaCraft IDE").clicked() {
                     self.show_about();
-                    ui.close_menu();
+                    ui.close();
                 }
             });
         });
