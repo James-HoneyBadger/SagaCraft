@@ -3077,7 +3077,7 @@ checksum = "9774ba4a74de5f7b1c1451ed6cd5285a32eddb5cccb8cc655a4e50009e06477f"
 
 [[package]]
 name = "sagacraft_ide_gui"
-version = "4.0.1"
+version = "4.0.2"
 dependencies = [
  "eframe",
  "egui",
@@ -3089,7 +3089,7 @@ dependencies = [
 
 [[package]]
 name = "sagacraft_ide_tui"
-version = "4.0.1"
+version = "4.0.2"
 dependencies = [
  "anyhow",
  "crossterm 0.28.1",
@@ -3099,14 +3099,14 @@ dependencies = [
 
 [[package]]
 name = "sagacraft_player"
-version = "4.0.1"
+version = "4.0.2"
 dependencies = [
  "sagacraft_rs",
 ]
 
 [[package]]
 name = "sagacraft_rs"
-version = "4.0.1"
+version = "4.0.2"
 dependencies = [
  "chrono",
  "rand",

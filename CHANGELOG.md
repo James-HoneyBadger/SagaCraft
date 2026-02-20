@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.0.2] - 2026-02-20
+
+### Fixed
+- **Security**: Upgraded `eframe` 0.29 → 0.33 and `egui` 0.29 → 0.33 with `glow` (OpenGL) renderer to fully resolve RUSTSEC-2024-0436 (`paste` unmaintained via `accesskit_windows`). Switched away from `wgpu` renderer to eliminate the `wgpu-hal → metal → paste` dependency chain entirely; dependency count reduced from 559 → 503
+- **GUI IDE**: Updated deprecated egui 0.33 menu APIs — `egui::menu::bar()` → `egui::MenuBar::new().ui()`, `ui.close_menu()` → `ui.close()` (8 call sites)
+- **GUI IDE**: Updated removed egui 0.32 API — `ui.selectable_label()` → `ui.add(egui::Button::new().selected())` (13 call sites)
+- **GUI IDE**: Added required `wayland` and `x11` feature flags for eframe 0.30+ Linux support
+- **GUI IDE**: Fixed `rfd 0.14` type mismatch — coerced `&[&str; N]` array refs to `&[&str]` slices in `add_filter` calls
+
 ## [4.0.1] - 2026-02-20
 
 ### Added
