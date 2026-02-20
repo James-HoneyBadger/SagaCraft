@@ -541,9 +541,9 @@ impl SagaCraftIDE {
                             ui.end_row();
 
                             ui.label("Type:");
-                            egui::ComboBox::from_id_salt("item_type")
+                            egui::ComboBox::from_id_source("item_type")
                                 .selected_text(format!("{:?}", item.item_type))
-                                .show_ui(ui, |ui| {
+                                .show_ui(ui, |ui: &mut egui::Ui| {
                                     for variant in [
                                         ItemType::Normal, ItemType::Weapon, ItemType::Armor,
                                         ItemType::Treasure, ItemType::Readable, ItemType::Edible,
@@ -676,9 +676,9 @@ impl SagaCraftIDE {
                             ui.end_row();
 
                             ui.label("Friendliness:");
-                            egui::ComboBox::from_id_salt("monster_status")
+                            egui::ComboBox::from_id_source("monster_status")
                                 .selected_text(format!("{:?}", monster.status))
-                                .show_ui(ui, |ui| {
+                                .show_ui(ui, |ui: &mut egui::Ui| {
                                     ui.selectable_value(&mut monster.status, MonsterStatus::Neutral, "Neutral");
                                     ui.selectable_value(&mut monster.status, MonsterStatus::Friendly, "Friendly");
                                     ui.selectable_value(&mut monster.status, MonsterStatus::Hostile, "Hostile");
@@ -1143,7 +1143,7 @@ impl SagaCraftIDE {
             let lines = game.process_command(&command);
             self.game_output.extend(lines);
         } else {
-            self.game_output.push("No game running. Press \u25b6 Start Game first.".to_string());
+            self.game_output.push("No game running. Press \u{25B6} Start Game first.".to_string());
         }
     }
 

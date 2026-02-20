@@ -1,318 +1,453 @@
 # SagaCraft User Manual
 
-## Welcome to SagaCraft
+**Version 4.0 · SagaCraft**
 
-Welcome to **SagaCraft**, a text-based adventure game engine that brings interactive fiction to life! This manual will guide you through playing adventures, understanding game mechanics, and making the most of your SagaCraft experience.
-
-## Table of Contents
-
-1. [Getting Started](#getting-started)
-2. [Basic Commands](#basic-commands)
-3. [Game Mechanics](#game-mechanics)
-4. [Combat System](#combat-system)
-5. [Inventory Management](#inventory-management)
-6. [Quest System](#quest-system)
-7. [Saving and Loading](#saving-and-loading)
-8. [Tips and Tricks](#tips-and-tricks)
-9. [Troubleshooting](#troubleshooting)
-
-## Getting Started
-
-### Launching the Game
-
-SagaCraft offers multiple ways to play:
-
-#### Command Line Player
-```bash
-# Using the provided script
-./Play.sh
-
-# Or directly with cargo
-cargo run --bin sagacraft_player -- path/to/adventure.json
-```
-
-#### Terminal UI Version
-```bash
-./Saga.sh
-# or
-cargo run --bin sagacraft_ide_tui
-```
-
-### Starting Your First Adventure
-
-When you launch SagaCraft, you'll see:
-```
-SagaCraft (Rust) — CLI Player
-Type 'help' for commands. Type 'quit' to exit.
-```
-
-The game will automatically load the default adventure or the one specified on the command line.
-
-## Basic Commands
-
-### Movement
-```
-go north    (or just 'n')
-go south    (or just 's')
-go east     (or just 'e')
-go west     (or just 'w')
-```
-
-### Information
-```
-look        (or 'l')    - Examine your current location
-inventory   (or 'i')    - View your carried items
-help        (or 'h')    - Show available commands
-```
-
-### Item Interaction
-```
-take <item>           - Pick up an item
-drop <item>           - Drop an item
-use <item>            - Use an item
-```
-
-### Communication
-```
-say <message>         - Speak to NPCs or characters
-```
-
-### Game Control
-```
-quit        (or 'q')    - Exit the game
-save                     - Save your progress
-load                     - Load a saved game
-```
-
-## Game Mechanics
-
-### Rooms and Navigation
-
-Adventures are built around interconnected rooms. Each room has:
-- A **title** and **description**
-- **Items** that can be found and collected
-- **Exits** to other rooms (north, south, east, west)
-- **NPCs** or **monsters** that may inhabit the area
-
-### Items
-
-Items in SagaCraft have different types and properties:
-
-| Type | Description | Example |
-|------|-------------|---------|
-| Weapon | Used in combat | Sword, axe, bow |
-| Armor | Provides protection | Leather armor, shield |
-| Treasure | Valuable collectibles | Gold coins, gems |
-| Consumable | Can be eaten/drunk | Food, potions |
-| Readable | Contains information | Books, scrolls |
-| Container | Can hold other items | Backpack, chest |
-
-### Characters and NPCs
-
-You'll encounter various characters:
-- **Friendly NPCs**: Can provide information, quests, or assistance
-- **Neutral NPCs**: May ignore you or respond minimally
-- **Hostile NPCs**: Will attack you on sight
-
-## Combat System
-
-### Basic Combat
-
-Combat in SagaCraft is turn-based. When you encounter a hostile creature:
-
-1. **Initiative**: Combat begins automatically
-2. **Your Turn**: Choose your action (attack, use item, flee)
-3. **Enemy Turn**: The monster attacks you
-4. **Resolution**: Combat continues until one side is defeated
-
-### Combat Stats
-
-Every character has three main attributes:
-- **Hardiness**: Physical strength and health
-- **Agility**: Speed and dexterity
-- **Courage**: Willingness to fight
-
-### Weapons and Damage
-
-Weapons deal damage based on dice rolls:
-- **Sword**: 1d8 damage
-- **Axe**: 1d10 damage
-- **Bow**: 1d6 damage (ranged)
-- **Club**: 1d4 damage
-- **Spear**: 1d6 damage
-
-### Armor and Defense
-
-Armor reduces incoming damage:
-- **Leather Armor**: 2 points of protection
-- **Chain Mail**: 4 points of protection
-- **Plate Armor**: 6 points of protection
-
-## Inventory Management
-
-### Managing Items
-
-Your inventory has weight limits. Be mindful of what you carry:
-
-```
-> Inventory (12/20 kg capacity):
-- Rusty sword (2kg, weapon)
-- Health potion (0.5kg, consumable)
-- Gold coins x 50 (0.1kg, treasure)
-```
-
-### Item Actions
-
-- **Take**: Pick up items from the current room
-- **Drop**: Leave items behind
-- **Use**: Activate item effects (eat food, drink potions, read books)
-- **Equip**: Wear armor or wield weapons
-
-### Container Items
-
-Some items can hold other items:
-```
-backpack contains:
-- rope (1kg)
-- lantern (2kg)
-- map (0.1kg)
-```
-
-## Quest System
-
-### Quest Types
-
-Quests provide structure and goals:
-
-- **Main Quests**: Drive the main story
-- **Side Quests**: Optional objectives
-- **Collection Quests**: Gather specific items
-- **Defeat Quests**: Eliminate certain enemies
-
-### Tracking Progress
-
-Use the `quests` command to view your current objectives:
-
-```
-Active Quests:
-1. [Main] Find the Ancient Temple
-   - Locate the hidden entrance
-   - Retrieve the sacred artifact
-   - Return to the village elder
-
-2. [Side] Collect Forest Herbs
-   - Gather 5 healing herbs (2/5 collected)
-```
-
-## Saving and Loading
-
-### Save Points
-
-- **Manual Saves**: Use the `save` command anytime
-- **Auto-saves**: Some adventures save automatically at checkpoints
-- **Quick Saves**: Available in some game modes
-
-### Save Files
-
-Save files are stored in the `saves/` directory:
-```
-saves/
-├── adventure_name_save1.json
-├── adventure_name_save2.json
-└── quicksave.json
-```
-
-### Loading Games
-
-```
-load save1    - Load a specific save file
-load quick    - Load the quicksave
-load          - Show available save files
-```
-
-## Tips and Tricks
-
-### Exploration
-- Always `look` when entering a new room
-- Check for hidden items or exits
-- Talk to every NPC you encounter
-- Map your surroundings as you explore
-
-### Combat
-- Use the environment to your advantage
-- Save before difficult fights
-- Manage your health with potions
-- Upgrade weapons and armor when possible
-
-### Inventory
-- Don't carry unnecessary weight
-- Use containers to organize items
-- Sell unwanted items for gold
-- Keep important quest items safe
-
-### General
-- Read all text carefully - clues are everywhere
-- Experiment with different commands
-- Save frequently
-- Take notes of important information
-
-## Troubleshooting
-
-### Common Issues
-
-**"Command not recognized"**
-- Check your spelling
-- Use `help` to see available commands
-- Some commands may not be available in certain situations
-
-**"Cannot take item"**
-- Check if the item exists in the current room
-- Some items may be too heavy
-- Certain items may be quest-specific
-
-**"Cannot move in that direction"**
-- Check available exits with `look`
-- Some paths may be blocked or locked
-- You may need special items to proceed
-
-**"Game crashes"**
-- Save your game frequently
-- Report bugs with specific steps to reproduce
-- Check the terminal for error messages
-
-### Getting Help
-
-- Use the `help` command in-game
-- Check the [Technical Reference](Technical_Reference.md) for advanced commands
-- Visit the [GitHub Issues](https://github.com/James-HoneyBadger/SagaCraft/issues) for bug reports
-- Join the community discussions for tips and strategies
-
-## Advanced Features
-
-### Command Shortcuts
-
-Most commands have abbreviations:
-- `l` for `look`
-- `i` for `inventory`
-- `n/s/e/w` for directions
-- `q` for `quit`
-
-### Special Commands
-
-Some adventures include custom commands:
-- `examine <object>` - Detailed inspection
-- `search <area>` - Look for hidden items
-- `talk <person>` - Start conversation
-- `cast <spell>` - Use magic (in fantasy adventures)
-
-### Game Modes
-
-Different adventures may offer:
-- **Story Mode**: Linear narrative
-- **Exploration Mode**: Open-world discovery
-- **Survival Mode**: Resource management focus
-- **Speed Run Mode**: Time-based challenges
+SagaCraft is a text-based adventure game engine. You explore worlds, collect items, fight monsters, and complete quests by typing commands. This manual covers everything you need to play.
 
 ---
 
-**Enjoy your adventure in SagaCraft!** Remember, the best stories are the ones you create yourself. If you create an adventure you'd like to share, consider contributing it to the community.
+## Table of Contents
+
+1. [Starting the Game](#starting-the-game)
+2. [How to Play](#how-to-play)
+3. [Complete Command Reference](#complete-command-reference)
+4. [Movement and Navigation](#movement-and-navigation)
+5. [Reading a Room](#reading-a-room)
+6. [Inventory Management](#inventory-management)
+7. [Combat System](#combat-system)
+8. [Quests](#quests)
+9. [Player Statistics](#player-statistics)
+10. [Tips and Strategies](#tips-and-strategies)
+11. [Troubleshooting](#troubleshooting)
+
+---
+
+## Starting the Game
+
+### Using the provided scripts
+
+```bash
+# Play the default demo adventure
+./Play.sh
+
+# Open the Terminal UI editor/launcher
+./Saga.sh
+```
+
+### Using Cargo directly
+
+```bash
+# Play a specific adventure file
+cargo run --bin sagacraft_player -- path/to/adventure.json
+
+# Open the Terminal UI IDE
+cargo run --bin sagacraft_ide_tui
+
+# Open the Graphical IDE
+cargo run --bin sagacraft_ide_gui
+```
+
+### Included adventures
+
+| File | Description |
+|------|-------------|
+| `demo_adventure.json` | Two-room introduction to SagaCraft |
+| `shattered_realms_demo.json` | 15-room epic fantasy adventure with combat and quests |
+
+---
+
+## How to Play
+
+SagaCraft is played entirely by typing commands and reading the responses. Everything happens at the keyboard.
+
+When you start a new game you will see the title banner, optional introduction text, and then the first room description:
+
+```
+============================================================
+              The Shattered Realms
+============================================================
+
+An ancient evil stirs beneath the kingdom…
+
+Waking Village - The Morning After
+-----------------------------------
+You awaken in the smoldering ruins of what was once a peaceful
+farming village…
+
+Obvious exits: north, east, south
+```
+
+Type a command and press **Enter**. The engine responds, and you continue.
+
+---
+
+## Complete Command Reference
+
+### Movement
+
+| Command | Aliases | Effect |
+|---------|---------|--------|
+| `north` | `n`, `go north`, `move north` | Move north |
+| `south` | `s`, `go south`, `move south` | Move south |
+| `east`  | `e`, `go east`,  `move east`  | Move east  |
+| `west`  | `w`, `go west`,  `move west`  | Move west  |
+| `up`    | `u`, `go up`,    `move up`    | Move up    |
+| `down`  | `d`, `go down`,  `move down`  | Move down  |
+
+### Information
+
+| Command | Aliases | Effect |
+|---------|---------|--------|
+| `look` | `l` | Describe the current room |
+| `inventory` | `inv`, `i` | List carried items and weight |
+| `status` | `stats` | Show health, gold, level, and equipment |
+| `quests` | — | List active and available quests |
+| `help` | `?` | Quick command reminder |
+
+### Items
+
+| Command | Aliases | Effect |
+|---------|---------|--------|
+| `take <item>` | `get <item>` | Pick up an item from the room |
+| `drop <item>` | — | Drop a carried item into the room |
+| `examine <item>` | `inspect <item>`, `x <item>` | See detailed item information |
+| `use <item>` | — | Consume, read, or activate an item |
+| `equip <item>` | `wield <item>`, `wear <item>` | Equip a weapon or armor |
+| `unequip <slot>` | `remove <slot>` | Remove equipment (`weapon` or `armor`) |
+
+### Combat
+
+| Command | Aliases | Effect |
+|---------|---------|--------|
+| `attack <target>` | `fight <target>` | Attack a hostile monster in the room |
+
+### Social
+
+| Command | Aliases | Effect |
+|---------|---------|--------|
+| `say <text>` | `shout <text>`, `yell <text>` | Speak aloud; friendly NPCs nearby will react |
+
+### Quests
+
+| Command | Effect |
+|---------|--------|
+| `quests` | Show active and available quests with objectives |
+| `accept <quest_id>` | Accept an available quest |
+| `complete <quest_id>` | Report a finished quest and collect rewards |
+
+### Game Control
+
+| Command | Aliases | Effect |
+|---------|---------|--------|
+| `quit` | `exit` | Exit the game |
+
+---
+
+## Movement and Navigation
+
+Each room description ends with a list of available exits:
+
+```
+Obvious exits: north, east, down
+```
+
+Type the direction (or its one-letter alias) to move. If a direction has no exit you will see:
+
+```
+You can't go that way.
+```
+
+Adventures can define exits with any name — you may encounter `gates`, `palace`, `oracle`, `secret`, `throne`, and similar in addition to cardinal directions. Always `look` after entering a new room to catch all available exits.
+
+### Dark rooms
+
+Some rooms are flagged `is_dark`. In a dark room you see:
+
+```
+It is pitch black. You can't see a thing.
+```
+
+You need a light-source item (defined in the adventure) to see in darkness.
+
+---
+
+## Reading a Room
+
+The `look` command (or just `l`) prints the full room description at any time:
+
+```
+Throne Room
+-----------
+The throne room is a cavernous hall of marble and gold,
+lit by massive crystal chandeliers that cast eerie shadows.
+
+Obvious exits: south, secret
+
+You see:
+  - Dragon Crown
+  - Forbidden Tome
+
+Present:
+  - Palace Guard (hostile)
+  - Court Advisor
+```
+
+- **You see** — items in this room that can be examined or taken.
+- **Present** — creatures. Their disposition is shown in parentheses:
+  - `(hostile)` — will fight back when attacked
+  - `(friendly)` — cannot be attacked
+  - *(none)* — neutral
+
+---
+
+## Inventory Management
+
+### Viewing your inventory
+
+```
+> inventory
+Inventory (7/120 weight):
+  - Rusty Sword [wielded]
+  - Leather Armor [worn]
+  - Ancient Key
+  - Health Potion
+```
+
+`[wielded]` and `[worn]` mark actively equipped items.
+
+### Carry weight limit
+
+Your maximum carrying capacity is **hardiness × 10**. The default player has hardiness 12, giving a capacity of 120. Each item has a weight value. If picking something up exceeds the limit you will see:
+
+```
+Too heavy to carry! (115/120 weight used, Plate Mail weighs 15.)
+```
+
+Drop or use something first to free capacity.
+
+### Taking and dropping
+
+```
+> take ancient key
+Taken: Ancient Key.
+
+> drop ancient key
+Dropped.
+```
+
+Items must be present in the current room to take. You must be holding an item to drop it.
+
+### Examining items
+
+```
+> examine rusty sword
+Rusty Sword
+A worn blade with a chipped edge.
+Damage: 1d8
+Weight: 3  Value: 10 gold
+```
+
+`examine` works on things in your **inventory** and on things **in the room** — you do not need to pick something up to inspect it.
+
+### Equipping and unequipping
+
+```
+> equip rusty sword
+You wield the Rusty Sword.
+
+> equip leather armor
+You wear the Leather Armor.
+
+> unequip weapon
+Weapon unequipped.
+
+> unequip armor
+Armor removed.
+```
+
+Only weapons (`is_weapon: true`) and wearable armor (`is_wearable: true` or `is_armor: true`) can be equipped. Unequipping keeps the item in your inventory.
+
+### Using items
+
+| Item type | What happens |
+|-----------|--------------|
+| Edible, Drinkable | Restores health equal to the item's **value** (capped at max hardiness). The item is consumed and removed. |
+| Readable | Prints the item description. The item is kept. |
+| Anything else | "You fiddle with it but nothing happens." |
+
+```
+> use health potion
+You consume the Health Potion. Health: 12/12.
+```
+
+---
+
+## Combat System
+
+### Initiating combat
+
+You start combat by attacking a monster explicitly:
+
+```
+> attack goblin
+You attack the Goblin Warrior for 6 damage. It has 4 health remaining.
+The Goblin Warrior strikes back for 2 damage. Your health: 10/12.
+```
+
+Attempting to attack a non-hostile creature is refused:
+
+```
+> attack merchant
+You can't bring yourself to attack the friendly Merchant.
+```
+
+### How damage is calculated
+
+**Your attack:**
+- If you have a weapon equipped, the engine rolls that weapon's dice (e.g. `weapon_dice=1, weapon_sides=8` → 1–8 damage).
+- If nothing is equipped, the engine uses your best weapon ability score (default 5) as the maximum of a random roll (1 to max).
+
+**Monster counter-attack:**
+- The monster rolls `1` to `(agility ÷ 3) + 1` damage.
+- Your equipped armor's `armor_value` is subtracted from that, with a minimum of 0.
+
+**Example:** A monster with agility 9 deals up to `(9÷3)+1 = 4` raw damage per counter-attack. With Leather Armor (armor_value 2) you absorb 2 points, reducing the hit to at most 2.
+
+### Victory and death
+
+- A monster that reaches 0 health is killed. You automatically collect any gold it carried.
+- If your health reaches 0 the game ends immediately.
+
+### After a fight
+
+Use `status` to check your health. Heal with Edible or Drinkable items if available, then continue.
+
+### Weapon type reference
+
+| `weapon_type` value | Weapon category |
+|---------------------|-----------------|
+| 1 | Axe |
+| 2 | Bow |
+| 3 | Club |
+| 4 | Spear |
+| 5 | Sword |
+
+---
+
+## Quests
+
+### Listing quests
+
+```
+> quests
+Active Quests:
+- Slay the Goblin King: Defeat the leader of the warband
+  Current Stage: Main Quest
+    - Kill Goblin King (0/1)
+
+Available Quests:
+- Collect the Herb: Gather healing herbs from the forest
+```
+
+### Accepting a quest
+
+```
+> accept 3
+Accepted quest: Collect the Herb
+```
+
+### Completing a quest
+
+When all required objectives show `(1/1)` or greater, report completion:
+
+```
+> complete 3
+Completed quest: 3 (+50 gold) (+100 XP)
+```
+
+Gold and XP are added to your totals immediately.
+
+### How objectives track automatically
+
+| Objective type | When it advances |
+|---------------|-----------------|
+| Kill | Every time you `attack` and kill a monster whose name matches the quest target |
+| Collect | Every time you `take` an item whose name matches the quest target |
+| Explore / Reach | Every time you enter the target room |
+| Talk | When you `say` to a matching NPC |
+
+Quest progress notifications appear automatically after the triggering action:
+
+```
+> attack goblin king
+You defeat the Goblin King! (+25 gold)
+Quest update:
+[Slay the Goblin King] Kill Goblin King (1/1)
+```
+
+---
+
+## Player Statistics
+
+The `status` command shows your full character sheet:
+
+```
+> status
+Player: Adventurer
+Health: 10/12
+Level: 1  XP: 0
+Gold: 200
+Weapon: Rusty Sword
+Armor: none
+Carrying: 5/120 weight
+Location: Room 3
+```
+
+| Stat | Starting value | Meaning |
+|------|---------------|---------|
+| Hardiness | 12 | Maximum health; also determines carry capacity (×10) |
+| Agility | 12 | Speed; used in monster counter-attack formula |
+| Charisma | 12 | NPC interaction modifier |
+| Gold | 200 | Currency; gained from slain monsters and quests |
+| Level | 1 | Increases with XP awarded by quests |
+
+---
+
+## Tips and Strategies
+
+### Exploration
+- `look` every time you enter a room — exits and items reset on each `look`.
+- Exits can have non-standard names. Read room descriptions for door/portal/passage hints.
+- Keep track of visited rooms manually or with notes — there is no built-in map.
+
+### Combat
+- Check `status` before a fight. Heal first if your health is under half.
+- `examine` a monster's weapon (visible in the room) before attacking heavily armed foes.
+- Equip your best weapon and appropriate armor before engaging.
+- If a fight is going badly, there is no automatic retreat — plan carefully.
+
+### Inventory
+- Consumables with higher `value` heal more HP. Prioritise high-value potions/food.
+- Treasure items are mostly dead weight mid-adventure; drop them if encumbered.
+- Use `examine` on room items before taking them — some carry crucial story clues in their description.
+
+### Quests
+- Accept quests the moment they appear; kill and collect objectives track automatically as you play.
+- Complete finished quests promptly to bank rewards before dying.
+- Quest prerequisites can block you from accepting later quests — complete earlier ones first.
+
+---
+
+## Troubleshooting
+
+| Symptom | Solution |
+|---------|----------|
+| `Unknown command: …` | Check spelling; type `help` for valid commands |
+| `You can't take that.` | Item is not in the current room, or is flagged non-takeable |
+| `Too heavy to carry!` | Drop or consume items to free carry weight |
+| `You can't bring yourself to attack…` | Target is not hostile; only attack hostile creatures |
+| `There's no X here to attack.` | Name didn't match; try a short partial name |
+| Adventure won't load | Verify the path is correct and the JSON is valid |
+| Dark room with no light | Look for a torch or lantern item in earlier rooms |
+
+**Bug reports:** https://github.com/James-HoneyBadger/SagaCraft/issues

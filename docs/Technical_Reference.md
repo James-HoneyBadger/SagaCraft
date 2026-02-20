@@ -1,95 +1,286 @@
 # SagaCraft Technical Reference
 
-## Architecture and Implementation Details
+**Version 4.0 · Audience: Developers & Advanced Modders**
 
-This document provides comprehensive technical information about the SagaCraft engine, including architecture, APIs, data structures, and implementation details for developers and advanced users.
+This document describes the SagaCraft engine internals: architecture, data structures, the adventure JSON schema, the system trait API, and build instructions. All information reflects the actual source at `sagacraft_rs/`.
+
+---
 
 ## Table of Contents
 
-1. [Architecture Overview](#architecture-overview)
-2. [Core Systems](#core-systems)
-3. [Data Structures](#data-structures)
-4. [API Reference](#api-reference)
-5. [File Formats](#file-formats)
-6. [Performance Considerations](#performance-considerations)
-7. [Extensibility](#extensibility)
-8. [Debugging and Development](#debugging-and-development)
+1. [Project Structure](#project-structure)
+2. [Crate Overview](#crate-overview)
+3. [Core Types](#core-types)
+4. [The System Trait](#the-system-trait)
+5. [Built-in Systems](#built-in-systems)
+6. [Command Parsing](#command-parsing)
+7. [Engine and AdventureGame](#engine-and-adventuregame)
+8. [Adventure JSON Schema](#adventure-json-schema)
+9. [Game Events](#game-events)
+10. [Quest System Internals](#quest-system-internals)
+11. [Build and Test](#build-and-test)
+12. [Contributing](#contributing)
 
-## Architecture Overview
+---
 
-### Component Architecture
-
-SagaCraft follows a modular architecture with clear separation of concerns:
+## Project Structure
 
 ```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   sagacraft_    │    │   sagacraft_    │    │   sagacraft_    │
-│     player      │    │    ide_tui      │    │    ide_gui      │
-│                 │    │                 │    │                 │
-│ • CLI Interface │    │ • Terminal UI   │    │ • Graphical UI  │
-│ • Command Input │    │ • Text Editor   │    │ • Visual Editor │
-│ • Game Loop     │    │ • File Mgmt     │    │ • Drag & Drop   │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-         │                       │                       │
-         └───────────────────────┼───────────────────────┘
-                                 │
-                    ┌─────────────────┐
-                    │   sagacraft_    │
-                    │       rs        │
-                    │                 │
-                    │ • Core Engine   │
-                    │ • Game State    │
-                    │ • Systems       │
-                    │ • Data Models   │
-                    └─────────────────┘
+SagaCraft/
+├── Cargo.toml                  # Workspace manifest
+├── sagacraft_rs/               # Core engine library
+│   └── src/
+│       ├── lib.rs              # Public re-exports
+│       ├── engine.rs           # High-level Engine wrapper
+│       ├── game_state.rs       # AdventureGame, Room, Item, Monster, Player
+│       ├── command.rs          # Command enum, Direction, parser
+│       ├── adventure.rs        # Adventure / AdventureRoom types (secondary format)
+│       └── systems/
+│           ├── mod.rs          # System trait definition
+│           ├── basic_world.rs  # Movement, look, say
+│           ├── inventory.rs    # Item management
+│           ├── combat.rs       # Attack/fight, status
+│           └── quests.rs       # Quest tracker, QuestSystem
+├── sagacraft_player/           # CLI binary
+├── sagacraft_ide_tui/          # Ratatui terminal IDE
+└── sagacraft_ide_gui/          # egui graphical IDE
 ```
 
-### Core Principles
+---
 
-1. **Modularity**: Each component has a single responsibility
-2. **Performance**: Rust's zero-cost abstractions and memory safety
-3. **Extensibility**: Plugin system for custom mechanics
-4. **Data-Driven**: JSON-based adventure format
-5. **Cross-Platform**: Works on Linux, macOS, and Windows
+## Crate Overview
 
-## Core Systems
+The `sagacraft_rs` library is the only dependency shared by all three front-ends. The three binaries are thin shells that set up the engine and pass user input through it.
 
-### Game State Management
-
-The `GameState` struct manages all game data:
+### Public re-exports (`lib.rs`)
 
 ```rust
-pub struct GameState {
-    pub player: Player,
-    pub current_room_id: i32,
+pub use game_state::{
+    AdventureGame, GameState, Item, ItemType,
+    Monster, MonsterStatus, Player, Room,
+};
+pub use command::{Command, Direction};
+pub use engine::{Engine, EngineEvent, EngineOutput};
+pub use systems::{
+    BasicWorldSystem, CombatSystem, InventorySystem,
+    quests::QuestSystem,
+};
+```
+
+---
+
+## Core Types
+
+### `Item`
+
+Defined in `game_state.rs`.
+
+```rust
+pub struct Item {
+    pub id: i32,
+    pub name: String,
+    pub description: String,
+    pub item_type: ItemType,     // see ItemType enum
+    pub weight: i32,
+    pub value: i32,
+    pub is_weapon: bool,
+    pub weapon_type: i32,        // 1=axe 2=bow 3=club 4=spear 5=sword
+    pub weapon_dice: i32,
+    pub weapon_sides: i32,
+    pub is_armor: bool,
+    pub armor_value: i32,
+    pub is_takeable: bool,       // default true
+    pub is_wearable: bool,
+    pub location: i32,           // room_id | 0=inventory | -1=worn
+}
+```
+
+`Item::get_damage()` rolls `weapon_dice` * `weapon_sides` using `rand::thread_rng`.
+
+**`ItemType` variants (JSON lowercase strings):**
+
+| Rust variant | JSON string | Notes |
+|---|---|---|
+| `ItemType::Weapon` | `"weapon"` | use `is_weapon:true` for combat |
+| `ItemType::Armor` | `"armor"` | use `is_armor:true` + `armor_value` |
+| `ItemType::Treasure` | `"treasure"` | decorative value items |
+| `ItemType::Readable` | `"readable"` | prints description on `use` |
+| `ItemType::Edible` | `"edible"` | heals `value` HP on `use`, consumed |
+| `ItemType::Drinkable` | `"drinkable"` | same as edible |
+| `ItemType::Container` | `"container"` | no special engine logic yet |
+| `ItemType::Normal` | `"normal"` / unrecognised | default |
+
+### `Monster`
+
+```rust
+pub struct Monster {
+    pub id: i32,
+    pub name: String,
+    pub description: String,
+    pub room_id: i32,
+    pub hardiness: i32,          // max health
+    pub agility: i32,            // counter-attack strength
+    pub friendliness: MonsterStatus,
+    pub courage: i32,
+    pub weapon_id: Option<i32>,  // item ID of their weapon
+    pub armor_worn: i32,         // static armor reduction (unused by player)
+    pub gold: i32,               // dropped on death
+    pub is_dead: bool,
+    pub current_health: Option<i32>,  // None = full health
+}
+```
+
+`MonsterStatus` variants: `Friendly`, `Neutral`, `Hostile`. Only `Hostile` monsters can be attacked.
+
+Counter-attack damage formula: `1 ..= (monster.agility / 3 + 1).max(2)` → subtract player's equipped `armor_value`.
+
+### `Room`
+
+```rust
+pub struct Room {
+    pub id: i32,
+    pub name: String,
+    pub description: String,
+    pub exits: HashMap<String, i32>,  // direction string -> room id
+    pub is_dark: bool,
+}
+```
+
+Items are not stored in `Room`; they are found via `Item::location == room.id`.
+
+### `Player`
+
+```rust
+pub struct Player {
+    pub name: String,
+    pub hardiness: i32,           // default 12; health pool & carry multiplier
+    pub agility: i32,             // default 12
+    pub charisma: i32,            // default 12
+    pub weapon_ability: HashMap<i32, i32>, // weapon_type -> ability (1-5 → 5)
+    pub armor_expertise: i32,
+    pub gold: i32,                // default 200
+    pub current_room: i32,
+    pub current_health: Option<i32>,  // None = full health
+    pub inventory: Vec<i32>,      // item IDs
+    pub equipped_weapon: Option<i32>,
+    pub equipped_armor: Option<i32>,
+    pub experience_points: i32,
+    pub level: i32,               // default 1
+}
+```
+
+Max carry weight = `player.hardiness * 10`.
+
+### `AdventureGame`
+
+The central mutable game object. Holds all state and the list of active systems.
+
+```rust
+pub struct AdventureGame {
+    pub adventure_file: String,
     pub rooms: HashMap<i32, Room>,
     pub items: HashMap<i32, Item>,
     pub monsters: HashMap<i32, Monster>,
-    pub game_over: bool,
+    pub player: Player,
+    pub companions: Vec<String>,
     pub turn_count: i32,
+    pub game_over: bool,
+    pub adventure_title: String,
+    pub adventure_intro: String,
+    pub effects: Vec<serde_json::Value>,
+    pub systems: Vec<Box<dyn System>>,
+    pub quests: Vec<serde_json::Value>,
+    pub events: Vec<GameEvent>,
 }
 ```
 
-### System Architecture
+**Key methods:**
 
-SagaCraft uses an Entity-Component-System (ECS) inspired approach:
+| Method | Description |
+|--------|-------------|
+| `load_adventure() -> Result<String, _>` | Parses JSON; returns opening header string |
+| `process_command(&str) -> Vec<String>` | Main dispatch; runs primary + observer passes |
+| `look() -> String` | Renders current room |
+| `move_player(&str) -> Option<String>` | Moves player, emits `RoomEntered` event |
+| `take_item(&str) -> Result<String, String>` | Picks up item, checks weight, emits `ItemCollected` |
+| `drop_item(&str) -> bool` | Drops item, clears equip slots if needed |
+| `equip_item(&str) -> Result<String, String>` | Equips weapon or wearable armor |
+| `unequip_slot(&str) -> Result<String, String>` | Unequips `"weapon"` or `"armor"` slot |
+| `use_item(&str) -> Result<String, String>` | Consumes, reads, or activates item |
+| `examine_item(&str) -> Option<String>` | Returns full item details from inventory or room |
+| `carry_weight() -> (i32, i32)` | Returns `(current, max)` carry weight |
+| `get_items_in_room(room_id) -> Vec<&Item>` | Items whose `location == room_id` |
+| `get_monsters_in_room(room_id) -> Vec<&Monster>` | Alive monsters in room |
+
+---
+
+## The System Trait
+
+All game logic is plugged in via the `System` trait (`systems/mod.rs`):
 
 ```rust
-pub trait System {
-    fn update(&mut self, game_state: &mut GameState, command: &Command) -> Vec<String>;
-    fn get_name(&self) -> &str;
+pub trait System: Send + Sync {
+    /// Primary handler: return Some(output) to claim the command; None to pass.
+    fn on_command(
+        &mut self,
+        command: &str,
+        args: &[&str],
+        game: &mut AdventureGame,
+    ) -> Option<String>;
 }
 ```
 
-Built-in systems include:
-- `BasicWorldSystem`: Room navigation and description
-- `InventorySystem`: Item management
-- `CombatSystem`: Turn-based combat
-- `QuestSystem`: Objective tracking
+**Dispatch in `process_command`:**
 
-### Command Processing
+1. The verb is extracted and lowercased.
+2. Systems are iterated in registration order. The **first** system that returns `Some(...)` claims the command.
+3. After the primary pass, every system is called with the special verb `"__events__"` and an empty args slice. This is the observer pass — systems react to pending `GameEvent`s without owning the command.
+4. The `events` buffer is cleared after the observer pass.
 
-Commands are parsed and dispatched through a central processor:
+To add a custom system:
+
+```rust
+game.add_system(Box::new(MySystem::default()));
+```
+
+Register before `load_adventure` to ensure `init`-style behaviour in the first observer pass.
+
+---
+
+## Built-in Systems
+
+### `BasicWorldSystem`
+
+Handles: `look`/`l`, direction movement (all six cardinal directions plus aliases), `go`/`move <dir>`, `say`/`shout`/`yell`.
+
+When `say` is used and a non-hostile NPC is present, the NPC's name is included in the response.
+
+### `InventorySystem`
+
+Handles: `inventory`/`inv`/`i`, `take`/`get`, `drop`, `equip`/`wield`/`wear`, `unequip`/`remove`, `use`, `examine`/`inspect`/`x`.
+
+### `CombatSystem`
+
+Handles: `attack`/`fight <target>`, `status`/`stats`.
+
+Combat flow per `attack` call:
+1. Find matching monster in current room (case-insensitive partial name match).
+2. Refuse if monster is not `Hostile`.
+3. Calculate player damage and apply to monster HP.
+4. If monster dies: set `is_dead = true`, transfer gold, push `MonsterKilled` event.
+5. If monster survives: calculate monster counter-attack with armor mitigation, apply to player HP. If player HP ≤ 0, set `game_over = true`.
+
+### `QuestSystem`
+
+Handles: `quests`, `accept <id>`, `complete <id>`, and the `__events__` observer pass.
+
+On first call, loads quests from `game.quests` (the raw JSON array). Supports `Kill` and `Collect` objective auto-progress via the observer pass.
+
+---
+
+## Command Parsing
+
+`Command::parse(input: &str) -> Result<Command, ParseError>` in `command.rs`:
 
 ```rust
 pub enum Command {
@@ -100,586 +291,253 @@ pub enum Command {
     Take(String),
     Drop(String),
     Use(String),
+    Equip(String),
+    Examine(String),
     Say(String),
     Quit,
     Unknown(String),
 }
+
+pub enum Direction { North, South, East, West, Up, Down }
 ```
 
-## Data Structures
+The `Engine::step` method converts `Command` back to a string and feeds it to `AdventureGame::process_command`, which handles all matching in lowercase. Custom commands that are not in the `Command` enum are passed through as `Command::Unknown(raw)` and dispatched to systems as-is.
 
-### Adventure Structure
+---
+
+## Engine and AdventureGame
+
+`Engine` (`engine.rs`) is a thin wrapper that pre-wires all four default systems:
 
 ```rust
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Adventure {
-    pub id: String,
-    pub title: String,
-    pub start_room: String,
-    pub rooms: Vec<AdventureRoom>,
-    #[serde(default)]
-    pub player_start_inventory: Vec<AdventureItem>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AdventureRoom {
-    pub id: String,
-    pub title: String,
-    pub description: String,
-    #[serde(default)]
-    pub exits: HashMap<String, String>,
-    #[serde(default)]
-    pub items: Vec<AdventureItem>,
+impl Engine {
+    pub fn new(adventure_path: impl Into<String>) -> Self;
+    pub fn load_from_path(path: impl Into<String>) -> Result<Self, Box<dyn Error>>;
+    pub fn step(&mut self, event: EngineEvent) -> EngineOutput;
+    pub fn look(&self) -> String;
+    pub fn is_over(&self) -> bool;
 }
 ```
 
-### Player and Characters
+`EngineOutput` wraps `Vec<String>` lines. `EngineEvent` is currently `EngineEvent::Command(Command)`.
 
+Use `Engine::load_from_path` for a one-liner that creates and loads:
 ```rust
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Player {
-    pub name: String,
-    pub hardiness: i32,
-    pub agility: i32,
-    pub current_health: Option<i32>,
-    pub inventory: Vec<i32>, // Item IDs
-    pub location: i32,       // Room ID
-    pub gold: i32,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Monster {
-    pub id: i32,
-    pub name: String,
-    pub description: String,
-    pub room_id: i32,
-    pub hardiness: i32,
-    pub agility: i32,
-    pub friendliness: MonsterStatus,
-    pub courage: i32,
-    pub weapon_id: Option<i32>,
-    pub armor_worn: i32,
-    pub gold: i32,
-    pub is_dead: bool,
-    pub current_health: Option<i32>,
-}
+let mut engine = Engine::load_from_path("demo_adventure.json")?;
+let intro = engine.look();
 ```
 
-### Items and Equipment
+---
 
-```rust
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum ItemType {
-    Weapon, Armor, Treasure, Readable, Edible, Drinkable, Container, Normal,
-}
+## Adventure JSON Schema
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Item {
-    pub id: i32,
-    pub name: String,
-    pub description: String,
-    pub item_type: ItemType,
-    pub weight: i32,
-    pub value: i32,
-    pub is_weapon: bool,
-    pub weapon_type: i32,
-    pub weapon_dice: i32,
-    pub weapon_sides: i32,
-    pub is_armor: bool,
-    pub armor_value: i32,
-    pub is_takeable: bool,
-    pub is_wearable: bool,
-    pub location: i32,
-}
-```
+This section documents every field accepted by `AdventureGame::load_adventure`.
 
-## API Reference
-
-### Core Engine API
-
-#### AdventureGame
-
-The main game controller:
-
-```rust
-pub struct AdventureGame {
-    game_state: GameState,
-    systems: Vec<Box<dyn System>>,
-    adventure: Option<Adventure>,
-}
-
-impl AdventureGame {
-    pub fn new(adventure_path: Option<String>) -> Self;
-    pub fn load_adventure(&mut self) -> Result<(), Box<dyn std::error::Error>>;
-    pub fn add_system(&mut self, system: Box<dyn System>);
-    pub fn process_command(&mut self, input: &str) -> Vec<String>;
-    pub fn look(&mut self) -> Vec<String>;
-    pub fn is_game_over(&self) -> bool;
-}
-```
-
-#### System Trait
-
-Interface for game systems:
-
-```rust
-pub trait System {
-    fn update(&mut self, game_state: &mut GameState, command: &Command) -> Vec<String>;
-    fn get_name(&self) -> &str;
-    fn init(&mut self, _game_state: &mut GameState) {}
-    fn cleanup(&mut self, _game_state: &mut GameState) {}
-}
-```
-
-### Command API
-
-#### Command Parsing
-
-```rust
-impl Command {
-    pub fn parse(input: &str) -> Result<Self, ParseError>;
-    pub fn is_movement(&self) -> bool;
-    pub fn requires_target(&self) -> bool;
-}
-```
-
-#### Direction Enum
-
-```rust
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Direction {
-    North, South, East, West,
-}
-
-impl Direction {
-    pub fn from_str(s: &str) -> Option<Self>;
-    pub fn opposite(&self) -> Self;
-}
-```
-
-### File I/O API
-
-#### Adventure Loading
-
-```rust
-impl Adventure {
-    pub fn load_from_file(path: &Path) -> Result<Self, AdventureError>;
-    pub fn save_to_file(&self, path: &Path) -> Result<(), AdventureError>;
-    pub fn validate(&self) -> Result<(), AdventureError>;
-}
-```
-
-#### Save/Load System
-
-```rust
-pub struct SaveManager {
-    save_directory: PathBuf,
-}
-
-impl SaveManager {
-    pub fn new() -> Self;
-    pub fn save_game(&self, game_state: &GameState, slot: &str) -> Result<(), Box<dyn std::error::Error>>;
-    pub fn load_game(&self, slot: &str) -> Result<GameState, Box<dyn std::error::Error>>;
-    pub fn list_saves(&self) -> Result<Vec<String>, Box<dyn std::error::Error>>;
-}
-```
-
-## File Formats
-
-### Adventure JSON Format
-
-Complete adventure specification:
+### Top-level object
 
 ```json
 {
-  "$schema": "https://raw.githubusercontent.com/James-HoneyBadger/SagaCraft/main/docs/adventure.schema.json",
-  "id": "example_adventure",
-  "title": "Example Adventure",
-  "description": "A sample adventure for demonstration",
-  "author": "Game Designer",
-  "version": "4.0.0",
-  "start_room": "entrance",
-  "player_start_inventory": [
+  "id": "my_adventure",          // string; adventure identifier
+  "title": "My Adventure",       // string; shown in banner
+  "intro": "Once upon a time…",  // string; optional intro text
+  "description": "…",            // string; metadata only
+  "start_room": 1,               // integer; starting room id
+  "rooms":    [ … ],
+  "items":    [ … ],
+  "monsters": [ … ],
+  "quests":   [ … ],
+  "effects":  [ … ]              // reserved for future use
+}
+```
+
+### Room object
+
+```json
+{
+  "id": 1,                           // integer, must be unique
+  "name": "Village Square",          // string
+  "description": "Cobblestones…",    // string
+  "is_dark": false,                  // boolean, optional (default false)
+  "exits": {                         // object: direction string -> room id int
+    "north": 2,
+    "east": 3,
+    "palace": 5
+  },
+  "items": [1, 2, 3]                 // array of item ids starting in this room
+}
+```
+
+`exits` keys can be any string; standard values are `north`, `south`, `east`, `west`, `up`, `down`.
+
+Rooms referenced in `exits` must exist in the `rooms` array or the exit will be silently ignored.
+
+The `items` array in a room lists item IDs whose `location` field will be interpreted as that room's ID. Alternatively, set `"location": <room_id>` on each item directly.
+
+### Item object
+
+```json
+{
+  "id": 101,
+  "name": "Iron Sword",
+  "description": "A dependable one-handed blade.",
+  "type": "weapon",          // see ItemType table; key is "type" not "item_type"
+  "weight": 3,
+  "value": 25,
+  "is_weapon": true,
+  "weapon_type": 5,          // 1=axe 2=bow 3=club 4=spear 5=sword
+  "weapon_dice": 1,
+  "weapon_sides": 8,
+  "is_armor": false,
+  "armor_value": 0,
+  "is_takeable": true,       // default true
+  "is_wearable": false,
+  "location": 1              // room_id where item starts; 0 = player inventory
+}
+```
+
+For **armor** items set `"is_armor": true` and `"is_wearable": true`.
+
+For **consumables** set `type` to `"edible"` or `"drinkable"` and set `value` to the HP restored.
+
+### Monster object
+
+```json
+{
+  "id": 201,
+  "name": "Goblin Warrior",
+  "description": "A small but fierce goblin.",
+  "room_id": 3,
+  "hardiness": 8,            // max health
+  "agility": 6,              // counter-attack strength
+  "friendliness": "hostile", // "friendly" | "neutral" | "hostile"
+  "courage": 80,             // unused by default combat logic (future)
+  "weapon_id": 301,          // optional; item id of monster's weapon
+  "armor_worn": 1,           // static armor reduction for monster (future)
+  "gold": 10
+}
+```
+
+### Quest object
+
+```json
+{
+  "id": 1,
+  "title": "Slay the Goblin King",
+  "description": "The Goblin King terrorises the village.",
+  "objectives": [
     {
-      "id": "backpack",
-      "name": "Leather Backpack",
-      "description": "A sturdy leather backpack for carrying items."
-    }
-  ],
-  "rooms": [
+      "type": "kill_monster",   // "kill_monster"|"collect_item"|"reach_room"|"talk_to_npc"
+      "target_id": 202,         // integer id used as partial-name match string
+      "description": "Kill the Goblin King"
+    },
     {
-      "id": "entrance",
-      "title": "Castle Entrance",
-      "description": "You stand before the massive oak doors of an ancient castle. The stone walls loom high above you, and you can hear the distant sound of waves crashing against the cliffs below.",
-      "exits": {
-        "north": "great_hall",
-        "south": "courtyard"
-      },
-      "items": [
-        {
-          "id": "iron_key",
-          "name": "Iron Key",
-          "description": "A heavy iron key, cold to the touch."
-        }
-      ],
-      "npcs": [
-        {
-          "id": 1,
-          "name": "Gate Guard",
-          "description": "A stern-looking guard in chain mail armor."
-        }
-      ]
-    }
-  ],
-  "items": [
-    {
-      "id": 100,
-      "name": "Rusty Sword",
-      "description": "An old sword with a dull blade. It has seen better days.",
-      "item_type": "Weapon",
-      "weight": 3,
-      "value": 10,
-      "is_weapon": true,
-      "weapon_type": 5,
-      "weapon_dice": 1,
-      "weapon_sides": 8
-    }
-  ],
-  "monsters": [
-    {
-      "id": 200,
-      "name": "Goblin Warrior",
-      "description": "A small but fierce goblin armed with a crude spear.",
-      "room_id": 2,
-      "hardiness": 6,
-      "agility": 8,
-      "friendliness": "Hostile",
-      "courage": 5,
-      "weapon_id": 300,
-      "armor_worn": 0,
-      "gold": 5
-    }
-  ],
-  "quests": [
-    {
-      "id": "main_quest",
-      "title": "Escape the Castle",
-      "description": "Find a way out of the castle and return to freedom.",
-      "objectives": [
-        {
-          "id": "find_key",
-          "description": "Locate the key to the main gate",
-          "type": "item",
-          "target": "master_key"
-        },
-        {
-          "id": "unlock_gate",
-          "description": "Use the key to unlock the main gate",
-          "type": "location",
-          "target": "main_gate"
-        }
-      ],
-      "reward": {
-        "gold": 100,
-        "experience": 50
-      }
+      "type": "collect_item",
+      "target_id": 105,
+      "description": "Recover the stolen crown"
     }
   ]
 }
 ```
 
-### Save Game Format
-
-```json
-{
-  "version": "4.0",
-  "timestamp": "2024-01-15T10:30:00Z",
-  "adventure_id": "example_adventure",
-  "game_state": {
-    "player": {
-      "name": "Hero",
-      "hardiness": 12,
-      "agility": 10,
-      "current_health": 12,
-      "inventory": [100, 101],
-      "location": 1,
-      "gold": 25
-    },
-    "current_room_id": 1,
-    "rooms": {...},
-    "items": {...},
-    "monsters": {...},
-    "game_over": false,
-    "turn_count": 45
-  },
-  "active_quests": ["main_quest"],
-  "completed_quests": []
-}
-```
-
-## Performance Considerations
-
-### Memory Management
-
-- **Zero-copy parsing**: JSON data is parsed once and reused
-- **Arena allocation**: Game objects use ID-based lookup for efficiency
-- **Lazy loading**: Large assets loaded on demand
-
-### CPU Optimization
-
-- **Command caching**: Frequently used commands are cached
-- **Incremental updates**: Only changed state is processed
-- **Async I/O**: File operations don't block the game loop
-
-### Benchmarks
-
-Typical performance metrics:
-- **Adventure loading**: < 100ms for 100-room adventures
-- **Command processing**: < 1ms per command
-- **Memory usage**: ~50MB for large adventures
-- **Save/load time**: < 50ms for typical game states
-
-## Extensibility
-
-### Custom Systems
-
-Create custom game mechanics:
-
-```rust
-pub struct CustomSystem {
-    custom_data: HashMap<String, String>,
-}
-
-impl System for CustomSystem {
-    fn update(&mut self, game_state: &mut GameState, command: &Command) -> Vec<String> {
-        match command {
-            Command::CustomCommand(data) => {
-                // Custom logic here
-                vec!["Custom action performed!".to_string()]
-            }
-            _ => vec![],
-        }
-    }
-
-    fn get_name(&self) -> &str {
-        "Custom System"
-    }
-}
-```
-
-### Plugin Architecture
-
-```rust
-pub trait Plugin {
-    fn init(&mut self, game: &mut AdventureGame) -> Result<(), Box<dyn std::error::Error>>;
-    fn get_systems(&self) -> Vec<Box<dyn System>>;
-    fn get_commands(&self) -> Vec<String>;
-}
-
-pub struct PluginManager {
-    plugins: Vec<Box<dyn Plugin>>,
-}
-
-impl PluginManager {
-    pub fn load_plugin(&mut self, path: &Path) -> Result<(), Box<dyn std::error::Error>>;
-    pub fn init_plugins(&mut self, game: &mut AdventureGame) -> Result<(), Box<dyn std::error::Error>>;
-}
-```
-
-### Event System
-
-```rust
-#[derive(Debug, Clone)]
-pub enum GameEvent {
-    PlayerMoved { from: i32, to: i32 },
-    ItemTaken { item_id: i32 },
-    CombatStarted { monster_id: i32 },
-    QuestCompleted { quest_id: String },
-    Custom { event_type: String, data: serde_json::Value },
-}
-
-pub struct EventBus {
-    listeners: HashMap<String, Vec<Box<dyn Fn(&GameEvent)>>>,
-}
-
-impl EventBus {
-    pub fn subscribe(&mut self, event_type: &str, callback: Box<dyn Fn(&GameEvent)>);
-    pub fn publish(&self, event: GameEvent);
-}
-```
-
-## Debugging and Development
-
-### Logging
-
-SagaCraft uses the `tracing` crate for logging:
-
-```rust
-use tracing::{info, warn, error, debug};
-
-// Enable debug logging
-RUST_LOG=debug cargo run --bin sagacraft_player
-```
-
-### Debug Commands
-
-Built-in debug commands (only in debug builds):
-
-```
-debug show_state    - Display current game state
-debug teleport <room_id>  - Teleport to room
-debug give_item <item_id> - Add item to inventory
-debug kill_monster <id>   - Remove monster
-debug show_quests         - Display quest status
-```
-
-### Testing
-
-Comprehensive test suite:
-
-```bash
-# Run all tests
-cargo test
-
-# Run specific test
-cargo test test_combat_system
-
-# Run with coverage
-cargo tarpaulin
-
-# Integration tests
-cargo test --test integration
-```
-
-### Profiling
-
-Performance profiling tools:
-
-```bash
-# CPU profiling
-cargo flamegraph --bin sagacraft_player
-
-# Memory profiling
-cargo build --release
-valgrind ./target/release/sagacraft_player
-```
-
-### Development Tools
-
-- **VS Code Extensions**: Rust Analyzer, CodeLLDB
-- **Cargo Tools**: cargo-expand, cargo-tree, cargo-outdated
-- **Documentation**: `cargo doc --open`
-- **Formatting**: `cargo fmt`
-- **Linting**: `cargo clippy`
-
-## Error Handling
-
-### Error Types
-
-```rust
-#[derive(Debug)]
-pub enum SagaCraftError {
-    Io(std::io::Error),
-    Json(serde_json::Error),
-    Validation(String),
-    GameLogic(String),
-    PluginError(String),
-}
-
-impl std::error::Error for SagaCraftError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match self {
-            SagaCraftError::Io(e) => Some(e),
-            SagaCraftError::Json(e) => Some(e),
-            _ => None,
-        }
-    }
-}
-```
-
-### Error Recovery
-
-- **Graceful degradation**: Continue with partial functionality
-- **Save state preservation**: Don't lose progress on errors
-- **User-friendly messages**: Clear error descriptions
-- **Logging**: Detailed error information for developers
-
-## Configuration
-
-### Engine Configuration
-
-```toml
-# sagacraft.toml
-[engine]
-max_rooms = 1000
-max_items = 5000
-max_monsters = 500
-save_directory = "saves/"
-log_level = "info"
-
-[ui]
-enable_colors = true
-show_timestamps = false
-command_history_size = 100
-
-[gameplay]
-auto_save = true
-auto_save_interval = 300  # seconds
-difficulty_modifier = 1.0
-```
-
-### Adventure Configuration
-
-```json
-{
-  "config": {
-    "allow_save": true,
-    "allow_load": true,
-    "time_limit": null,
-    "difficulty": "normal",
-    "custom_commands": ["cast", "pray", "search"],
-    "plugins": ["weather_system", "magic_system"]
-  }
-}
-```
-
-## Security Considerations
-
-### Input Validation
-
-- **Command sanitization**: All input is validated and sanitized
-- **Path traversal protection**: File paths are normalized and checked
-- **JSON schema validation**: Adventure files must conform to schema
-
-### Plugin Security
-
-- **Sandboxing**: Plugins run in isolated environments
-- **Permission system**: Plugins declare required capabilities
-- **Code review**: Plugin marketplace with community review
-
-### Data Integrity
-
-- **Checksums**: Save files include integrity checks
-- **Version compatibility**: Automatic migration for save files
-- **Backup system**: Automatic backups before major operations
-
-## Future Roadmap
-
-### Planned Features
-
-- **Multiplayer support**: Real-time collaborative adventures
-- **3D environments**: Integration with 3D rendering engines
-- **Voice synthesis**: Text-to-speech for accessibility
-- **Mobile platforms**: iOS and Android support
-- **Web deployment**: Browser-based adventures
-- **Mod marketplace**: Community plugin ecosystem
-
-### API Stability
-
-- **Semantic versioning**: Major.Minor.Patch
-- **Deprecation warnings**: Advance notice of breaking changes
-- **Migration guides**: Tools to upgrade adventures and saves
+> **Note:** Quest `id` must be an integer. Use the integer (e.g. `accept 1`, `complete 1`) in-game.
 
 ---
 
-This technical reference is continuously updated. For the latest information, check the [GitHub repository](https://github.com/James-HoneyBadger/SagaCraft) and join the developer community.
+## Game Events
+
+`GameEvent` (`game_state.rs`) is used as an inter-system bus:
+
+```rust
+pub enum GameEvent {
+    MonsterKilled { monster_name: String, room_id: i32 },
+    ItemCollected { item_name: String, item_id: i32 },
+    RoomEntered   { room_id: i32 },
+    ItemUsed      { item_name: String },
+}
+```
+
+Events are pushed to `game.events` during the primary pass and consumed in the observer pass (`"__events__"` call). Custom systems can subscribe to events by handling `"__events__"` and reading `game.events`.
+
+---
+
+## Quest System Internals
+
+`QuestSystem` (`systems/quests.rs`) manages `QuestTracker` and a pool of available quests.
+
+**Key types:**
+
+| Type | Purpose |
+|------|---------|
+| `Quest` | Named quest with stages, rewards, prerequisites |
+| `QuestStage` | One phase of a quest; holds objectives |
+| `QuestObjective` | Single goal with a progress counter |
+| `QuestReward` | XP, gold, items, and reputation changes |
+| `QuestTracker` | Owns active/completed/failed sets and history |
+
+**Status lifecycle:**
+
+```
+Available → Active → Completed
+                  → Failed
+                  → Abandoned
+```
+
+**Level-adjusted rewards:** `get_level_adjusted_rewards(player_level)` scales XP by ±10% per level difference between player and quest giver, down to 50% for players 5+ levels above the quest.
+
+---
+
+## Build and Test
+
+### Prerequisites
+
+- Rust 1.70+ (`rustup update stable`)
+- GUI build additionally requires system OpenGL/EGL headers
+
+### Compile and run
+
+```bash
+# Debug build (faster compile, slower runtime)
+cargo build
+
+# Release build
+cargo build --release
+
+# Run CLI player
+cargo run --bin sagacraft_player -- demo_adventure.json
+
+# Run TUI IDE
+cargo run --bin sagacraft_ide_tui
+
+# Run GUI IDE
+cargo run --bin sagacraft_ide_gui
+
+# Run tests
+cargo test
+
+# Run tests for the core library only
+cargo test -p sagacraft_rs
+
+# Generate API documentation
+cargo doc --open
+```
+
+### Compile-time warnings
+
+`ashpd` (Linux portal integration used by egui) may emit future-incompatibility warnings as of Rust 1.85+. These are upstream issues and do not affect functionality.
+
+---
+
+## Contributing
+
+1. Fork the repository: https://github.com/James-HoneyBadger/SagaCraft
+2. Create a feature branch: `git checkout -b feature/my-feature`
+3. Implement and test your changes
+4. Run `cargo fmt && cargo clippy` before committing
+5. Open a pull request against `main`
+
+**Adding a new system:**
+1. Create `sagacraft_rs/src/systems/my_system.rs`
+2. Implement `System` trait
+3. Register in `engine.rs` inside `Engine::new`
+4. Add `pub mod my_system;` to `systems/mod.rs`
+5. Re-export from `lib.rs` if needed by front-ends
