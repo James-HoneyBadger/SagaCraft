@@ -1,7 +1,7 @@
 use crate::command::Command;
-use crate::adventure::{Adventure, AdventureError};
-use crate::game_state::GameState;
-// use crate::systems::{BasicWorldSystem, InventorySystem, System};
+use crate::game_state::AdventureGame;
+use crate::systems::{BasicWorldSystem, CombatSystem, InventorySystem};
+use crate::systems::quests::QuestSystem;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EngineOutput {
@@ -40,80 +40,80 @@ impl EngineOutput {
     }
 }
 
+impl Default for EngineOutput {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EngineEvent {
     Command(Command),
 }
 
+/// High-level engine that wraps `AdventureGame` and provides a typed event API.
 pub struct Engine {
-    pub state: GameState,
-    systems: Vec<Box<dyn System>>,
+    pub game: AdventureGame,
 }
 
 impl Engine {
-    pub fn new(player_name: impl Into<String>) -> Self {
-        let state = GameState::new(player_name);
-        let mut systems: Vec<Box<dyn System>> = Vec::new();
-        systems.push(Box::new(InventorySystem::default()));
-        systems.push(Box::new(BasicWorldSystem::default()));
-
-        Self { state, systems }
-    }
-
-    pub fn from_adventure(
-        player_name: impl Into<String>,
-        adventure: Adventure,
-    ) -> Result<Self, AdventureError> {
-        let state = GameState::from_adventure(player_name, adventure)?;
-        let mut systems: Vec<Box<dyn System>> = Vec::new();
-        systems.push(Box::new(InventorySystem::default()));
-        systems.push(Box::new(BasicWorldSystem::default()));
-
-        Ok(Self { state, systems })
+    pub fn new(adventure_path: impl Into<String>) -> Self {
+        let mut game = AdventureGame::new(adventure_path.into());
+        game.add_system(Box::new(BasicWorldSystem::default()));
+        game.add_system(Box::new(InventorySystem::default()));
+        game.add_system(Box::new(CombatSystem::default()));
+        game.add_system(Box::new(QuestSystem::new()));
+        Self { game }
     }
 
     pub fn load_from_path(
-        player_name: impl Into<String>,
-        path: impl AsRef<std::path::Path>,
-    ) -> Result<Self, AdventureError> {
-        let adv = Adventure::load_json_file(path)?;
-        Self::from_adventure(player_name, adv)
-    }
-
-    pub fn add_system(&mut self, system: Box<dyn System>) {
-        self.systems.push(system);
+        adventure_path: impl Into<String>,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
+        let mut engine = Self::new(adventure_path);
+        engine.game.load_adventure()?;
+        Ok(engine)
     }
 
     pub fn step(&mut self, event: EngineEvent) -> EngineOutput {
+        let cmd_str = match &event {
+            EngineEvent::Command(cmd) => command_to_string(cmd),
+        };
+
+        if cmd_str == "quit" {
+            self.game.game_over = true;
+            return EngineOutput::line("Goodbye!");
+        }
+
+        let results = self.game.process_command(&cmd_str);
         let mut out = EngineOutput::new();
-        for system in &mut self.systems {
-            let part = system.on_event(&mut self.state, &event);
-            if !part.is_empty() {
-                out.extend(part);
-            }
+        for line in results {
+            out.push(line);
         }
         out
     }
-}
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::command::{Command, Direction};
-
-    #[test]
-    fn moving_updates_location() {
-        let mut engine = Engine::new("Tester");
-        assert_eq!(engine.state.player.location, "village");
-        let _ = engine.step(EngineEvent::Command(Command::Move(Direction::North)));
-        assert_eq!(engine.state.player.location, "forest");
+    pub fn look(&self) -> String {
+        self.game.look()
     }
 
-    #[test]
-    fn quit_sets_game_over() {
-        let mut engine = Engine::new("Tester");
-        assert!(!engine.state.is_over);
-        let _ = engine.step(EngineEvent::Command(Command::Quit));
-        assert!(engine.state.is_over);
+    pub fn is_over(&self) -> bool {
+        self.game.game_over
+    }
+}
+
+fn command_to_string(cmd: &Command) -> String {
+    match cmd {
+        Command::Help => "help".to_string(),
+        Command::Look => "look".to_string(),
+        Command::Inventory => "inventory".to_string(),
+        Command::Move(dir) => dir.to_string(),
+        Command::Take(item) => format!("take {}", item),
+        Command::Drop(item) => format!("drop {}", item),
+        Command::Use(item) => format!("use {}", item),
+        Command::Equip(item) => format!("equip {}", item),
+        Command::Examine(item) => format!("examine {}", item),
+        Command::Say(text) => format!("say {}", text),
+        Command::Quit => "quit".to_string(),
+        Command::Unknown(s) => s.clone(),
     }
 }

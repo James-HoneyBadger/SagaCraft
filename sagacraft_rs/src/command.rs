@@ -6,6 +6,8 @@ pub enum Direction {
     South,
     East,
     West,
+    Up,
+    Down,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -17,6 +19,8 @@ pub enum Command {
     Take(String),
     Drop(String),
     Use(String),
+    Equip(String),
+    Examine(String),
     Say(String),
     Quit,
     Unknown(String),
@@ -34,6 +38,8 @@ impl fmt::Display for Direction {
             Direction::South => "south",
             Direction::East => "east",
             Direction::West => "west",
+            Direction::Up => "up",
+            Direction::Down => "down",
         };
         write!(f, "{s}")
     }
@@ -65,11 +71,15 @@ impl Command {
             "s" | "south" => Command::Move(Direction::South),
             "e" | "east" => Command::Move(Direction::East),
             "w" | "west" => Command::Move(Direction::West),
+            "u" | "up" => Command::Move(Direction::Up),
+            "d" | "down" => Command::Move(Direction::Down),
             "go" | "move" => match parts.next() {
                 Some("n") | Some("north") => Command::Move(Direction::North),
                 Some("s") | Some("south") => Command::Move(Direction::South),
                 Some("e") | Some("east") => Command::Move(Direction::East),
                 Some("w") | Some("west") => Command::Move(Direction::West),
+                Some("u") | Some("up") => Command::Move(Direction::Up),
+                Some("d") | Some("down") => Command::Move(Direction::Down),
                 _ => Command::Unknown(trimmed.to_string()),
             },
             "take" | "get" => {
@@ -98,6 +108,20 @@ impl Command {
                     Command::Unknown(trimmed.to_string())
                 } else {
                     Command::Say(rest_original.to_string())
+                }
+            }
+            "equip" | "wield" | "wear" => {
+                if rest_original.is_empty() {
+                    Command::Unknown(trimmed.to_string())
+                } else {
+                    Command::Equip(rest_original.to_string())
+                }
+            }
+            "examine" | "inspect" | "x" => {
+                if rest_original.is_empty() {
+                    Command::Unknown(trimmed.to_string())
+                } else {
+                    Command::Examine(rest_original.to_string())
                 }
             }
             _ => Command::Unknown(trimmed.to_string()),

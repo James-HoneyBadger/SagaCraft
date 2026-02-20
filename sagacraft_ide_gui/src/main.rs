@@ -1,9 +1,13 @@
 use eframe::egui;
-use sagacraft_rs::{AdventureGame, ItemType, MonsterStatus};
+use sagacraft_rs::{AdventureGame, BasicWorldSystem, CombatSystem, InventorySystem, ItemType, MonsterStatus};
 use std::path::PathBuf;
 use std::collections::HashMap;
 use std::fs;
 use serde::{Serialize, Deserialize};
+
+fn default_one() -> i32 { 1 }
+fn default_six() -> i32 { 6 }
+fn default_true() -> bool { true }
 
 fn main() -> eframe::Result<()> {
     let options = eframe::NativeOptions {
@@ -73,9 +77,28 @@ struct ItemData {
     id: i32,
     name: String,
     description: String,
+    #[serde(rename = "type")]
     item_type: ItemType,
     value: i32,
     weight: i32,
+    #[serde(default)]
+    location: i32,       // 0 = inventory, room_id = on ground
+    #[serde(default)]
+    is_weapon: bool,
+    #[serde(default)]
+    weapon_type: i32,
+    #[serde(default = "default_one")]
+    weapon_dice: i32,
+    #[serde(default = "default_six")]
+    weapon_sides: i32,
+    #[serde(default)]
+    is_armor: bool,
+    #[serde(default)]
+    armor_value: i32,
+    #[serde(default = "default_true")]
+    is_takeable: bool,
+    #[serde(default)]
+    is_wearable: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -89,7 +112,10 @@ struct MonsterData {
     weapon_id: Option<i32>,
     armor_worn: i32,
     gold: i32,
+    #[serde(rename = "friendliness")]
     status: MonsterStatus,
+    #[serde(default = "default_one")]
+    room_id: i32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -164,6 +190,15 @@ impl Default for AdventureData {
                 item_type: ItemType::Normal,
                 value: 25,
                 weight: 2,
+                location: 1,
+                is_weapon: false,
+                weapon_type: 0,
+                weapon_dice: 1,
+                weapon_sides: 6,
+                is_armor: false,
+                armor_value: 0,
+                is_takeable: true,
+                is_wearable: false,
             }],
             monsters: vec![MonsterData {
                 id: 1,
@@ -176,6 +211,7 @@ impl Default for AdventureData {
                 armor_worn: 0,
                 gold: 5,
                 status: MonsterStatus::Friendly,
+                room_id: 1,
             }],
             quests: vec![QuestData {
                 id: 1,
@@ -428,15 +464,25 @@ impl SagaCraftIDE {
 
                     columns[1].separator();
                     columns[1].label("Exits:");
-                    for (direction, room_id) in &mut room.exits {
-                        columns[1].horizontal(|ui| {
-                            ui.label(direction);
-                            ui.label("→");
-                            ui.add(egui::DragValue::new(room_id));
-                            if ui.button("❌").clicked() {
-                                // Remove exit - we'll handle this properly later
-                            }
-                        });
+                    // Collect keys first so we can mutably borrow individual values
+                    // and still call exits.remove() after the loop.
+                    let exit_dirs: Vec<String> = room.exits.keys().cloned().collect();
+                    let mut remove_dir: Option<String> = None;
+                    for direction in &exit_dirs {
+                        if let Some(room_id) = room.exits.get_mut(direction) {
+                            columns[1].horizontal(|ui| {
+                                ui.label(direction.as_str());
+                                ui.label("\u{2192}");
+                                ui.add(egui::DragValue::new(room_id));
+                                if ui.button("\u{274c}").clicked() {
+                                    remove_dir = Some(direction.clone());
+                                }
+                            });
+                        }
+                    }
+                    if let Some(dir) = remove_dir {
+                        room.exits.remove(&dir);
+                        self.modified = true;
                     }
                     if columns[1].button("➕ Add Exit").clicked() {
                         room.exits.insert("north".to_string(), 1);
@@ -495,8 +541,17 @@ impl SagaCraftIDE {
                             ui.end_row();
 
                             ui.label("Type:");
-                            // TODO: Dropdown for item type
-                            ui.label(format!("{:?}", item.item_type));
+                            egui::ComboBox::from_id_salt("item_type")
+                                .selected_text(format!("{:?}", item.item_type))
+                                .show_ui(ui, |ui| {
+                                    for variant in [
+                                        ItemType::Normal, ItemType::Weapon, ItemType::Armor,
+                                        ItemType::Treasure, ItemType::Readable, ItemType::Edible,
+                                        ItemType::Drinkable, ItemType::Container,
+                                    ] {
+                                        ui.selectable_value(&mut item.item_type, variant.clone(), format!("{variant:?}"));
+                                    }
+                                });
                             ui.end_row();
 
                             ui.label("Value:");
@@ -506,6 +561,46 @@ impl SagaCraftIDE {
                             ui.label("Weight:");
                             ui.add(egui::DragValue::new(&mut item.weight));
                             ui.end_row();
+
+                            ui.label("Location (room ID):");
+                            ui.add(egui::DragValue::new(&mut item.location));
+                            ui.end_row();
+
+                            ui.label("Takeable:");
+                            ui.checkbox(&mut item.is_takeable, "");
+                            ui.end_row();
+
+                            ui.label("Is Weapon:");
+                            ui.checkbox(&mut item.is_weapon, "");
+                            ui.end_row();
+
+                            if item.is_weapon {
+                                ui.label("Weapon Type (1-5):");
+                                ui.add(egui::DragValue::new(&mut item.weapon_type).range(1..=5));
+                                ui.end_row();
+
+                                ui.label("Damage Dice:");
+                                ui.add(egui::DragValue::new(&mut item.weapon_dice).range(1..=10));
+                                ui.end_row();
+
+                                ui.label("Damage Sides:");
+                                ui.add(egui::DragValue::new(&mut item.weapon_sides).range(2..=20));
+                                ui.end_row();
+                            }
+
+                            ui.label("Is Armor:");
+                            ui.checkbox(&mut item.is_armor, "");
+                            ui.end_row();
+
+                            if item.is_armor {
+                                ui.label("Armor Value:");
+                                ui.add(egui::DragValue::new(&mut item.armor_value).range(0..=20));
+                                ui.end_row();
+
+                                ui.label("Wearable:");
+                                ui.checkbox(&mut item.is_wearable, "");
+                                ui.end_row();
+                            }
                         });
                 }
             } else {
@@ -574,6 +669,20 @@ impl SagaCraftIDE {
 
                             ui.label("Gold:");
                             ui.add(egui::DragValue::new(&mut monster.gold));
+                            ui.end_row();
+
+                            ui.label("Room ID:");
+                            ui.add(egui::DragValue::new(&mut monster.room_id));
+                            ui.end_row();
+
+                            ui.label("Friendliness:");
+                            egui::ComboBox::from_id_salt("monster_status")
+                                .selected_text(format!("{:?}", monster.status))
+                                .show_ui(ui, |ui| {
+                                    ui.selectable_value(&mut monster.status, MonsterStatus::Neutral, "Neutral");
+                                    ui.selectable_value(&mut monster.status, MonsterStatus::Friendly, "Friendly");
+                                    ui.selectable_value(&mut monster.status, MonsterStatus::Hostile, "Hostile");
+                                });
                             ui.end_row();
                         });
                 }
@@ -821,13 +930,37 @@ impl SagaCraftIDE {
     }
 
     fn validate_adventure(&mut self) {
-        // TODO: Implement validation
-        self.status = "Adventure validation not yet implemented".to_string();
+        // Quick structural checks mirroring AdventureGame requirements
+        let mut errors: Vec<String> = Vec::new();
+        if self.adventure.title.trim().is_empty() {
+            errors.push("Title is empty".to_string());
+        }
+        if self.adventure.rooms.is_empty() {
+            errors.push("No rooms defined".to_string());
+        }
+        let room_ids: std::collections::HashSet<i32> = self.adventure.rooms.iter().map(|r| r.id).collect();
+        if !room_ids.contains(&self.adventure.start_room) {
+            errors.push(format!("start_room {} does not exist", self.adventure.start_room));
+        }
+        // Check for duplicate room IDs
+        if room_ids.len() != self.adventure.rooms.len() {
+            errors.push("Duplicate room IDs detected".to_string());
+        }
+        if errors.is_empty() {
+            self.status = format!(
+                "Valid: {} rooms, {} items, {} monsters, {} quests",
+                self.adventure.rooms.len(),
+                self.adventure.items.len(),
+                self.adventure.monsters.len(),
+                self.adventure.quests.len()
+            );
+        } else {
+            self.status = format!("Validation errors: {}", errors.join("; "));
+        }
     }
 
     fn export_to_json(&mut self) {
-        // TODO: Implement JSON export
-        self.status = "JSON export not yet implemented".to_string();
+        self.save_adventure_as();
     }
 
     fn show_about(&mut self) {
@@ -836,7 +969,7 @@ impl SagaCraftIDE {
 
     // CRUD operations
     fn add_room(&mut self) {
-        let id = self.adventure.rooms.len() as i32 + 1;
+        let id = self.adventure.rooms.iter().map(|r| r.id).max().unwrap_or(0) + 1;
         self.adventure.rooms.push(RoomData {
             id,
             name: format!("Room {}", id),
@@ -864,7 +997,9 @@ impl SagaCraftIDE {
     }
 
     fn add_item(&mut self) {
-        let id = self.adventure.items.len() as i32 + 1;
+        let id = self.adventure.items.iter().map(|r| r.id).max().unwrap_or(0) + 1;
+        // Default location to start_room so new items appear on the ground
+        let location = self.adventure.start_room;
         self.adventure.items.push(ItemData {
             id,
             name: format!("Item {}", id),
@@ -872,6 +1007,15 @@ impl SagaCraftIDE {
             item_type: ItemType::Normal,
             value: 0,
             weight: 1,
+            location,
+            is_weapon: false,
+            weapon_type: 0,
+            weapon_dice: 1,
+            weapon_sides: 6,
+            is_armor: false,
+            armor_value: 0,
+            is_takeable: true,
+            is_wearable: false,
         });
         self.modified = true;
         self.status = format!("Item {} added", id);
@@ -887,7 +1031,8 @@ impl SagaCraftIDE {
     }
 
     fn add_monster(&mut self) {
-        let id = self.adventure.monsters.len() as i32 + 1;
+        let id = self.adventure.monsters.iter().map(|r| r.id).max().unwrap_or(0) + 1;
+        let room_id = self.adventure.start_room;
         self.adventure.monsters.push(MonsterData {
             id,
             name: format!("Monster {}", id),
@@ -899,6 +1044,7 @@ impl SagaCraftIDE {
             armor_worn: 0,
             gold: 0,
             status: MonsterStatus::Neutral,
+            room_id,
         });
         self.modified = true;
         self.status = format!("Monster {} added", id);
@@ -914,7 +1060,7 @@ impl SagaCraftIDE {
     }
 
     fn add_quest(&mut self) {
-        let id = self.adventure.quests.len() as i32 + 1;
+        let id = self.adventure.quests.iter().map(|r| r.id).max().unwrap_or(0) + 1;
         self.adventure.quests.push(QuestData {
             id,
             title: format!("Quest {}", id),
@@ -938,11 +1084,40 @@ impl SagaCraftIDE {
 
     // Game operations
     fn start_game(&mut self) {
-        // TODO: Create AdventureGame from current adventure data
         self.game_output.clear();
-        self.game_output.push("🎮 Game started!".to_string());
-        self.game_output.push("Welcome to SagaCraft!".to_string());
-        self.status = "Game started".to_string();
+
+        // Serialise the current adventure to a temp file and load it into AdventureGame
+        let tmp_path = std::env::temp_dir().join("sagacraft_play.json");
+        match serde_json::to_string_pretty(&self.adventure) {
+            Ok(json) => {
+                if let Err(e) = fs::write(&tmp_path, &json) {
+                    self.game_output.push(format!("Error writing temp file: {e}"));
+                    return;
+                }
+            }
+            Err(e) => {
+                self.game_output.push(format!("Error serialising adventure: {e}"));
+                return;
+            }
+        }
+
+        let mut adventure_game = AdventureGame::new(tmp_path.to_string_lossy().to_string());
+        adventure_game.add_system(Box::new(BasicWorldSystem::default()));
+        adventure_game.add_system(Box::new(InventorySystem::default()));
+        adventure_game.add_system(Box::new(CombatSystem::default()));
+
+        match adventure_game.load_adventure() {
+            Ok(intro) => {
+                self.game_output.push(intro);
+                self.game_output.push(adventure_game.look());
+                self.game = Some(adventure_game);
+                self.status = "Game started".to_string();
+            }
+            Err(e) => {
+                self.game_output.push(format!("Failed to load adventure: {e}"));
+                self.status = "Failed to start game".to_string();
+            }
+        }
     }
 
     fn stop_game(&mut self) {
@@ -957,12 +1132,18 @@ impl SagaCraftIDE {
     }
 
     fn send_game_command(&mut self) {
-        if !self.game_input.is_empty() {
-            let command = self.game_input.clone();
-            self.game_output.push(format!("> {}", command));
-            // TODO: Process command through AdventureGame
-            self.game_output.push(format!("Command '{}' processed", command));
-            self.game_input.clear();
+        if self.game_input.is_empty() {
+            return;
+        }
+        let command = self.game_input.clone();
+        self.game_input.clear();
+        self.game_output.push(format!("> {}", command));
+
+        if let Some(game) = &mut self.game {
+            let lines = game.process_command(&command);
+            self.game_output.extend(lines);
+        } else {
+            self.game_output.push("No game running. Press \u25b6 Start Game first.".to_string());
         }
     }
 
@@ -1001,78 +1182,7 @@ impl SagaCraftIDE {
     }
 
     fn generate_json_preview(&self) -> String {
-        // Generate a JSON representation of the current adventure
-        let mut json = String::new();
-        json.push_str("{\n");
-        json.push_str(&format!("  \"title\": \"{}\",\n", self.adventure.title));
-        json.push_str(&format!("  \"intro\": \"{}\",\n", self.adventure.intro));
-        json.push_str(&format!("  \"start_room\": {},\n", self.adventure.start_room));
-
-        // Rooms
-        json.push_str("  \"rooms\": [\n");
-        for (i, room) in self.adventure.rooms.iter().enumerate() {
-            json.push_str("    {\n");
-            json.push_str(&format!("      \"id\": {},\n", room.id));
-            json.push_str(&format!("      \"name\": \"{}\",\n", room.name));
-            json.push_str(&format!("      \"description\": \"{}\",\n", room.description));
-            json.push_str(&format!("      \"is_dark\": {}\n", room.is_dark));
-            json.push_str("    }");
-            if i < self.adventure.rooms.len() - 1 {
-                json.push_str(",");
-            }
-            json.push_str("\n");
-        }
-        json.push_str("  ],\n");
-
-        // Items
-        json.push_str("  \"items\": [\n");
-        for (i, item) in self.adventure.items.iter().enumerate() {
-            json.push_str("    {\n");
-            json.push_str(&format!("      \"id\": {},\n", item.id));
-            json.push_str(&format!("      \"name\": \"{}\",\n", item.name));
-            json.push_str(&format!("      \"description\": \"{}\",\n", item.description));
-            json.push_str(&format!("      \"value\": {}\n", item.value));
-            json.push_str("    }");
-            if i < self.adventure.items.len() - 1 {
-                json.push_str(",");
-            }
-            json.push_str("\n");
-        }
-        json.push_str("  ],\n");
-
-        // Monsters
-        json.push_str("  \"monsters\": [\n");
-        for (i, monster) in self.adventure.monsters.iter().enumerate() {
-            json.push_str("    {\n");
-            json.push_str(&format!("      \"id\": {},\n", monster.id));
-            json.push_str(&format!("      \"name\": \"{}\",\n", monster.name));
-            json.push_str(&format!("      \"description\": \"{}\",\n", monster.description));
-            json.push_str(&format!("      \"gold\": {}\n", monster.gold));
-            json.push_str("    }");
-            if i < self.adventure.monsters.len() - 1 {
-                json.push_str(",");
-            }
-            json.push_str("\n");
-        }
-        json.push_str("  ],\n");
-
-        // Quests
-        json.push_str("  \"quests\": [\n");
-        for (i, quest) in self.adventure.quests.iter().enumerate() {
-            json.push_str("    {\n");
-            json.push_str(&format!("      \"id\": {},\n", quest.id));
-            json.push_str(&format!("      \"title\": \"{}\",\n", quest.title));
-            json.push_str(&format!("      \"description\": \"{}\",\n", quest.description));
-            json.push_str(&format!("      \"rewards_gold\": {}\n", quest.rewards_gold));
-            json.push_str("    }");
-            if i < self.adventure.quests.len() - 1 {
-                json.push_str(",");
-            }
-            json.push_str("\n");
-        }
-        json.push_str("  ]\n");
-
-        json.push_str("}\n");
-        json
+        serde_json::to_string_pretty(&self.adventure)
+            .unwrap_or_else(|e| format!("JSON serialisation error: {e}"))
     }
 }

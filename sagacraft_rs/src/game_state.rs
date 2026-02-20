@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum ItemType {
     Weapon,
     Armor,
@@ -15,6 +16,7 @@ pub enum ItemType {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum MonsterStatus {
     Friendly,
     Neutral,
@@ -166,6 +168,8 @@ pub struct Player {
     pub inventory: Vec<i32>, // item IDs
     pub equipped_weapon: Option<i32>,
     pub equipped_armor: Option<i32>,
+    pub experience_points: i32,
+    pub level: i32,
 }
 
 impl Player {
@@ -187,9 +191,27 @@ impl Player {
             inventory: Vec::new(),
             equipped_weapon: None,
             equipped_armor: None,
+            experience_points: 0,
+            level: 1,
         }
     }
 }
+
+impl Default for Player {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Events emitted by systems so other systems can react (quest tracking, etc.).
+#[derive(Debug, Clone)]
+pub enum GameEvent {
+    MonsterKilled { monster_name: String, room_id: i32 },
+    ItemCollected { item_name: String, item_id: i32 },
+    RoomEntered { room_id: i32 },
+    ItemUsed { item_name: String },
+}
+
 pub struct AdventureGame {
     pub adventure_file: String,
     pub rooms: HashMap<i32, Room>,
@@ -203,7 +225,8 @@ pub struct AdventureGame {
     pub adventure_intro: String,
     pub effects: Vec<serde_json::Value>, // Special events
     pub systems: Vec<Box<dyn System>>,
-    pub quests: Vec<serde_json::Value>, // Quest definitions
+    pub quests: Vec<serde_json::Value>,  // Quest definitions
+    pub events: Vec<GameEvent>,           // Inter-system event bus
 }
 
 impl AdventureGame {
@@ -222,10 +245,11 @@ impl AdventureGame {
             effects: Vec::new(),
             systems: Vec::new(),
             quests: Vec::new(),
+            events: Vec::new(),
         }
     }
 
-    pub fn load_adventure(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn load_adventure(&mut self) -> Result<String, Box<dyn std::error::Error>> {
         let data: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&self.adventure_file)?)?;
 
         self.adventure_title = data.get("title").and_then(|v| v.as_str()).unwrap_or("Untitled Adventure").to_string();
@@ -320,15 +344,16 @@ impl AdventureGame {
         // Set player starting position
         self.player.current_room = data.get("start_room").and_then(|v| v.as_i64()).unwrap_or(1) as i32;
 
-        println!("\n{:=^60}", "");
-        println!("{:^60}", self.adventure_title);
-        println!("{:=^60}\n", "");
+        // Build and return the opening banner + intro text
+        let mut header = format!("\n{:=^60}\n{:^60}\n{:=^60}\n",
+            "", self.adventure_title, "");
         if !self.adventure_intro.is_empty() {
-            println!("{}", self.adventure_intro);
-            println!();
+            header.push('\n');
+            header.push_str(&self.adventure_intro);
+            header.push('\n');
         }
 
-        Ok(())
+        Ok(header)
     }
 
     pub fn get_current_room(&self) -> Option<&Room> {
@@ -347,92 +372,226 @@ impl AdventureGame {
             .collect()
     }
 
-    pub fn look(&self) {
+    pub fn look(&self) -> String {
+        let mut out = String::new();
+
         if let Some(room) = self.get_current_room() {
-            println!("\n{}", room.name);
-            println!("{}", "-".repeat(room.name.len()));
-            println!("{}", room.description);
+            if room.is_dark {
+                return "It is pitch black. You can't see a thing.".to_string();
+            }
+
+            out.push('\n');
+            out.push_str(&room.name);
+            out.push('\n');
+            out.push_str(&"-".repeat(room.name.len()));
+            out.push('\n');
+            out.push_str(&room.description);
 
             // Show exits
             if !room.exits.is_empty() {
-                let exits: Vec<String> = room.exits.keys().cloned().collect();
-                println!("\nObvious exits: {}", exits.join(", "));
+                let mut exits: Vec<String> = room.exits.keys().cloned().collect();
+                exits.sort();
+                out.push_str(&format!("\n\nObvious exits: {}", exits.join(", ")));
             } else {
-                println!("\nNo obvious exits.");
+                out.push_str("\n\nNo obvious exits.");
             }
         } else {
-            println!("You are in a void.");
+            out.push_str("You are in a void.");
         }
 
         // Show items
         let items = self.get_items_in_room(self.player.current_room);
         if !items.is_empty() {
-            println!("\nYou see:");
+            out.push_str("\n\nYou see:");
             for item in items {
-                println!("  - {}", item.name);
+                out.push_str(&format!("\n  - {}", item.name));
             }
         }
 
         // Show monsters
         let monsters = self.get_monsters_in_room(self.player.current_room);
         if !monsters.is_empty() {
-            println!("\nPresent:");
+            out.push_str("\n\nPresent:");
             for monster in monsters {
                 let status = match monster.friendliness {
                     MonsterStatus::Friendly => " (friendly)",
                     MonsterStatus::Hostile => " (hostile)",
                     MonsterStatus::Neutral => "",
                 };
-                println!("  - {}{}", monster.name, status);
+                out.push_str(&format!("\n  - {}{}", monster.name, status));
             }
         }
+
+        out
     }
 
-    pub fn move_player(&mut self, direction: &str) -> bool {
+    pub fn move_player(&mut self, direction: &str) -> Option<String> {
         if let Some(room) = self.get_current_room() {
             if let Some(new_room_id) = room.get_exit(direction) {
                 if self.rooms.contains_key(&new_room_id) {
                     self.player.current_room = new_room_id;
                     self.turn_count += 1;
-                    return true;
+                    self.events.push(GameEvent::RoomEntered { room_id: new_room_id });
+                    return Some(self.look());
                 }
             }
         }
-        false
+        None
     }
 
-    pub fn take_item(&mut self, item_name: &str) -> bool {
-        let room_items = self.get_items_in_room(self.player.current_room);
-        for item in room_items {
-            if item.name.to_lowercase().contains(&item_name.to_lowercase()) && item.is_takeable {
-                let mut item = (*item).clone();
-                item.location = 0; // inventory
-                self.player.inventory.push(item.id);
-                // Update the item in the hashmap
-                if let Some(item_ref) = self.items.get_mut(&item.id) {
+    pub fn take_item(&mut self, item_name: &str) -> Result<String, String> {
+        const MAX_WEIGHT_PER_HARDINESS: i32 = 10;
+        let max_carry = self.player.hardiness * MAX_WEIGHT_PER_HARDINESS;
+        let current_weight: i32 = self.player.inventory.iter()
+            .filter_map(|id| self.items.get(id))
+            .map(|i| i.weight)
+            .sum();
+
+        let matched = self.get_items_in_room(self.player.current_room)
+            .into_iter()
+            .find(|i| i.name.to_lowercase().contains(&item_name.to_lowercase()) && i.is_takeable)
+            .map(|i| (i.id, i.name.clone(), i.weight));
+
+        match matched {
+            None => Err("You can't take that.".to_string()),
+            Some((id, name, weight)) => {
+                if current_weight + weight > max_carry {
+                    return Err(format!(
+                        "Too heavy to carry! ({}/{} weight used, {} weighs {}.)",
+                        current_weight, max_carry, name, weight
+                    ));
+                }
+                self.player.inventory.push(id);
+                if let Some(item_ref) = self.items.get_mut(&id) {
                     item_ref.location = 0;
                 }
-                return true;
+                self.events.push(GameEvent::ItemCollected { item_name: name.clone(), item_id: id });
+                Ok(format!("Taken: {}.", name))
             }
         }
-        false
     }
 
     pub fn drop_item(&mut self, item_name: &str) -> bool {
-        for &item_id in &self.player.inventory {
-            if let Some(item) = self.items.get(&item_id) {
-                if item.name.to_lowercase().contains(&item_name.to_lowercase()) {
-                    // Remove from inventory
-                    self.player.inventory.retain(|&id| id != item_id);
-                    // Put in current room
-                    if let Some(item_ref) = self.items.get_mut(&item_id) {
-                        item_ref.location = self.player.current_room;
-                    }
-                    return true;
+        let matched_id = self.player.inventory.iter().copied()
+            .find(|&id| self.items.get(&id)
+                .map_or(false, |i| i.name.to_lowercase().contains(&item_name.to_lowercase())));
+        if let Some(item_id) = matched_id {
+            self.player.inventory.retain(|&id| id != item_id);
+            if self.player.equipped_weapon == Some(item_id) { self.player.equipped_weapon = None; }
+            if self.player.equipped_armor == Some(item_id) { self.player.equipped_armor = None; }
+            if let Some(item_ref) = self.items.get_mut(&item_id) {
+                item_ref.location = self.player.current_room;
+            }
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Equip a weapon or wearable armor from inventory.
+    pub fn equip_item(&mut self, item_name: &str) -> Result<String, String> {
+        let matched = self.player.inventory.iter().copied().find_map(|id| {
+            self.items.get(&id)
+                .filter(|i| i.name.to_lowercase().contains(&item_name.to_lowercase())
+                    && (i.is_weapon || i.is_wearable || i.is_armor))
+                .map(|i| (i.id, i.name.clone(), i.is_weapon))
+        });
+        match matched {
+            None => Err(format!("You don't have a weapon or armor called '{}'.", item_name)),
+            Some((id, name, is_weapon)) => {
+                if is_weapon {
+                    self.player.equipped_weapon = Some(id);
+                    Ok(format!("You wield the {}.", name))
+                } else {
+                    self.player.equipped_armor = Some(id);
+                    Ok(format!("You wear the {}.", name))
                 }
             }
         }
-        false
+    }
+
+    /// Unequip by slot name: "weapon" or "armor".
+    pub fn unequip_slot(&mut self, slot: &str) -> Result<String, String> {
+        match slot {
+            "weapon" => {
+                if self.player.equipped_weapon.take().is_some() {
+                    Ok("Weapon unequipped.".to_string())
+                } else {
+                    Err("No weapon equipped.".to_string())
+                }
+            }
+            "armor" => {
+                if self.player.equipped_armor.take().is_some() {
+                    Ok("Armor removed.".to_string())
+                } else {
+                    Err("No armor equipped.".to_string())
+                }
+            }
+            _ => Err("Specify 'weapon' or 'armor'.".to_string()),
+        }
+    }
+
+    /// Use a consumable or readable item from inventory.
+    pub fn use_item(&mut self, item_name: &str) -> Result<String, String> {
+        let matched = self.player.inventory.iter().copied().find_map(|id| {
+            self.items.get(&id)
+                .filter(|i| i.name.to_lowercase().contains(&item_name.to_lowercase()))
+                .map(|i| (i.id, i.name.clone(), i.item_type.clone(), i.description.clone(), i.value))
+        });
+        match matched {
+            None => Err(format!("You don't have '{}'.", item_name)),
+            Some((id, name, item_type, description, value)) => {
+                let msg = match item_type {
+                    ItemType::Edible | ItemType::Drinkable => {
+                        let heal = value.clamp(1, 20);
+                        let before = self.player.current_health.unwrap_or(0);
+                        let after = (before + heal).min(self.player.hardiness);
+                        self.player.current_health = Some(after);
+                        self.player.inventory.retain(|&i| i != id);
+                        // Remove consumed item from the world entirely (avoid HashMap growth)
+                        self.items.remove(&id);
+                        self.events.push(GameEvent::ItemUsed { item_name: name.clone() });
+                        format!("You consume the {}. Health: {}/{}.", name, after, self.player.hardiness)
+                    }
+                    ItemType::Readable => {
+                        format!("You read the {}:\n{}", name, description)
+                    }
+                    _ => {
+                        format!("You fiddle with the {} but nothing happens.", name)
+                    }
+                };
+                Ok(msg)
+            }
+        }
+    }
+
+    /// Return details about an item in inventory or current room.
+    pub fn examine_item(&self, item_name: &str) -> Option<String> {
+        let in_inventory = self.player.inventory.iter().copied()
+            .find_map(|id| self.items.get(&id)
+                .filter(|i| i.name.to_lowercase().contains(&item_name.to_lowercase())));
+        let in_room = self.get_items_in_room(self.player.current_room).into_iter()
+            .find(|i| i.name.to_lowercase().contains(&item_name.to_lowercase()));
+        let item = in_inventory.or(in_room)?;
+
+        let mut msg = format!("{}\n{}", item.name, item.description);
+        if item.is_weapon {
+            msg.push_str(&format!("\nDamage: {}d{}", item.weapon_dice, item.weapon_sides));
+        }
+        if item.is_armor {
+            msg.push_str(&format!("\nArmor value: {}", item.armor_value));
+        }
+        msg.push_str(&format!("\nWeight: {}  Value: {} gold", item.weight, item.value));
+        Some(msg)
+    }
+
+    /// (current carried weight, max carry weight)
+    pub fn carry_weight(&self) -> (i32, i32) {
+        let current: i32 = self.player.inventory.iter()
+            .filter_map(|id| self.items.get(id))
+            .map(|i| i.weight)
+            .sum();
+        (current, self.player.hardiness * 10)
     }
 
     pub fn add_system(&mut self, system: Box<dyn System>) {
@@ -441,20 +600,44 @@ impl AdventureGame {
 
     pub fn process_command(&mut self, command: &str) -> Vec<String> {
         let parts: Vec<&str> = command.split_whitespace().collect();
-        let cmd = parts.first().unwrap_or(&"");
+        // Lowercase the verb so "Look", "ATTACK", etc. work regardless of caller.
+        let cmd_lower = parts.first().unwrap_or(&"").to_lowercase();
+        let cmd: &str = &cmd_lower;
         let args: Vec<&str> = parts.iter().skip(1).cloned().collect();
 
         let mut systems = std::mem::take(&mut self.systems);
-        let mut result = None;
+        let mut results: Vec<String> = Vec::new();
+
+        // Primary handler: first system that claims the command.
         for system in &mut systems {
-            let output = system.on_command(cmd, &args, self);
-            if let Some(output) = output {
-                result = Some(vec![output]);
+            if let Some(output) = system.on_command(cmd, &args, self) {
+                results.push(output);
                 break;
             }
         }
+
+        // Observer pass: every system may react to pending game events (returns None to stay silent).
+        if !self.events.is_empty() {
+            for system in &mut systems {
+                if let Some(side) = system.on_command("__events__", &[], self) {
+                    results.push(side);
+                }
+            }
+            self.events.clear();
+        }
+
         self.systems = systems;
-        result.unwrap_or_else(|| vec![format!("Unknown command: {}", command)])
+        if results.is_empty() {
+            vec![format!("Unknown command: {}", command)]
+        } else {
+            results
+        }
+    }
+}
+
+impl Default for AdventureGame {
+    fn default() -> Self {
+        Self::new(String::new())
     }
 }
 
@@ -487,12 +670,12 @@ impl GameState {
         }
     }
 
-    // pub fn from_adventure(
-    //     player_name: impl Into<String>,
-    //     adventure: crate::adventure::Adventure,
-    // ) -> Result<Self, crate::adventure::AdventureError> {
-    //     adventure.into_game_state(player_name)
-    // }
+    pub fn from_adventure(
+        player_name: impl Into<String>,
+        adventure: crate::adventure::Adventure,
+    ) -> Result<Self, crate::adventure::AdventureError> {
+        adventure.into_game_state(player_name)
+    }
 
     pub fn current_room(&self) -> &Room {
         self.world

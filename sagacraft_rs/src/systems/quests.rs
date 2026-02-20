@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::collections::HashSet;
 use crate::systems::System;
-use crate::game_state::AdventureGame;
+use crate::game_state::{AdventureGame, GameEvent};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum QuestStatus {
@@ -66,9 +66,9 @@ impl QuestObjective {
         self.current_count >= self.required_count
     }
 
-    pub fn progress(&mut self, _amount: i32) -> i32 {
+    pub fn progress(&mut self, amount: i32) -> i32 {
         let old_count = self.current_count;
-        self.current_count = self.current_count.min(self.required_count);
+        self.current_count = (self.current_count + amount).min(self.required_count);
         self.current_count - old_count
     }
 
@@ -205,8 +205,9 @@ impl Quest {
     }
 
     pub fn is_complete(&self) -> bool {
-        self.current_stage_index >= self.stages.len() - 1 &&
-        self.get_current_stage().map_or(false, |s: &QuestStage| s.is_complete())
+        !self.stages.is_empty()
+            && self.current_stage_index >= self.stages.len() - 1
+            && self.get_current_stage().map_or(false, |s: &QuestStage| s.is_complete())
     }
 
     pub fn mark_complete(&mut self) {
@@ -260,7 +261,15 @@ impl QuestTracker {
             quest_history: Vec::new(),
         }
     }
+}
 
+impl Default for QuestTracker {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl QuestTracker {
     pub fn accept_quest(&mut self, mut quest: Quest) -> bool {
         if self.active_quests.contains_key(&quest.quest_id) ||
            self.completed_quests.contains(&quest.quest_id) {
@@ -275,15 +284,16 @@ impl QuestTracker {
         true
     }
 
-    pub fn complete_quest(&mut self, quest_id: &str) -> bool {
+    pub fn complete_quest(&mut self, quest_id: &str) -> Option<QuestReward> {
         if let Some(quest) = self.active_quests.get_mut(quest_id) {
             quest.mark_complete();
+            let reward = quest.rewards.clone();
             self.completed_quests.insert(quest_id.to_string());
             self.active_quests.remove(quest_id);
             self.record_history(quest_id.to_string(), QuestStatus::Completed);
-            true
+            Some(reward)
         } else {
-            false
+            None
         }
     }
 
@@ -315,7 +325,7 @@ impl QuestTracker {
         let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string();
         self.quest_history.push((quest_id, status, timestamp));
     }
-}
+} // end impl QuestTracker (methods)
 
 pub struct QuestSystem {
     pub tracker: QuestTracker,
@@ -329,7 +339,15 @@ impl QuestSystem {
             available_quests: HashMap::new(),
         }
     }
+}
 
+impl Default for QuestSystem {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl QuestSystem {
     pub fn load_quests_from_game(&mut self, game: &AdventureGame) {
         if !self.available_quests.is_empty() {
             return; // Already loaded
@@ -475,11 +493,79 @@ impl System for QuestSystem {
                 if args.is_empty() {
                     Some("Usage: complete <quest_id>. Use 'quests' to see active quests.".to_string())
                 } else {
-                    if self.tracker.complete_quest(args[0]) {
-                        Some(format!("Completed quest: {}", args[0]))
-                    } else {
-                        Some(format!("Quest '{}' not found or not completable.", args[0]))
+                    match self.tracker.complete_quest(args[0]) {
+                        Some(reward) => {
+                            game.player.gold += reward.gold;
+                            game.player.experience_points += reward.experience_points;
+                            let mut msg = format!("Completed quest: {}", args[0]);
+                            if reward.gold > 0 {
+                                msg.push_str(&format!(" (+{} gold)", reward.gold));
+                            }
+                            if reward.experience_points > 0 {
+                                msg.push_str(&format!(" (+{} XP)", reward.experience_points));
+                            }
+                            Some(msg)
+                        }
+                        None => Some(format!("Quest '{}' not found or not active.", args[0])),
                     }
+                }
+            }
+            // Observer pass: react to game events emitted by other systems.
+            "__events__" => {
+                let mut notifications: Vec<String> = Vec::new();
+
+                for event in &game.events {
+                    match event {
+                        GameEvent::MonsterKilled { monster_name, .. } => {
+                            for quest in self.tracker.active_quests.values_mut() {
+                                if let Some(stage) = quest.stages.get_mut(quest.current_stage_index) {
+                                    for obj in &mut stage.objectives {
+                                        if obj.obj_type == crate::systems::quests::ObjectiveType::Kill
+                                            && monster_name.to_lowercase().contains(&obj.target.to_lowercase())
+                                            && !obj.is_complete()
+                                        {
+                                            let gained = obj.progress(1);
+                                            if gained > 0 {
+                                                notifications.push(format!(
+                                                    "[{}] {} ({}/{})",
+                                                    quest.title, obj.description,
+                                                    obj.current_count, obj.required_count
+                                                ));
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        GameEvent::ItemCollected { item_name, .. } => {
+                            for quest in self.tracker.active_quests.values_mut() {
+                                if let Some(stage) = quest.stages.get_mut(quest.current_stage_index) {
+                                    for obj in &mut stage.objectives {
+                                        if obj.obj_type == crate::systems::quests::ObjectiveType::Collect
+                                            && item_name.to_lowercase().contains(&obj.target.to_lowercase())
+                                            && !obj.is_complete()
+                                        {
+                                            let gained = obj.progress(1);
+                                            if gained > 0 {
+                                                notifications.push(format!(
+                                                    "[{}] {} ({}/{})",
+                                                    quest.title, obj.description,
+                                                    obj.current_count, obj.required_count
+                                                ));
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+
+                if notifications.is_empty() {
+                    None
+                } else {
+                    Some(format!("Quest update:\n{}", notifications.join("\n")))
                 }
             }
             _ => None,

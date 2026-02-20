@@ -155,21 +155,31 @@ impl Adventure {
     pub fn into_game_state(self, player_name: impl Into<String>) -> Result<GameState, AdventureError> {
         self.validate()?;
 
+        // Map string room ids → stable integer ids (1-based index order)
+        let id_to_int: HashMap<String, i32> = self
+            .rooms
+            .iter()
+            .enumerate()
+            .map(|(i, r)| (r.id.clone(), (i + 1) as i32))
+            .collect();
+
+        let start_room_int = *id_to_int.get(&self.start_room).unwrap_or(&1);
+
         let mut world: HashMap<String, Room> = HashMap::new();
         for room in self.rooms {
-            let room_id = room.id.parse().unwrap_or(0);
+            let room_id = *id_to_int.get(&room.id).unwrap();
             let mut r = Room::new(room_id, room.title, room.description);
             for (dir, dest) in room.exits {
-                r.exits.insert(dir, dest.parse().unwrap_or(0));
+                if let Some(&dest_id) = id_to_int.get(&dest) {
+                    r.exits.insert(dir, dest_id);
+                }
             }
-            // Note: items are stored separately in AdventureGame, but GameState doesn't have items
             world.insert(room_id.to_string(), r);
         }
 
         let mut player = Player::new();
         player.name = player_name.into();
-        player.current_room = self.start_room.parse().unwrap_or(1);
-        // Note: GameState doesn't have inventory items, just the world
+        player.current_room = start_room_int;
 
         Ok(GameState {
             world,
@@ -242,7 +252,12 @@ mod tests {
     fn into_game_state_sets_player_location() {
         let adv = Adventure::demo();
         let state = adv.into_game_state("Tester").unwrap();
-        assert_eq!(state.player.current_room, 1); // default when parsing "village" fails
-        assert!(state.world.contains_key("0")); // both rooms get key "0" since they can't be parsed as integers
+        // village is first room → integer id 1; forest is second → 2
+        assert_eq!(state.player.current_room, 1);
+        assert!(state.world.contains_key("1"));
+        assert!(state.world.contains_key("2"));
+        // exits must be translated: village north → forest (2)
+        let village = state.world.get("1").unwrap();
+        assert_eq!(village.exits.get("north"), Some(&2));
     }
 }

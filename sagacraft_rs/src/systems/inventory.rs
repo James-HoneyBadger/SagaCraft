@@ -11,35 +11,68 @@ impl System for InventorySystem {
                 if game.player.inventory.is_empty() {
                     Some("Your inventory is empty.".to_string())
                 } else {
-                    let mut result = "Inventory:\n".to_string();
+                    let (cur, max) = game.carry_weight();
+                    let mut result = format!("Inventory ({}/{} weight):\n", cur, max);
                     for &item_id in &game.player.inventory {
                         if let Some(item) = game.items.get(&item_id) {
-                            result.push_str(&format!("  - {}\n", item.name));
+                            let equipped = if game.player.equipped_weapon == Some(item_id) {
+                                " [wielded]"
+                            } else if game.player.equipped_armor == Some(item_id) {
+                                " [worn]"
+                            } else {
+                                ""
+                            };
+                            result.push_str(&format!("  - {}{}\n", item.name, equipped));
                         }
                     }
                     Some(result.trim_end().to_string())
                 }
             }
             "take" | "get" => {
-                if let Some(item_name) = args.first() {
-                    if game.take_item(item_name) {
-                        Some("Taken.".to_string())
-                    } else {
-                        Some("You can't take that.".to_string())
-                    }
-                } else {
+                let item_name = args.join(" ");
+                if item_name.is_empty() {
                     Some("Take what?".to_string())
+                } else {
+                    Some(game.take_item(&item_name).unwrap_or_else(|e| e))
                 }
             }
             "drop" => {
-                if let Some(item_name) = args.first() {
-                    if game.drop_item(item_name) {
-                        Some("Dropped.".to_string())
-                    } else {
-                        Some("You don't have that.".to_string())
-                    }
-                } else {
+                let item_name = args.join(" ");
+                if item_name.is_empty() {
                     Some("Drop what?".to_string())
+                } else if game.drop_item(&item_name) {
+                    Some("Dropped.".to_string())
+                } else {
+                    Some("You don't have that.".to_string())
+                }
+            }
+            "equip" | "wield" | "wear" => {
+                let item_name = args.join(" ");
+                if item_name.is_empty() {
+                    Some("Equip what?".to_string())
+                } else {
+                    Some(game.equip_item(&item_name).unwrap_or_else(|e| e))
+                }
+            }
+            "unequip" | "remove" => {
+                let slot = args.first().copied().unwrap_or("weapon");
+                Some(game.unequip_slot(slot).unwrap_or_else(|e| e))
+            }
+            "use" => {
+                let item_name = args.join(" ");
+                if item_name.is_empty() {
+                    Some("Use what?".to_string())
+                } else {
+                    Some(game.use_item(&item_name).unwrap_or_else(|e| e))
+                }
+            }
+            "examine" | "inspect" | "x" => {
+                let item_name = args.join(" ");
+                if item_name.is_empty() {
+                    Some("Examine what?".to_string())
+                } else {
+                    Some(game.examine_item(&item_name)
+                        .unwrap_or_else(|| format!("You don't see any '{}' here.", item_name)))
                 }
             }
             _ => None,

@@ -53,3 +53,13 @@ Thumbs.db
 # Rust
 target/
 rust/target/
+
+# Release binaries and archives
+release/sagacraft_player
+release/sagacraft_ide_tui
+release/sagacraft_ide_gui
+*.tar.gz
+*.zip
+
+# Runtime state (auto-generated, not for source control)
+config/recent_adventures.json

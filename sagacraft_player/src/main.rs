@@ -7,7 +7,7 @@ fn main() {
 
     let mut game = AdventureGame::new(adventure_path);
 
-    if let Err(e) = game.load_adventure() {
+    if let Err(e) = game.load_adventure().map(|intro| print!("{}", intro)) {
         eprintln!("Failed to load adventure: {}", e);
         std::process::exit(1);
     }
@@ -20,7 +20,7 @@ fn main() {
 
     println!("SagaCraft (Rust) — CLI Player");
     println!("Type 'help' for commands. Type 'quit' to exit.");
-    game.look();
+    println!("{}", game.look());
 
     let stdin = io::stdin();
     loop {
@@ -53,7 +53,7 @@ fn main() {
 }
 
 fn parse_args(mut args: impl Iterator<Item = String>) -> String {
-    let mut adventure_path = "adventures/infinite_archive.json".to_string();
+    let mut adventure_path = "demo_adventure.json".to_string();
 
     while let Some(arg) = args.next() {
         match arg.as_str() {
@@ -87,27 +87,42 @@ fn print_help_and_exit() -> ! {
     println!();
     println!("Commands:");
     println!("  look, l                   Look around");
-    println!("  inventory, i, inv         Show inventory");
-    println!("  n, north, s, south, e, east, w, west, u, up, d, down  Move");
+    println!("  inventory, i, inv         Show inventory (with weight)");
+    println!("  n/s/e/w/u/d               Move in a direction");
     println!("  take <item>, get <item>   Take an item");
     println!("  drop <item>               Drop an item");
+    println!("  equip/wield/wear <item>   Equip a weapon or armor");
+    println!("  unequip/remove <slot>     Unequip weapon or armor");
+    println!("  use <item>               Use/consume an item");
+    println!("  examine/x <item>          Examine an item");
+    println!("  attack <monster>          Attack a monster");
+    println!("  say <text>               Say something");
+    println!("  status, stats             Show player status");
+    println!("  quests                    Show quests");
+    println!("  accept <quest_id>         Accept a quest");
+    println!("  complete <quest_id>       Complete a quest");
     println!("  help, h                   Show this help");
-    println!("  quit, q, exit             Exit game");
+    println!("  quit, q, exit             Quit");
     std::process::exit(0)
 }
 
 fn print_help() {
     println!("Commands:");
     println!("  look, l                   Look around");
-    println!("  inventory, i, inv         Show inventory");
-    println!("  n, north, s, south, e, east, w, west, u, up, d, down  Move");
+    println!("  inventory, i, inv         Show inventory (with weight)");
+    println!("  n/s/e/w/u/d               Move in a direction");
     println!("  take <item>, get <item>   Take an item");
     println!("  drop <item>               Drop an item");
+    println!("  equip/wield/wear <item>   Equip a weapon or armor");
+    println!("  unequip/remove <slot>     Unequip weapon or armor");
+    println!("  use <item>               Use/consume an item");
+    println!("  examine/x <item>          Examine an item");
     println!("  attack <monster>          Attack a monster");
+    println!("  say <text>               Say something");
     println!("  status, stats             Show player status");
-    println!("  quests                    Show active and available quests");
+    println!("  quests                    Show quests");
     println!("  accept <quest_id>         Accept a quest");
     println!("  complete <quest_id>       Complete a quest");
     println!("  help, h                   Show this help");
-    println!("  quit, q, exit             Exit game");
+    println!("  quit, q, exit             Quit");
 }
