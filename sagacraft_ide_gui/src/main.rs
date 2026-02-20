@@ -865,8 +865,8 @@ impl SagaCraftIDE {
 
     fn open_adventure(&mut self) {
         if let Some(path) = rfd::FileDialog::new()
-            .add_filter("JSON files", &["json"])
-            .add_filter("All files", &["*"])
+            .add_filter("JSON files", &["json"][..])
+            .add_filter("All files", &["*"][..])
             .pick_file()
         {
             match self.load_from_file(&path) {
@@ -900,8 +900,8 @@ impl SagaCraftIDE {
 
     fn save_adventure_as(&mut self) {
         if let Some(path) = rfd::FileDialog::new()
-            .add_filter("JSON files", &["json"])
-            .add_filter("All files", &["*"])
+            .add_filter("JSON files", &["json"][..])
+            .add_filter("All files", &["*"][..])
             .save_file()
         {
             match self.save_to_file(&path) {
