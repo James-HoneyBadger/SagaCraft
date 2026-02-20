@@ -309,28 +309,28 @@ impl SagaCraftIDE {
     fn show_main_ui(&mut self, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
             // Tab buttons
-            if ui.selectable_label(self.active_tab == Tab::Play, "🎮 Play").clicked() {
+            if ui.add(egui::Button::new("🎮 Play").selected(self.active_tab == Tab::Play)).clicked() {
                 self.active_tab = Tab::Play;
             }
-            if ui.selectable_label(self.active_tab == Tab::Info, "ℹ Info").clicked() {
+            if ui.add(egui::Button::new("ℹ Info").selected(self.active_tab == Tab::Info)).clicked() {
                 self.active_tab = Tab::Info;
             }
-            if ui.selectable_label(self.active_tab == Tab::Rooms, "🏠 Rooms").clicked() {
+            if ui.add(egui::Button::new("🏠 Rooms").selected(self.active_tab == Tab::Rooms)).clicked() {
                 self.active_tab = Tab::Rooms;
             }
-            if ui.selectable_label(self.active_tab == Tab::Items, "🎒 Items").clicked() {
+            if ui.add(egui::Button::new("🎒 Items").selected(self.active_tab == Tab::Items)).clicked() {
                 self.active_tab = Tab::Items;
             }
-            if ui.selectable_label(self.active_tab == Tab::Monsters, "👹 Monsters").clicked() {
+            if ui.add(egui::Button::new("👹 Monsters").selected(self.active_tab == Tab::Monsters)).clicked() {
                 self.active_tab = Tab::Monsters;
             }
-            if ui.selectable_label(self.active_tab == Tab::Quests, "📜 Quests").clicked() {
+            if ui.add(egui::Button::new("📜 Quests").selected(self.active_tab == Tab::Quests)).clicked() {
                 self.active_tab = Tab::Quests;
             }
-            if ui.selectable_label(self.active_tab == Tab::Modding, "🔧 Modding").clicked() {
+            if ui.add(egui::Button::new("🔧 Modding").selected(self.active_tab == Tab::Modding)).clicked() {
                 self.active_tab = Tab::Modding;
             }
-            if ui.selectable_label(self.active_tab == Tab::Preview, "👁 Preview").clicked() {
+            if ui.add(egui::Button::new("👁 Preview").selected(self.active_tab == Tab::Preview)).clicked() {
                 self.active_tab = Tab::Preview;
             }
         });
@@ -431,7 +431,7 @@ impl SagaCraftIDE {
             egui::ScrollArea::vertical().show(&mut columns[0], |ui| {
                 for (i, room) in self.adventure.rooms.iter().enumerate() {
                     let selected = self.selected_room == Some(i);
-                    if ui.selectable_label(selected, format!("{}: {}", room.id, room.name)).clicked() {
+                    if ui.add(egui::Button::new(format!("{}: {}", room.id, room.name)).selected(selected)).clicked() {
                         self.selected_room = Some(i);
                     }
                 }
@@ -514,7 +514,7 @@ impl SagaCraftIDE {
             egui::ScrollArea::vertical().show(&mut columns[0], |ui| {
                 for (i, item) in self.adventure.items.iter().enumerate() {
                     let selected = self.selected_item == Some(i);
-                    if ui.selectable_label(selected, format!("{}: {}", item.id, item.name)).clicked() {
+                    if ui.add(egui::Button::new(format!("{}: {}", item.id, item.name)).selected(selected)).clicked() {
                         self.selected_item = Some(i);
                     }
                 }
@@ -629,7 +629,7 @@ impl SagaCraftIDE {
             egui::ScrollArea::vertical().show(&mut columns[0], |ui| {
                 for (i, monster) in self.adventure.monsters.iter().enumerate() {
                     let selected = self.selected_monster == Some(i);
-                    if ui.selectable_label(selected, format!("{}: {}", monster.id, monster.name)).clicked() {
+                    if ui.add(egui::Button::new(format!("{}: {}", monster.id, monster.name)).selected(selected)).clicked() {
                         self.selected_monster = Some(i);
                     }
                 }
@@ -712,7 +712,7 @@ impl SagaCraftIDE {
             egui::ScrollArea::vertical().show(&mut columns[0], |ui| {
                 for (i, quest) in self.adventure.quests.iter().enumerate() {
                     let selected = self.selected_quest == Some(i);
-                    if ui.selectable_label(selected, format!("{}: {}", quest.id, quest.title)).clicked() {
+                    if ui.add(egui::Button::new(format!("{}: {}", quest.id, quest.title)).selected(selected)).clicked() {
                         self.selected_quest = Some(i);
                     }
                 }
