@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.0.1] - 2026-02-20
+
+### Added
+- **Full documentation suite**: New `Tutorial.md` (step-by-step first-play walkthrough) and `Game_Design_Tips.md` (adventure design craft guide, balancing tables, JSON template)
+
+### Changed
+- **User Manual** (`docs/User_Manual.md`): Complete rewrite based on actual engine source; accurate command table, carry-weight formula, combat damage math, quest objective types
+- **Technical Reference** (`docs/Technical_Reference.md`): Complete rewrite covering all core Rust types, System trait API, full JSON schema with every field, GameEvent bus, QuestSystem internals, and build instructions
+
+### Fixed
+- **GUI IDE** (`sagacraft_ide_gui`): Fixed compilation errors — invalid Rust unicode escape `\u25b6` → `\u{25B6}`, replaced `ComboBox::from_id_salt` with `from_id_source` (eframe API compatibility), added explicit `&mut egui::Ui` type annotations to affected closures
+
 ## [4.0.0] - 2025-12-29
 
 ### Added
