@@ -541,7 +541,7 @@ impl SagaCraftIDE {
                             ui.end_row();
 
                             ui.label("Type:");
-                            egui::ComboBox::from_id_source("item_type")
+                            egui::ComboBox::from_id_salt("item_type")
                                 .selected_text(format!("{:?}", item.item_type))
                                 .show_ui(ui, |ui: &mut egui::Ui| {
                                     for variant in [
@@ -676,7 +676,7 @@ impl SagaCraftIDE {
                             ui.end_row();
 
                             ui.label("Friendliness:");
-                            egui::ComboBox::from_id_source("monster_status")
+                            egui::ComboBox::from_id_salt("monster_status")
                                 .selected_text(format!("{:?}", monster.status))
                                 .show_ui(ui, |ui: &mut egui::Ui| {
                                     ui.selectable_value(&mut monster.status, MonsterStatus::Neutral, "Neutral");
