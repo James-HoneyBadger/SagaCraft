@@ -139,7 +139,7 @@ drop ancient key
 ```
 
 ```
-Dropped.
+Dropped: Ancient Key.
 ```
 
 `look` to confirm the key is back in the room:
@@ -269,7 +269,7 @@ use healing herbs
 You consume the Healing Herbs. Health: 12/12.
 ```
 
-Consumables (edible/drinkable) heal HP equal to their **value** and are then permanently removed.
+Consumables (edible/drinkable) heal HP equal to their **value** (clamped to 1–20, capped at max hardiness) and are then permanently removed.
 
 ---
 

@@ -180,7 +180,7 @@ The default player has **hardiness 12** (12 HP), no weapon equipped, and no armo
 | Battleaxe | 1d10 | 5.5 | Late-game |
 | Great Sword | 2d6 | 7.0 | Boss reward |
 
-**Monster counter-attack:** formula is `1 to (agility÷3)+1`. With armor_value 0 on the player:
+**Monster counter-attack:** formula is `1 to (agility÷3)+1` (minimum 2), minus player armor (floor 1). With armor_value 0 on the player:
 
 | Monster agility | Max hits per round | Attacks to kill default player (no armor) |
 |-----------------|-------------------|-------------------------------------------|
@@ -209,7 +209,6 @@ Place one mid-tier consumable (value 4–6) per 3–4 combat rooms. Place a high
 1. **Clear start:** The player knows WHAT they need to do.
 2. **Observable progress:** Kill and collect quests track automatically; players see the counter.
 3. **Meaningful reward:** Gold and XP should feel proportional to effort.
-4. **Optional side objectives:** Mark optional objectives `"is_optional": true` for completionist players.
 
 ### Current objective types
 
@@ -226,7 +225,7 @@ Place one mid-tier consumable (value 4–6) per 3–4 combat rooms. Place a high
 
 ### Quest chain design
 
-- Use `prerequisites` to gate quest chains. Completing Quest 1 should unlock Quest 2.
+- Sequence quests so that earlier ones lead the player to areas where later ones become relevant.
 - Do not create a quest that requires a monster to be killed that the player may not have triggered.
 - Short chains (2–3 quests) work best in adventures under 20 rooms.
 

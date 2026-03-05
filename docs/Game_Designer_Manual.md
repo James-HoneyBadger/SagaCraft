@@ -26,7 +26,7 @@ SagaCraft is a text-based adventure game engine that focuses on:
 - **Simplicity**: Easy to learn, powerful to use
 - **Flexibility**: Support for various game genres
 - **Performance**: Fast loading and execution
-- **Extensibility**: Plugin system for custom mechanics
+- **Extensibility**: System trait for custom mechanics
 
 ### Design Philosophy
 
@@ -46,9 +46,11 @@ All SagaCraft adventures are stored in JSON format:
 {
   "id": "my_adventure",
   "title": "My First Adventure",
-  "start_room": "entrance",
+  "start_room": 1,
   "rooms": [...],
-  "player_start_inventory": [...]
+  "items": [...],
+  "monsters": [...],
+  "quests": []
 }
 ```
 
@@ -81,34 +83,39 @@ Start with a simple two-room adventure:
 {
   "id": "tutorial_adventure",
   "title": "The Tutorial Dungeon",
-  "start_room": "entrance",
+  "start_room": 1,
   "rooms": [
     {
-      "id": "entrance",
-      "title": "Dungeon Entrance",
+      "id": 1,
+      "name": "Dungeon Entrance",
       "description": "You stand at the entrance of an ancient dungeon. A stone corridor stretches before you, and you can hear the drip of water echoing in the distance.",
       "exits": {
-        "north": "chamber"
-      },
-      "items": [
-        {
-          "id": "rusty_key",
-          "name": "Rusty Key",
-          "description": "An old, rusty iron key. It looks like it might still work."
-        }
-      ]
+        "north": 2
+      }
     },
     {
-      "id": "chamber",
-      "title": "Main Chamber",
+      "id": 2,
+      "name": "Main Chamber",
       "description": "You've entered a large circular chamber. Torches flicker on the walls, casting dancing shadows. In the center stands a stone pedestal with a locked chest.",
       "exits": {
-        "south": "entrance"
-      },
-      "items": []
+        "south": 1
+      }
     }
   ],
-  "player_start_inventory": []
+  "items": [
+    {
+      "id": 101,
+      "name": "Rusty Key",
+      "description": "An old, rusty iron key. It looks like it might still work.",
+      "type": "normal",
+      "weight": 0,
+      "value": 0,
+      "is_takeable": true,
+      "location": 1
+    }
+  ],
+  "monsters": [],
+  "quests": []
 }
 ```
 
@@ -148,16 +155,7 @@ Create multiple paths through your story:
 
 ### Conditional Content
 
-Use room descriptions that change based on player actions:
-
-```json
-{
-  "id": "garden",
-  "title": "The Secret Garden",
-  "description": "A beautiful garden with flowers in full bloom. [If player has visited before: The flowers seem to recognize you and wave gently in the breeze.]",
-  "items": []
-}
-```
+SagaCraft does not currently support conditional room descriptions. Instead, use quest objectives and item placement to gate narrative progression. Players discover story through exploration and item examination.
 
 ### Puzzles and Challenges
 
@@ -176,10 +174,10 @@ SagaCraft supports various item types:
 
 ```json
 {
-  "id": "excalibur",
+  "id": 101,
   "name": "Excalibur",
   "description": "The legendary sword of King Arthur. It glows with an inner light.",
-  "item_type": "Weapon",
+  "type": "weapon",
   "weight": 3,
   "value": 1000,
   "is_weapon": true,
@@ -187,7 +185,8 @@ SagaCraft supports various item types:
   "weapon_dice": 2,
   "weapon_sides": 6,
   "is_takeable": true,
-  "is_wearable": false
+  "is_wearable": false,
+  "location": 1
 }
 ```
 
@@ -195,33 +194,22 @@ SagaCraft supports various item types:
 
 | Property | Description | Example |
 |----------|-------------|---------|
-| `id` | Unique identifier | "magic_sword" |
+| `id` | Unique integer identifier | 101 |
 | `name` | Display name | "Magic Sword" |
 | `description` | Detailed description | "A sword imbued with magic" |
-| `item_type` | Category | "Weapon", "Armor", "Treasure" |
-| `weight` | Weight in kg | 2.5 |
-| `value` | Gold value | 100 |
+| `type` | Category (JSON key is `type`) | "weapon", "armor", "treasure" |
+| `weight` | Weight (integer) | 3 |
+| `value` | Gold value (or HP healed for consumables) | 100 |
 | `is_weapon` | Can be used in combat | true |
 | `weapon_dice` | Damage dice count | 1 |
 | `weapon_sides` | Damage dice sides | 8 |
 | `is_armor` | Provides protection | true |
 | `armor_value` | Protection amount | 3 |
+| `location` | Room ID where item starts (0 = inventory) | 1 |
 
 ### Special Items
 
-Create unique items with special effects:
-
-```json
-{
-  "id": "teleport_ring",
-  "name": "Ring of Teleportation",
-  "description": "This golden ring allows you to teleport between known locations.",
-  "item_type": "Treasure",
-  "weight": 0,
-  "value": 500,
-  "special_effect": "teleport"
-}
-```
+For unique items, use descriptive text in the `description` field. The engine does not support a `special_effect` field — special behaviour requires a custom Rust system.
 
 ## Character and NPC Design
 
@@ -235,7 +223,7 @@ Create unique items with special effects:
   "room_id": 1,
   "hardiness": 8,
   "agility": 5,
-  "friendliness": "Friendly",
+  "friendliness": "friendly",
   "courage": 3,
   "weapon_id": null,
   "armor_worn": 0,
@@ -246,27 +234,11 @@ Create unique items with special effects:
 
 ### NPC Behaviors
 
-- **Friendly**: Will help or provide information
-- **Neutral**: May respond to questions but won't assist
-- **Hostile**: Will attack the player on sight
+- **Friendly**: Cannot be attacked. Will respond when the player uses `say` nearby.
+- **Neutral**: Cannot be attacked by default. May respond to `say`.
+- **Hostile**: Will fight back when attacked by the player.
 
-### Dialogue Systems
-
-Implement NPC conversations:
-
-```json
-{
-  "npc_id": 1,
-  "dialogue_tree": {
-    "greeting": "Welcome, adventurer! What brings you to our village?",
-    "responses": {
-      "quest": "I'm looking for the ancient temple.",
-      "trade": "I'd like to buy some supplies.",
-      "goodbye": "Farewell!"
-    }
-  }
-}
-```
+SagaCraft does not have a dialogue tree system. NPC interaction is through the `say` command and quest `talk_to_npc` objectives.
 
 ## Combat Design
 
@@ -280,7 +252,7 @@ Implement NPC conversations:
   "room_id": 5,
   "hardiness": 12,
   "agility": 8,
-  "friendliness": "Hostile",
+  "friendliness": "hostile",
   "courage": 7,
   "weapon_id": 200,
   "armor_worn": 1,
@@ -312,43 +284,36 @@ The magical wards weaken undead creatures in this area.
 
 ### Quest Structure
 
+Quests use integer IDs and have objectives that auto-track during gameplay:
+
 ```json
 {
-  "id": "main_quest_1",
+  "id": 1,
   "title": "Find the Lost Temple",
   "description": "Locate the ancient temple hidden in the mountains.",
   "objectives": [
     {
-      "id": "find_map",
-      "description": "Find the map in the village library",
-      "completed": false
+      "type": "collect_item",
+      "target_id": 105,
+      "description": "Find the map in the village library"
     },
     {
-      "id": "gather_supplies",
-      "description": "Collect food and water for the journey",
-      "completed": false
-    },
-    {
-      "id": "reach_temple",
-      "description": "Travel to the temple location",
-      "completed": false
+      "type": "reach_room",
+      "target_id": 10,
+      "description": "Travel to the temple location"
     }
-  ],
-  "reward": {
-    "experience": 100,
-    "items": ["magic_amulet"],
-    "gold": 200
-  }
+  ]
 }
 ```
+
+Rewards (gold and XP) are defined as flat values on quest completion.
 
 ### Quest Types
 
 1. **Collection Quests**: Gather specific items
 2. **Defeat Quests**: Eliminate certain enemies
 3. **Exploration Quests**: Visit specific locations
-4. **Dialogue Quests**: Complete conversations
-5. **Time-based Quests**: Complete within time limits
+4. **Talk Quests**: Speak near matching NPCs
 
 ## Testing and Debugging
 
@@ -359,8 +324,7 @@ The magical wards weaken undead creatures in this area.
 - [ ] Combat is balanced
 - [ ] Quests can be completed
 - [ ] No dead ends or soft locks
-- [ ] Save/load functionality works
-- [ ] Performance is acceptable
+- [ ] JSON validates (`python3 -m json.tool adventure.json`)
 
 ### Common Issues
 
@@ -369,15 +333,15 @@ The magical wards weaken undead creatures in this area.
 3. **Broken Combat**: Monsters that can't be defeated
 4. **Poor Descriptions**: Rooms that aren't immersive
 
-### Testing Tools
+### Testing
 
-Use SagaCraft's built-in testing features:
+Play-test directly with the CLI player:
 
 ```bash
-# Validate adventure structure
-cargo run --bin sagacraft_player -- --validate path/to/adventure.json
+# Play your adventure
+cargo run --bin sagacraft_player -- path/to/adventure.json
 
-# Run automated tests
+# Run engine unit tests
 cargo test
 ```
 
@@ -454,37 +418,33 @@ cargo test
 
 ### Custom Systems
 
-Extend SagaCraft with custom mechanics:
+Extend SagaCraft with custom mechanics by implementing the `System` trait in Rust:
 
 ```rust
 // Example: Weather system
+use sagacraft_rs::{System, AdventureGame, GameEvent};
+
 pub struct WeatherSystem {
-    current_weather: WeatherType,
-    weather_effects: HashMap<WeatherType, Vec<String>>,
+    current_weather: String,
+}
+
+impl System for WeatherSystem {
+    fn on_command(&mut self, command: &str, _args: &[&str], _game: &mut AdventureGame) -> Option<String> {
+        match command {
+            "weather" => Some(format!("The weather is {}.", self.current_weather)),
+            _ => None,
+        }
+    }
 }
 ```
 
-### Mod Support
+Register your system on the `Engine` before loading:
 
-Design adventures that support modifications:
-
-```json
-{
-  "mod_support": {
-    "custom_items": true,
-    "custom_rooms": true,
-    "custom_quests": false
-  }
-}
+```rust
+let mut engine = Engine::new("adventure.json");
+engine.game.add_system(Box::new(WeatherSystem { current_weather: "sunny".into() }));
+engine.start()?;
 ```
-
-### Multiplayer Considerations
-
-While SagaCraft is single-player focused, consider:
-
-- **Shared Universes**: Adventures that can be experienced together
-- **Competitive Elements**: Score-based challenges
-- **Cooperative Play**: Split-screen or turn-based multiplayer
 
 ## Resources
 

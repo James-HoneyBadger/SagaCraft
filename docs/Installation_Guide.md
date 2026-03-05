@@ -34,7 +34,7 @@ tar -xzf sagacraft.tar.gz
 sudo mv sagacraft-* /usr/local/bin/
 
 # Verify installation
-./sagacraft_player --version
+./sagacraft_player demo_adventure.json
 ```
 
 #### macOS
@@ -45,11 +45,11 @@ curl -L https://github.com/James-HoneyBadger/SagaCraft/releases/latest/download/
 # Extract the archive
 tar -xzf sagacraft.tar.gz
 
-# Move to Applications or add to PATH
+# Move to a directory in your PATH (optional)
 sudo mv sagacraft-* /usr/local/bin/
 
 # Verify installation
-./sagacraft_player --version
+./sagacraft_player demo_adventure.json
 ```
 
 #### Windows
@@ -64,7 +64,7 @@ Expand-Archive -Path "sagacraft.zip" -DestinationPath "C:\Program Files\SagaCraf
 # Go to System Properties > Environment Variables > Path > Edit > Add "C:\Program Files\SagaCraft"
 
 # Verify installation
-.\sagacraft_player.exe --version
+.\sagacraft_player.exe demo_adventure.json
 ```
 
 ### Method 2: Building from Source
@@ -124,7 +124,7 @@ cd SagaCraft
 cargo build --release
 
 # Verify the build
-./target/release/sagacraft_player --version
+./target/release/sagacraft_player demo_adventure.json
 
 # Optional: Run tests
 cargo test
@@ -167,67 +167,28 @@ brew install sagacraft
 
 ## Post-Installation Setup
 
-### Configuration
+SagaCraft does not require a configuration directory or config file. All settings are contained within the adventure JSON files themselves.
 
-Create a configuration directory:
+### Adventure Files
+
+Place your adventure JSON files anywhere and pass the path to the player:
 
 ```bash
-# Linux/macOS
-mkdir -p ~/.config/sagacraft
-
-# Windows
-mkdir "%APPDATA%\SagaCraft"
+cargo run --bin sagacraft_player -- path/to/my_adventure.json
 ```
 
-Create a basic configuration file (`config.toml`):
-
-```toml
-[engine]
-save_directory = "saves/"
-log_level = "info"
-
-[ui]
-enable_colors = true
-show_timestamps = false
-
-[gameplay]
-auto_save = true
-auto_save_interval = 300
-```
-
-### Directory Structure
-
-After installation, your SagaCraft setup should look like:
-
-```
-~/.config/sagacraft/
-├── config.toml          # Configuration file
-└── saves/              # Save game directory
-    ├── adventure1.json
-    └── quicksave.json
-
-~/Documents/SagaCraft/   # Adventure files
-├── my_adventure.json
-└── assets/
-    └── images/
-```
+Two demo adventures are included in the repository root: `demo_adventure.json` and `shattered_realms_demo.json`.
 
 ## Running SagaCraft
 
 ### Command Line Player
 
 ```bash
-# Start with default adventure
-sagacraft_player
+# Play the demo adventure
+sagacraft_player demo_adventure.json
 
 # Load specific adventure
 sagacraft_player path/to/adventure.json
-
-# Show help
-sagacraft_player --help
-
-# Show version
-sagacraft_player --version
 ```
 
 ### Terminal UI Editor
@@ -389,14 +350,8 @@ brew install fontconfig
 ### Environment Variables
 
 ```bash
-# Set custom config directory
-export SAGACRAFT_CONFIG_DIR="$HOME/.config/sagacraft"
-
 # Enable debug logging
 export RUST_LOG=debug
-
-# Set custom save directory
-export SAGACRAFT_SAVE_DIR="$HOME/Documents/SagaCraft/saves"
 ```
 
 ### Custom Build Options
@@ -520,8 +475,8 @@ uname -a
 rustc --version
 cargo --version
 
-# SagaCraft version
-sagacraft_player --version
+# SagaCraft version (no --version flag; just run with a demo file)
+sagacraft_player demo_adventure.json
 
 # Error logs
 RUST_LOG=debug sagacraft_player 2>&1 | head -50

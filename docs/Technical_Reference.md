@@ -13,13 +13,12 @@ This document describes the SagaCraft engine internals: architecture, data struc
 3. [Core Types](#core-types)
 4. [The System Trait](#the-system-trait)
 5. [Built-in Systems](#built-in-systems)
-6. [Command Parsing](#command-parsing)
-7. [Engine and AdventureGame](#engine-and-adventuregame)
-8. [Adventure JSON Schema](#adventure-json-schema)
-9. [Game Events](#game-events)
-10. [Quest System Internals](#quest-system-internals)
-11. [Build and Test](#build-and-test)
-12. [Contributing](#contributing)
+6. [Engine and AdventureGame](#engine-and-adventuregame)
+7. [Adventure JSON Schema](#adventure-json-schema)
+8. [Game Events](#game-events)
+9. [Quest System Internals](#quest-system-internals)
+10. [Build and Test](#build-and-test)
+11. [Contributing](#contributing)
 
 ---
 
@@ -33,7 +32,6 @@ SagaCraft/
 │       ├── lib.rs              # Public re-exports
 │       ├── engine.rs           # High-level Engine wrapper
 │       ├── game_state.rs       # AdventureGame, Room, Item, Monster, Player
-│       ├── command.rs          # Command enum, Direction, parser
 │       ├── adventure.rs        # Adventure / AdventureRoom types (secondary format)
 │       └── systems/
 │           ├── mod.rs          # System trait definition
@@ -55,15 +53,15 @@ The `sagacraft_rs` library is the only dependency shared by all three front-ends
 ### Public re-exports (`lib.rs`)
 
 ```rust
+pub use adventure::{Adventure, AdventureError, AdventureItem, AdventureRoom};
+pub use engine::Engine;
 pub use game_state::{
-    AdventureGame, GameState, Item, ItemType,
+    AdventureGame, GameEvent, Item, ItemType,
     Monster, MonsterStatus, Player, Room,
 };
-pub use command::{Command, Direction};
-pub use engine::{Engine, EngineEvent, EngineOutput};
 pub use systems::{
     BasicWorldSystem, CombatSystem, InventorySystem,
-    quests::QuestSystem,
+    QuestSystem, System,
 };
 ```
 
@@ -126,13 +124,13 @@ pub struct Monster {
     pub armor_worn: i32,         // static armor reduction (unused by player)
     pub gold: i32,               // dropped on death
     pub is_dead: bool,
-    pub current_health: Option<i32>,  // None = full health
+    pub current_health: i32,          // initialized to hardiness
 }
 ```
 
 `MonsterStatus` variants: `Friendly`, `Neutral`, `Hostile`. Only `Hostile` monsters can be attacked.
 
-Counter-attack damage formula: `1 ..= (monster.agility / 3 + 1).max(2)` → subtract player's equipped `armor_value`.
+Counter-attack damage formula: `1 ..= (monster.agility / 3 + 1).max(2)` → subtract player's equipped `armor_value`, with a floor of 1.
 
 ### `Room`
 
@@ -160,7 +158,7 @@ pub struct Player {
     pub armor_expertise: i32,
     pub gold: i32,                // default 200
     pub current_room: i32,
-    pub current_health: Option<i32>,  // None = full health
+    pub current_health: i32,          // starts at hardiness
     pub inventory: Vec<i32>,      // item IDs
     pub equipped_weapon: Option<i32>,
     pub equipped_armor: Option<i32>,
@@ -182,12 +180,10 @@ pub struct AdventureGame {
     pub items: HashMap<i32, Item>,
     pub monsters: HashMap<i32, Monster>,
     pub player: Player,
-    pub companions: Vec<String>,
     pub turn_count: i32,
     pub game_over: bool,
     pub adventure_title: String,
     pub adventure_intro: String,
-    pub effects: Vec<serde_json::Value>,
     pub systems: Vec<Box<dyn System>>,
     pub quests: Vec<serde_json::Value>,
     pub events: Vec<GameEvent>,
@@ -203,7 +199,7 @@ pub struct AdventureGame {
 | `look() -> String` | Renders current room |
 | `move_player(&str) -> Option<String>` | Moves player, emits `RoomEntered` event |
 | `take_item(&str) -> Result<String, String>` | Picks up item, checks weight, emits `ItemCollected` |
-| `drop_item(&str) -> bool` | Drops item, clears equip slots if needed |
+| `drop_item(&str) -> Option<String>` | Drops item, clears equip slots if needed |
 | `equip_item(&str) -> Result<String, String>` | Equips weapon or wearable armor |
 | `unequip_slot(&str) -> Result<String, String>` | Unequips `"weapon"` or `"armor"` slot |
 | `use_item(&str) -> Result<String, String>` | Consumes, reads, or activates item |
@@ -219,7 +215,7 @@ pub struct AdventureGame {
 All game logic is plugged in via the `System` trait (`systems/mod.rs`):
 
 ```rust
-pub trait System: Send + Sync {
+pub trait System {
     /// Primary handler: return Some(output) to claim the command; None to pass.
     fn on_command(
         &mut self,
@@ -227,6 +223,17 @@ pub trait System: Send + Sync {
         args: &[&str],
         game: &mut AdventureGame,
     ) -> Option<String>;
+
+    /// Called after every command round when there are pending game events.
+    /// Return Some(output) to append an observer message (e.g. quest updates).
+    /// The default implementation is a no-op.
+    fn on_events(
+        &mut self,
+        _events: &[GameEvent],
+        _game: &mut AdventureGame,
+    ) -> Option<String> {
+        None
+    }
 }
 ```
 
@@ -234,7 +241,7 @@ pub trait System: Send + Sync {
 
 1. The verb is extracted and lowercased.
 2. Systems are iterated in registration order. The **first** system that returns `Some(...)` claims the command.
-3. After the primary pass, every system is called with the special verb `"__events__"` and an empty args slice. This is the observer pass — systems react to pending `GameEvent`s without owning the command.
+3. After the primary pass, if any `GameEvent`s were emitted, `on_events()` is called on **all** systems. This is the observer pass — systems react to pending events without owning the command.
 4. The `events` buffer is cleared after the observer pass.
 
 To add a custom system:
@@ -251,17 +258,17 @@ Register before `load_adventure` to ensure `init`-style behaviour in the first o
 
 ### `BasicWorldSystem`
 
-Handles: `look`/`l`, direction movement (all six cardinal directions plus aliases), `go`/`move <dir>`, `say`/`shout`/`yell`.
+Handles: `look`/`l`, direction movement (all six cardinal directions plus aliases `n`/`s`/`e`/`w`/`u`/`d`), `go`/`move <dir>`, `say`/`shout`/`yell`, `help`/`?`.
 
-When `say` is used and a non-hostile NPC is present, the NPC's name is included in the response.
+Direction abbreviations are expanded to full words before exit lookup. When `say` is used and a non-hostile NPC is present, the NPC's name is included in the response.
 
 ### `InventorySystem`
 
-Handles: `inventory`/`inv`/`i`, `take`/`get`, `drop`, `equip`/`wield`/`wear`, `unequip`/`remove`, `use`, `examine`/`inspect`/`x`.
+Handles: `inventory`/`inv`/`i`, `take`/`get`/`grab`/`pick`, `drop`, `equip`/`wield`/`wear`, `unequip`/`remove`, `use`/`consume`/`drink`/`eat`, `examine`/`inspect`/`x`.
 
 ### `CombatSystem`
 
-Handles: `attack`/`fight <target>`, `status`/`stats`.
+Handles: `attack`/`fight`/`kill <target>`, `flee`/`run`/`escape`, `status`/`stats`/`score`.
 
 Combat flow per `attack` call:
 1. Find matching monster in current room (case-insensitive partial name match).
@@ -272,36 +279,9 @@ Combat flow per `attack` call:
 
 ### `QuestSystem`
 
-Handles: `quests`, `accept <id>`, `complete <id>`, and the `__events__` observer pass.
+Handles: `quests`/`journal`, `accept <id>`, `complete`/`finish <id>`.
 
-On first call, loads quests from `game.quests` (the raw JSON array). Supports `Kill` and `Collect` objective auto-progress via the observer pass.
-
----
-
-## Command Parsing
-
-`Command::parse(input: &str) -> Result<Command, ParseError>` in `command.rs`:
-
-```rust
-pub enum Command {
-    Help,
-    Look,
-    Inventory,
-    Move(Direction),
-    Take(String),
-    Drop(String),
-    Use(String),
-    Equip(String),
-    Examine(String),
-    Say(String),
-    Quit,
-    Unknown(String),
-}
-
-pub enum Direction { North, South, East, West, Up, Down }
-```
-
-The `Engine::step` method converts `Command` back to a string and feeds it to `AdventureGame::process_command`, which handles all matching in lowercase. Custom commands that are not in the `Command` enum are passed through as `Command::Unknown(raw)` and dispatched to systems as-is.
+Implements `on_events()` to auto-advance quest objectives on `MonsterKilled`, `ItemCollected`, and `RoomEntered` events. On first call, loads quests from `game.quests` (the raw JSON array). Supports `Kill`, `Collect`, and `Explore` objective auto-progress.
 
 ---
 
@@ -312,19 +292,29 @@ The `Engine::step` method converts `Command` back to a string and feeds it to `A
 ```rust
 impl Engine {
     pub fn new(adventure_path: impl Into<String>) -> Self;
-    pub fn load_from_path(path: impl Into<String>) -> Result<Self, Box<dyn Error>>;
-    pub fn step(&mut self, event: EngineEvent) -> EngineOutput;
+    pub fn start(&mut self) -> Result<String, Box<dyn Error>>;
+    pub fn load(path: impl Into<String>) -> Result<Self, Box<dyn Error>>;
+    pub fn intro(&self) -> &str;
+    pub fn send(&mut self, input: &str) -> Vec<String>;
     pub fn look(&self) -> String;
     pub fn is_over(&self) -> bool;
 }
 ```
 
-`EngineOutput` wraps `Vec<String>` lines. `EngineEvent` is currently `EngineEvent::Command(Command)`.
+- `new()` creates the engine with all four systems registered.
+- `start()` calls `load_adventure()` and captures the intro text.
+- `load()` is a shorthand for `new()` + `start()`.
+- `intro()` returns the intro/banner text captured at load time.
+- `send()` passes one line of input to `process_command()` and returns the output lines.
 
-Use `Engine::load_from_path` for a one-liner that creates and loads:
+Example:
 ```rust
-let mut engine = Engine::load_from_path("demo_adventure.json")?;
-let intro = engine.look();
+let mut engine = Engine::load("demo_adventure.json")?;
+println!("{}", engine.intro());
+println!("{}", engine.look());
+for line in engine.send("north") {
+    println!("{}", line);
+}
 ```
 
 ---
@@ -345,8 +335,7 @@ This section documents every field accepted by `AdventureGame::load_adventure`.
   "rooms":    [ … ],
   "items":    [ … ],
   "monsters": [ … ],
-  "quests":   [ … ],
-  "effects":  [ … ]              // reserved for future use
+  "quests":   [ … ]
 }
 ```
 
@@ -456,7 +445,7 @@ pub enum GameEvent {
 }
 ```
 
-Events are pushed to `game.events` during the primary pass and consumed in the observer pass (`"__events__"` call). Custom systems can subscribe to events by handling `"__events__"` and reading `game.events`.
+Events are pushed to `game.events` during the primary pass and consumed in the observer pass (`on_events()` call). Custom systems can subscribe to events by implementing `on_events()` and reading the events slice.
 
 ---
 
@@ -468,10 +457,10 @@ Events are pushed to `game.events` during the primary pass and consumed in the o
 
 | Type | Purpose |
 |------|---------|
-| `Quest` | Named quest with stages, rewards, prerequisites |
+| `Quest` | Named quest with stages and rewards |
 | `QuestStage` | One phase of a quest; holds objectives |
 | `QuestObjective` | Single goal with a progress counter |
-| `QuestReward` | XP, gold, items, and reputation changes |
+| `QuestReward` | XP, gold, and items |
 | `QuestTracker` | Owns active/completed/failed sets and history |
 
 **Status lifecycle:**
@@ -479,10 +468,7 @@ Events are pushed to `game.events` during the primary pass and consumed in the o
 ```
 Available → Active → Completed
                   → Failed
-                  → Abandoned
 ```
-
-**Level-adjusted rewards:** `get_level_adjusted_rewards(player_level)` scales XP by ±10% per level difference between player and quest giver, down to 50% for players 5+ levels above the quest.
 
 ---
 

@@ -100,18 +100,18 @@ Type a command and press **Enter**. The engine responds, and you continue.
 |---------|---------|--------|
 | `look` | `l` | Describe the current room |
 | `inventory` | `inv`, `i` | List carried items and weight |
-| `status` | `stats` | Show health, gold, level, and equipment |
-| `quests` | — | List active and available quests |
+| `status` | `stats`, `score` | Show health, gold, level, and equipment |
+| `quests` | `journal` | List active and available quests |
 | `help` | `?` | Quick command reminder |
 
 ### Items
 
 | Command | Aliases | Effect |
 |---------|---------|--------|
-| `take <item>` | `get <item>` | Pick up an item from the room |
+| `take <item>` | `get <item>`, `grab <item>`, `pick <item>` | Pick up an item from the room |
 | `drop <item>` | — | Drop a carried item into the room |
 | `examine <item>` | `inspect <item>`, `x <item>` | See detailed item information |
-| `use <item>` | — | Consume, read, or activate an item |
+| `use <item>` | `consume <item>`, `drink <item>`, `eat <item>` | Consume, read, or activate an item |
 | `equip <item>` | `wield <item>`, `wear <item>` | Equip a weapon or armor |
 | `unequip <slot>` | `remove <slot>` | Remove equipment (`weapon` or `armor`) |
 
@@ -119,7 +119,8 @@ Type a command and press **Enter**. The engine responds, and you continue.
 
 | Command | Aliases | Effect |
 |---------|---------|--------|
-| `attack <target>` | `fight <target>` | Attack a hostile monster in the room |
+| `attack <target>` | `fight <target>`, `kill <target>` | Attack a hostile monster in the room |
+| `flee` | `run`, `escape` | Attempt to flee the current room (50% base chance + agility bonus) |
 
 ### Social
 
@@ -135,11 +136,13 @@ Type a command and press **Enter**. The engine responds, and you continue.
 | `accept <quest_id>` | Accept an available quest |
 | `complete <quest_id>` | Report a finished quest and collect rewards |
 
+> Aliases: `finish` works the same as `complete`.
+
 ### Game Control
 
 | Command | Aliases | Effect |
 |---------|---------|--------|
-| `quit` | `exit` | Exit the game |
+| `quit` | `exit`, `q` | Exit the game |
 
 ---
 
@@ -232,7 +235,7 @@ Drop or use something first to free capacity.
 Taken: Ancient Key.
 
 > drop ancient key
-Dropped.
+Dropped: Ancient Key.
 ```
 
 Items must be present in the current room to take. You must be holding an item to drop it.
@@ -271,7 +274,7 @@ Only weapons (`is_weapon: true`) and wearable armor (`is_wearable: true` or `is_
 
 | Item type | What happens |
 |-----------|--------------|
-| Edible, Drinkable | Restores health equal to the item's **value** (capped at max hardiness). The item is consumed and removed. |
+| Edible, Drinkable | Restores health equal to the item's **value**, clamped to [1, 20]. Health is capped at max hardiness. The item is consumed and removed. |
 | Readable | Prints the item description. The item is kept. |
 | Anything else | "You fiddle with it but nothing happens." |
 
@@ -308,10 +311,10 @@ You can't bring yourself to attack the friendly Merchant.
 - If nothing is equipped, the engine uses your best weapon ability score (default 5) as the maximum of a random roll (1 to max).
 
 **Monster counter-attack:**
-- The monster rolls `1` to `(agility ÷ 3) + 1` damage.
-- Your equipped armor's `armor_value` is subtracted from that, with a minimum of 0.
+- The monster rolls `1` to `(agility ÷ 3) + 1` damage (minimum 2).
+- Your equipped armor's `armor_value` is subtracted from that, with a minimum of 1 damage.
 
-**Example:** A monster with agility 9 deals up to `(9÷3)+1 = 4` raw damage per counter-attack. With Leather Armor (armor_value 2) you absorb 2 points, reducing the hit to at most 2.
+**Example:** A monster with agility 9 deals up to `(9÷3)+1 = 4` raw damage per counter-attack. With Leather Armor (armor_value 2) you absorb 2 points, reducing the hit to at most 2. A monster with agility 3 would deal `(3÷3)+1 = 2` raw damage.
 
 ### Victory and death
 
@@ -409,7 +412,7 @@ Location: Room 3
 | Agility | 12 | Speed; used in monster counter-attack formula |
 | Charisma | 12 | NPC interaction modifier |
 | Gold | 200 | Currency; gained from slain monsters and quests |
-| Level | 1 | Increases with XP awarded by quests |
+| Level | 1 | Increases with XP; levels up at level×100 XP |
 
 ---
 
@@ -434,7 +437,6 @@ Location: Room 3
 ### Quests
 - Accept quests the moment they appear; kill and collect objectives track automatically as you play.
 - Complete finished quests promptly to bank rewards before dying.
-- Quest prerequisites can block you from accepting later quests — complete earlier ones first.
 
 ---
 

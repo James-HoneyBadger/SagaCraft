@@ -1,765 +1,423 @@
 # SagaCraft API Reference
 
-## Core Library API
+**Version 4.0.2 · `sagacraft_rs` crate**
 
-This document provides comprehensive API documentation for the SagaCraft core library (`sagacraft_rs`). The API is designed to be modular, extensible, and easy to use for building text-based adventure games.
+Complete API documentation for the SagaCraft core library. All types are defined in the `sagacraft_rs` crate and re-exported from `lib.rs`.
+
+---
 
 ## Table of Contents
 
-1. [Core Types](#core-types)
-2. [Game State Management](#game-state-management)
-3. [Command System](#command-system)
-4. [System Architecture](#system-architecture)
-5. [Adventure Format](#adventure-format)
-6. [Error Handling](#error-handling)
-7. [Serialization](#serialization)
-8. [Examples](#examples)
+1. [Public Re-exports](#public-re-exports)
+2. [Engine](#engine)
+3. [AdventureGame](#adventuregame)
+4. [Room](#room)
+5. [Item & ItemType](#item--itemtype)
+6. [Monster & MonsterStatus](#monster--monsterstatus)
+7. [Player](#player)
+8. [GameEvent](#gameevent)
+9. [System Trait](#system-trait)
+10. [Built-in Systems](#built-in-systems)
+11. [Adventure (Secondary Format)](#adventure-secondary-format)
+12. [Error Types](#error-types)
+13. [Usage Examples](#usage-examples)
 
-## Core Types
+---
 
-### GameState
-
-The central structure representing the current state of the game.
+## Public Re-exports
 
 ```rust
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GameState {
-    pub player: Player,
-    pub current_room: String,
-    pub inventory: HashMap<String, Item>,
-    pub flags: HashMap<String, bool>,
-    pub variables: HashMap<String, i32>,
-    pub quest_states: HashMap<String, QuestState>,
-    pub game_time: DateTime<Utc>,
+// sagacraft_rs/src/lib.rs
+pub use adventure::{Adventure, AdventureError, AdventureItem, AdventureRoom};
+pub use engine::Engine;
+pub use game_state::{AdventureGame, GameEvent, Item, Monster, Player, Room, ItemType, MonsterStatus};
+pub use systems::{BasicWorldSystem, InventorySystem, CombatSystem, QuestSystem, System};
+```
+
+---
+
+## Engine
+
+High-level wrapper that creates an `AdventureGame` with all four built-in systems pre-registered. This is the recommended entry point for playing adventures.
+
+```rust
+pub struct Engine {
+    pub game: AdventureGame,
+    // intro_text: String (private)
 }
 ```
 
-#### Methods
+### Methods
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `new` | `fn new(adventure_path: impl Into<String>) -> Self` | Create engine with systems registered. Call `start()` to load. |
+| `start` | `fn start(&mut self) -> Result<String, Box<dyn Error>>` | Load adventure from disk. Returns intro/banner text. |
+| `load` | `fn load(path: impl Into<String>) -> Result<Self, Box<dyn Error>>` | Shorthand: `new()` + `start()`. |
+| `intro` | `fn intro(&self) -> &str` | Return the intro text captured at load time. |
+| `send` | `fn send(&mut self, input: &str) -> Vec<String>` | Process one line of player input. Returns response lines. |
+| `look` | `fn look(&self) -> String` | Return current room description. |
+| `is_over` | `fn is_over(&self) -> bool` | Whether the game has ended. |
+
+### Example
 
 ```rust
-impl GameState {
-    /// Creates a new game state with default values
-    pub fn new() -> Self
+use sagacraft_rs::Engine;
 
-    /// Creates a game state from a save file
-    pub fn load_from_file<P: AsRef<Path>>(path: P) -> Result<Self, GameError>
+let mut engine = Engine::load("my_adventure.json")?;
+println!("{}", engine.intro());
+println!("{}", engine.look());
 
-    /// Saves the game state to a file
-    pub fn save_to_file<P: AsRef<Path>>(&self, path: P) -> Result<(), GameError>
-
-    /// Gets a flag value, returns false if not set
-    pub fn get_flag(&self, key: &str) -> bool
-
-    /// Sets a flag value
-    pub fn set_flag(&mut self, key: &str, value: bool)
-
-    /// Gets a variable value, returns 0 if not set
-    pub fn get_variable(&self, key: &str) -> i32
-
-    /// Sets a variable value
-    pub fn set_variable(&mut self, key: &str, value: i32)
-
-    /// Adds an item to inventory
-    pub fn add_item(&mut self, item: Item)
-
-    /// Removes an item from inventory
-    pub fn remove_item(&mut self, item_id: &str) -> Option<Item>
-
-    /// Checks if player has an item
-    pub fn has_item(&self, item_id: &str) -> bool
+for line in engine.send("take sword") {
+    println!("{}", line);
 }
 ```
 
-### Player
+---
 
-Represents the player character and their attributes.
+## AdventureGame
 
-```rust
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Player {
-    pub id: String,
-    pub name: String,
-    pub health: i32,
-    pub max_health: i32,
-    pub level: i32,
-    pub experience: i32,
-    pub stats: PlayerStats,
-    pub equipment: HashMap<String, Item>,
-}
-```
-
-#### Methods
-
-```rust
-impl Player {
-    /// Creates a new player with default stats
-    pub fn new(name: &str) -> Self
-
-    /// Calculates the player's total damage from weapon and stats
-    pub fn weapon_damage(&self) -> i32
-
-    /// Calculates the player's total armor value
-    pub fn armor_value(&self) -> i32
-
-    /// Checks if the player is alive
-    pub fn is_alive(&self) -> bool
-
-    /// Applies damage to the player
-    pub fn take_damage(&mut self, damage: i32)
-
-    /// Heals the player
-    pub fn heal(&mut self, amount: i32)
-
-    /// Adds experience and handles level ups
-    pub fn add_experience(&mut self, exp: i32) -> bool // returns true if leveled up
-
-    /// Gets the experience needed for next level
-    pub fn experience_to_next_level(&self) -> i32
-}
-```
-
-### Item
-
-Represents items in the game world.
-
-```rust
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Item {
-    pub id: String,
-    pub name: String,
-    pub description: String,
-    pub item_type: ItemType,
-    pub properties: HashMap<String, String>,
-    pub stats: ItemStats,
-}
-```
-
-#### ItemType
-
-```rust
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum ItemType {
-    Weapon,
-    Armor,
-    Consumable,
-    Key,
-    Quest,
-    Miscellaneous,
-}
-```
-
-#### ItemStats
-
-```rust
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ItemStats {
-    pub damage: i32,
-    pub armor: i32,
-    pub healing: i32,
-    pub value: i32,
-}
-```
-
-## Game State Management
-
-### AdventureGame
-
-The main game engine that coordinates all systems and manages game state.
+The core runtime struct holding all game state. Used directly by the GUI IDE's Play tab and indirectly through `Engine` by the CLI player.
 
 ```rust
 pub struct AdventureGame {
-    state: GameState,
-    adventure: Option<Adventure>,
-    systems: Vec<Box<dyn System>>,
-    command_parser: CommandParser,
+    pub adventure_file: String,
+    pub rooms: HashMap<i32, Room>,
+    pub items: HashMap<i32, Item>,
+    pub monsters: HashMap<i32, Monster>,
+    pub player: Player,
+    pub turn_count: i32,
+    pub game_over: bool,
+    pub adventure_title: String,
+    pub adventure_intro: String,
+    pub systems: Vec<Box<dyn System>>,
+    pub quests: Vec<serde_json::Value>,
+    pub events: Vec<GameEvent>,
 }
 ```
 
-#### Methods
+### Methods
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `new` | `fn new(adventure_file: String) -> Self` | Create empty game with the given adventure path. |
+| `load_adventure` | `fn load_adventure(&mut self) -> Result<String, Box<dyn Error>>` | Parse JSON, populate rooms/items/monsters/quests. Returns intro banner. |
+| `get_current_room` | `fn get_current_room(&self) -> Option<&Room>` | Current room reference. |
+| `get_items_in_room` | `fn get_items_in_room(&self, room_id: i32) -> Vec<&Item>` | Items located in the given room. |
+| `get_monsters_in_room` | `fn get_monsters_in_room(&self, room_id: i32) -> Vec<&Monster>` | Living monsters in the given room. |
+| `look` | `fn look(&self) -> String` | Full room description with exits, items, and monsters. |
+| `move_player` | `fn move_player(&mut self, direction: &str) -> Option<String>` | Move via exit. Returns new room description or `None`. |
+| `take_item` | `fn take_item(&mut self, name: &str) -> Result<String, String>` | Pick up item from room. Checks weight limit. |
+| `drop_item` | `fn drop_item(&mut self, name: &str) -> Option<String>` | Drop item from inventory. Returns item name or `None`. |
+| `equip_item` | `fn equip_item(&mut self, name: &str) -> Result<String, String>` | Equip weapon or armor from inventory. |
+| `unequip_slot` | `fn unequip_slot(&mut self, slot: &str) -> Result<String, String>` | Unequip by slot: `"weapon"` or `"armor"`. |
+| `use_item` | `fn use_item(&mut self, name: &str) -> Result<String, String>` | Consume edible/drinkable or read a readable. |
+| `examine_item` | `fn examine_item(&self, name: &str) -> Option<String>` | Details for an item in inventory or room. |
+| `carry_weight` | `fn carry_weight(&self) -> (i32, i32)` | (current weight, max weight). Max = hardiness × 10. |
+| `add_system` | `fn add_system(&mut self, system: Box<dyn System>)` | Register a custom system. |
+| `process_command` | `fn process_command(&mut self, input: &str) -> Vec<String>` | Dispatch input to systems, run event observers. |
+
+---
+
+## Room
 
 ```rust
-impl AdventureGame {
-    /// Creates a new game instance
-    pub fn new(adventure_path: Option<String>) -> Self
-
-    /// Loads an adventure from a JSON file
-    pub fn load_adventure(&mut self) -> Result<(), GameError>
-
-    /// Adds a system to the game
-    pub fn add_system(&mut self, system: Box<dyn System>)
-
-    /// Processes a command and returns output lines
-    pub fn process_command(&mut self, input: &str) -> Vec<String>
-
-    /// Gets the current game state (read-only)
-    pub fn get_state(&self) -> &GameState
-
-    /// Gets mutable access to game state
-    pub fn get_state_mut(&mut self) -> &mut GameState
-
-    /// Saves the current game state
-    pub fn save_game(&self, path: &str) -> Result<(), GameError>
-
-    /// Loads a saved game state
-    pub fn load_game(&mut self, path: &str) -> Result<(), GameError>
-
-    /// Checks if the game is over
-    pub fn is_game_over(&self) -> bool
-}
-```
-
-## Command System
-
-### Command
-
-Represents a parsed command with its arguments.
-
-```rust
-#[derive(Debug, Clone)]
-pub struct Command {
-    pub verb: String,
-    pub noun: Option<String>,
-    pub preposition: Option<String>,
-    pub object: Option<String>,
-    pub raw_input: String,
-}
-```
-
-### CommandParser
-
-Parses text input into structured commands.
-
-```rust
-pub struct CommandParser {
-    // Internal state for parsing
-}
-```
-
-#### Methods
-
-```rust
-impl CommandParser {
-    /// Creates a new command parser
-    pub fn new() -> Self
-
-    /// Parses input text into a command
-    pub fn parse(&self, input: &str) -> Result<Command, ParseError>
-
-    /// Gets available commands for autocomplete
-    pub fn get_available_commands(&self) -> Vec<&str>
-
-    /// Validates if a command is well-formed
-    pub fn validate_command(&self, command: &Command) -> Result<(), ParseError>
-}
-```
-
-### ParseError
-
-```rust
-#[derive(Debug, thiserror::Error)]
-pub enum ParseError {
-    #[error("Unknown command: {0}")]
-    UnknownCommand(String),
-
-    #[error("Invalid syntax: {0}")]
-    InvalidSyntax(String),
-
-    #[error("Missing required argument: {0}")]
-    MissingArgument(String),
-}
-```
-
-## System Architecture
-
-### System Trait
-
-The core trait that all game systems must implement.
-
-```rust
-pub trait System: Send + Sync {
-    /// Gets the name of the system
-    fn name(&self) -> &str;
-
-    /// Initializes the system with the game state
-    fn initialize(&mut self, game: &mut AdventureGame) -> Result<(), SystemError>;
-
-    /// Processes a command and returns output
-    fn process_command(&mut self, command: &Command, game: &mut AdventureGame) -> Option<Vec<String>>;
-
-    /// Updates the system (called each game tick)
-    fn update(&mut self, game: &mut AdventureGame, delta_time: f64);
-
-    /// Gets the priority of this system (higher = processed first)
-    fn priority(&self) -> i32 { 0 }
-
-    /// Checks if this system can handle a command
-    fn can_handle(&self, command: &Command) -> bool;
-}
-```
-
-### Built-in Systems
-
-#### BasicWorldSystem
-
-Handles room navigation and basic world interactions.
-
-```rust
-pub struct BasicWorldSystem {
-    // Internal state
-}
-```
-
-**Commands handled:**
-- `go <direction>` - Move to another room
-- `look` - Describe current room
-- `examine <object>` - Examine an object in the room
-
-#### CombatSystem
-
-Manages combat mechanics and turn-based battles.
-
-```rust
-pub struct CombatSystem {
-    pub in_combat: bool,
-    pub current_enemy: Option<String>,
-}
-```
-
-**Commands handled:**
-- `attack <target>` - Attack an enemy
-- `defend` - Enter defensive stance
-- `use <item>` - Use an item in combat
-- `flee` - Attempt to flee from combat
-
-#### InventorySystem
-
-Manages player inventory and item interactions.
-
-```rust
-pub struct InventorySystem {
-    // Internal state
-}
-```
-
-**Commands handled:**
-- `inventory` - Show current inventory
-- `take <item>` - Pick up an item
-- `drop <item>` - Drop an item
-- `use <item>` - Use an item
-- `equip <item>` - Equip an item
-
-#### QuestSystem
-
-Tracks quest progress and objectives.
-
-```rust
-pub struct QuestSystem {
-    active_quests: HashMap<String, Quest>,
-}
-```
-
-**Commands handled:**
-- `quests` - Show active quests
-- `quest <id>` - Show quest details
-- `objective <id>` - Show objective details
-
-## Adventure Format
-
-### Adventure
-
-The top-level structure for an adventure definition.
-
-```rust
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Adventure {
-    pub metadata: AdventureMetadata,
-    pub rooms: HashMap<String, Room>,
-    pub items: HashMap<String, ItemTemplate>,
-    pub characters: HashMap<String, Character>,
-    pub quests: HashMap<String, Quest>,
-    pub dialogues: HashMap<String, Dialogue>,
-}
-```
-
-### Room
-
-Represents a location in the game world.
-
-```rust
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Room {
-    pub id: String,
+    pub id: i32,
     pub name: String,
     pub description: String,
-    pub exits: HashMap<String, Exit>,
-    pub items: Vec<String>, // Item IDs
-    pub characters: Vec<String>, // Character IDs
-    pub properties: HashMap<String, String>,
+    pub exits: HashMap<String, i32>,  // direction → room_id
+    pub is_dark: bool,
 }
 ```
 
-### Exit
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `new` | `fn new(id: i32, name: String, description: String) -> Self` | Create room (exits empty, not dark). |
+| `get_exit` | `fn get_exit(&self, direction: &str) -> Option<i32>` | Lookup exit (case-insensitive). |
 
-Defines a connection between rooms.
+---
+
+## Item & ItemType
 
 ```rust
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Exit {
-    pub to: String, // Target room ID
-    pub description: Option<String>,
-    pub locked: bool,
-    pub key_item: Option<String>, // Required item ID to unlock
-    pub hidden: bool,
+pub struct Item {
+    pub id: i32,
+    pub name: String,
+    pub description: String,
+    pub item_type: ItemType,
+    pub weight: i32,
+    pub value: i32,
+    pub is_weapon: bool,
+    pub weapon_type: i32,     // 1=axe, 2=bow, 3=club, 4=spear, 5=sword
+    pub weapon_dice: i32,
+    pub weapon_sides: i32,
+    pub is_armor: bool,
+    pub armor_value: i32,
+    pub is_takeable: bool,    // default: true
+    pub is_wearable: bool,
+    pub location: i32,        // room_id, 0=inventory, -1=worn
+}
+
+pub enum ItemType {
+    Weapon, Armor, Treasure, Readable,
+    Edible, Drinkable, Container, Normal,
 }
 ```
 
-### Quest
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `new` | `fn new(id, name, description, item_type, weight, value) -> Self` | Create item with defaults (not weapon/armor, takeable). |
+| `get_damage` | `fn get_damage(&self) -> i32` | Roll `weapon_dice` d `weapon_sides`. Returns 0 if not a weapon. |
 
-Represents a quest with objectives and rewards.
+### JSON `type` values
+
+`"weapon"`, `"armor"`, `"treasure"`, `"readable"`, `"edible"`, `"drinkable"`, `"container"`, `"normal"` (default).
+
+---
+
+## Monster & MonsterStatus
 
 ```rust
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Quest {
+pub struct Monster {
+    pub id: i32,
+    pub name: String,
+    pub description: String,
+    pub room_id: i32,
+    pub hardiness: i32,
+    pub agility: i32,
+    pub friendliness: MonsterStatus,
+    pub courage: i32,
+    pub weapon_id: Option<i32>,
+    pub armor_worn: i32,
+    pub gold: i32,
+    pub is_dead: bool,
+    pub current_health: i32,   // initialized to hardiness
+}
+
+pub enum MonsterStatus {
+    Friendly, Neutral, Hostile,
+}
+```
+
+### JSON `friendliness` values
+
+`"friendly"`, `"neutral"` (default), `"hostile"` — lowercase strings.
+
+---
+
+## Player
+
+```rust
+pub struct Player {
+    pub name: String,                         // default: "Adventurer"
+    pub hardiness: i32,                       // default: 12 (also max HP)
+    pub agility: i32,                         // default: 12
+    pub charisma: i32,                        // default: 12
+    pub weapon_ability: HashMap<i32, i32>,    // weapon_type → skill (default: 5)
+    pub armor_expertise: i32,                 // default: 0
+    pub gold: i32,                            // default: 200
+    pub current_room: i32,
+    pub current_health: i32,                  // starts at hardiness
+    pub inventory: Vec<i32>,                  // item IDs
+    pub equipped_weapon: Option<i32>,
+    pub equipped_armor: Option<i32>,
+    pub experience_points: i32,
+    pub level: i32,                           // default: 1
+}
+```
+
+### Carry weight
+
+Max carry weight = `hardiness × 10`. Attempting to take an item that exceeds this fails.
+
+### Level-up
+
+Handled by `CombatSystem`. XP threshold = `level × 100`. On level-up: hardiness +2, agility +1, current_health restored.
+
+---
+
+## GameEvent
+
+Events emitted during gameplay for cross-system communication (e.g. quest objective tracking).
+
+```rust
+pub enum GameEvent {
+    MonsterKilled { monster_name: String, room_id: i32 },
+    ItemCollected { item_name: String, item_id: i32 },
+    RoomEntered { room_id: i32 },
+    ItemUsed { item_name: String },
+}
+```
+
+After each command, `process_command()` calls `on_events()` on every system with the pending events, then clears the event buffer.
+
+---
+
+## System Trait
+
+```rust
+pub trait System {
+    /// Handle a player command. Return Some(output) to claim it; None to pass.
+    fn on_command(
+        &mut self,
+        command: &str,
+        args: &[&str],
+        game: &mut AdventureGame,
+    ) -> Option<String>;
+
+    /// React to game events (optional). Called after on_command for all systems.
+    fn on_events(
+        &mut self,
+        _events: &[GameEvent],
+        _game: &mut AdventureGame,
+    ) -> Option<String> {
+        None
+    }
+}
+```
+
+### Dispatch rules
+
+1. `process_command()` lowercases the first word as the verb, remaining words as args.
+2. Each system's `on_command()` is called in registration order. The **first** to return `Some` claims the command.
+3. If any `GameEvent`s were emitted, `on_events()` is called on **all** systems (observer pattern).
+
+---
+
+## Built-in Systems
+
+### BasicWorldSystem
+
+Commands: `look`/`l`, `go`/`move <dir>`, `north`/`south`/`east`/`west`/`up`/`down` (and `n`/`s`/`e`/`w`/`u`/`d`), `say`/`shout`/`yell <text>`, `help`/`?`.
+
+Direction abbreviations are expanded to full words before exit lookup.
+
+### InventorySystem
+
+Commands: `inventory`/`i`/`inv`, `take`/`get`/`grab`/`pick`, `drop`, `equip`/`wield`/`wear`, `unequip`/`remove`, `use`/`consume`/`drink`/`eat`, `examine`/`x`/`inspect`.
+
+### CombatSystem
+
+Commands: `attack`/`fight`/`kill <target>`, `flee`/`run`/`escape`, `status`/`stats`/`score`.
+
+Combat resolution:
+- Player attack: `weapon_ability[type] + weapon_damage - monster_agility`, floor 1.
+- Monster counter-attack: `monster_hardiness/2 - armor_value`, floor 1.
+- On monster death: gold + XP awarded, level-up check.
+- Flee: 50% base chance + agility bonus.
+
+### QuestSystem
+
+Commands: `quests`/`journal`, `accept <quest_id>`, `complete`/`finish <quest_id>`.
+
+Implements `on_events()` to auto-advance quest objectives on `MonsterKilled`, `ItemCollected`, and `RoomEntered` events.
+
+---
+
+## Adventure (Secondary Format)
+
+The `Adventure` struct is a **string-ID format** used by the TUI IDE. It is separate from the integer-ID format loaded by `AdventureGame`.
+
+```rust
+pub struct Adventure {
     pub id: String,
     pub title: String,
-    pub description: String,
-    pub objectives: Vec<Objective>,
-    pub rewards: Vec<Reward>,
-    pub prerequisites: Vec<String>, // Other quest IDs
+    pub start_room: String,
+    pub rooms: Vec<AdventureRoom>,
+    pub player_start_inventory: Vec<AdventureItem>,
 }
 ```
 
-### Objective
+### Validation
 
-A single objective within a quest.
+`Adventure::validate()` checks that `start_room` exists and all exit targets reference valid room IDs.
+
+---
+
+## Error Types
 
 ```rust
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Objective {
-    pub id: String,
-    pub description: String,
-    pub objective_type: ObjectiveType,
-    pub target: String, // Target item, room, character, etc.
-    pub count: i32, // How many times to complete
-    pub completed: bool,
+pub enum AdventureError {
+    Io(std::io::Error),
+    Json(serde_json::Error),
+    Validation(String),
 }
 ```
 
-### ObjectiveType
+`AdventureError` implements `From<std::io::Error>` and `From<serde_json::Error>`.
+
+`Engine` and `AdventureGame` methods return `Box<dyn std::error::Error>` for flexibility.
+
+---
+
+## Usage Examples
+
+### Minimal CLI player
 
 ```rust
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum ObjectiveType {
-    VisitRoom,
-    CollectItem,
-    DefeatEnemy,
-    TalkToCharacter,
-    UseItem,
-    Custom(String),
-}
-```
-
-## Error Handling
-
-### GameError
-
-The main error type for game operations.
-
-```rust
-#[derive(Debug, thiserror::Error)]
-pub enum GameError {
-    #[error("IO error: {0}")]
-    Io(#[from] std::io::Error),
-
-    #[error("JSON parsing error: {0}")]
-    Json(#[from] serde_json::Error),
-
-    #[error("Invalid adventure format: {0}")]
-    InvalidAdventure(String),
-
-    #[error("Room not found: {0}")]
-    RoomNotFound(String),
-
-    #[error("Item not found: {0}")]
-    ItemNotFound(String),
-
-    #[error("Command not recognized: {0}")]
-    InvalidCommand(String),
-
-    #[error("System error: {0}")]
-    SystemError(String),
-
-    #[error("Save file corrupted: {0}")]
-    CorruptedSave(String),
-}
-```
-
-### SystemError
-
-Errors specific to system operations.
-
-```rust
-#[derive(Debug, thiserror::Error)]
-pub enum SystemError {
-    #[error("System initialization failed: {0}")]
-    InitializationFailed(String),
-
-    #[error("Command processing failed: {0}")]
-    CommandFailed(String),
-
-    #[error("State update failed: {0}")]
-    UpdateFailed(String),
-}
-```
-
-## Serialization
-
-### Save Format
-
-Game saves use JSON format with versioning support.
-
-```rust
-#[derive(Serialize, Deserialize)]
-#[serde(tag = "version")]
-pub enum SaveFormat {
-    #[serde(rename = "1.0")]
-    V1_0 {
-        game_state: GameState,
-        adventure_path: String,
-        timestamp: DateTime<Utc>,
-    },
-    #[serde(rename = "1.1")]
-    V1_1 {
-        game_state: GameState,
-        adventure_path: String,
-        timestamp: DateTime<Utc>,
-        checksum: String,
-    },
-}
-```
-
-### Adventure Format Version
-
-```rust
-#[derive(Serialize, Deserialize)]
-#[serde(tag = "format_version")]
-pub enum AdventureFormat {
-    #[serde(rename = "1.0")]
-    V1_0(AdventureV1),
-    #[serde(rename = "1.1")]
-    V1_1(AdventureV1_1),
-}
-```
-
-## Examples
-
-### Creating a Simple Game
-
-```rust
-use sagacraft_rs::{AdventureGame, BasicWorldSystem, InventorySystem};
+use sagacraft_rs::Engine;
+use std::io::{self, Write};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Create a new game
-    let mut game = AdventureGame::new(Some("my_adventure.json".to_string()));
-
-    // Load the adventure
-    game.load_adventure()?;
-
-    // Add systems
-    game.add_system(Box::new(BasicWorldSystem::default()));
-    game.add_system(Box::new(InventorySystem::default()));
-
-    // Process some commands
-    let output = game.process_command("look");
-    for line in output {
-        println!("{}", line);
+    let mut engine = Engine::load("demo_adventure.json")?;
+    let intro = engine.intro();
+    if !intro.is_empty() {
+        println!("{}", intro);
     }
+    println!("{}", engine.look());
 
-    let output = game.process_command("go north");
-    for line in output {
-        println!("{}", line);
+    let stdin = io::stdin();
+    loop {
+        if engine.is_over() { break; }
+        print!("> ");
+        io::stdout().flush()?;
+        let mut input = String::new();
+        stdin.read_line(&mut input)?;
+        let input = input.trim();
+        if input == "quit" { break; }
+        for line in engine.send(input) {
+            println!("{}", line);
+        }
     }
-
     Ok(())
 }
 ```
 
-### Implementing a Custom System
+### Custom System
 
 ```rust
-use sagacraft_rs::{System, Command, AdventureGame, SystemError};
+use sagacraft_rs::{System, AdventureGame, GameEvent};
 
-pub struct WeatherSystem {
-    current_weather: String,
-    weather_timer: f64,
-}
+pub struct GreeterSystem;
 
-impl WeatherSystem {
-    pub fn new() -> Self {
-        Self {
-            current_weather: "clear".to_string(),
-            weather_timer: 0.0,
-        }
-    }
-}
-
-impl System for WeatherSystem {
-    fn name(&self) -> &str {
-        "weather"
-    }
-
-    fn initialize(&mut self, _game: &mut AdventureGame) -> Result<(), SystemError> {
-        Ok(())
-    }
-
-    fn process_command(&mut self, command: &Command, _game: &mut AdventureGame) -> Option<Vec<String>> {
-        match command.verb.as_str() {
-            "weather" => Some(vec![format!("The weather is currently {}.", self.current_weather)]),
+impl System for GreeterSystem {
+    fn on_command(
+        &mut self, command: &str, _args: &[&str], _game: &mut AdventureGame,
+    ) -> Option<String> {
+        match command {
+            "hello" | "greet" => Some("Hello, adventurer!".to_string()),
             _ => None,
         }
     }
 
-    fn update(&mut self, _game: &mut AdventureGame, delta_time: f64) {
-        self.weather_timer += delta_time;
-        if self.weather_timer > 60.0 { // Change weather every minute
-            self.weather_timer = 0.0;
-            self.current_weather = match rand::random::<u8>() % 4 {
-                0 => "clear",
-                1 => "cloudy",
-                2 => "rainy",
-                _ => "stormy",
-            }.to_string();
+    fn on_events(
+        &mut self, events: &[GameEvent], _game: &mut AdventureGame,
+    ) -> Option<String> {
+        for event in events {
+            if let GameEvent::RoomEntered { room_id } = event {
+                return Some(format!("Welcome to room {}!", room_id));
+            }
         }
-    }
-
-    fn can_handle(&self, command: &Command) -> bool {
-        matches!(command.verb.as_str(), "weather")
+        None
     }
 }
 ```
 
-### Loading and Saving Games
+Register it before loading:
 
 ```rust
-use sagacraft_rs::AdventureGame;
-
-fn save_game_example(game: &AdventureGame) -> Result<(), Box<dyn std::error::Error>> {
-    game.save_game("savegame.json")?;
-    println!("Game saved successfully!");
-    Ok(())
-}
-
-fn load_game_example() -> Result<AdventureGame, Box<dyn std::error::Error>> {
-    let mut game = AdventureGame::new(Some("my_adventure.json".to_string()));
-    game.load_game("savegame.json")?;
-    println!("Game loaded successfully!");
-    Ok(game)
-}
+let mut engine = Engine::new("adventure.json");
+engine.game.add_system(Box::new(GreeterSystem));
+engine.start()?;
 ```
-
-### Creating Adventure Content
-
-```rust
-use sagacraft_rs::*;
-use std::collections::HashMap;
-
-fn create_simple_adventure() -> Adventure {
-    let mut rooms = HashMap::new();
-
-    // Create a starting room
-    let mut exits = HashMap::new();
-    exits.insert("north".to_string(), Exit {
-        to: "forest_clearing".to_string(),
-        description: Some("A path leads north into the forest.".to_string()),
-        locked: false,
-        key_item: None,
-        hidden: false,
-    });
-
-    rooms.insert("starting_cabin".to_string(), Room {
-        id: "starting_cabin".to_string(),
-        name: "Old Cabin".to_string(),
-        description: "You are in an old, dusty cabin. Sunlight filters through cracks in the wooden walls.".to_string(),
-        exits,
-        items: vec!["rusty_key".to_string()],
-        characters: vec![],
-        properties: HashMap::new(),
-    });
-
-    // Create a forest clearing
-    let mut clearing_exits = HashMap::new();
-    clearing_exits.insert("south".to_string(), Exit {
-        to: "starting_cabin".to_string(),
-        description: Some("The cabin is visible to the south.".to_string()),
-        locked: false,
-        key_item: None,
-        hidden: false,
-    });
-
-    rooms.insert("forest_clearing".to_string(), Room {
-        id: "forest_clearing".to_string(),
-        name: "Forest Clearing".to_string(),
-        description: "A small clearing in the forest. Tall trees surround you on all sides.".to_string(),
-        exits: clearing_exits,
-        items: vec![],
-        characters: vec!["mysterious_stranger".to_string()],
-        properties: HashMap::new(),
-    });
-
-    // Create items
-    let mut items = HashMap::new();
-    items.insert("rusty_key".to_string(), ItemTemplate {
-        id: "rusty_key".to_string(),
-        name: "Rusty Key".to_string(),
-        description: "An old, rusty key. It might open something.".to_string(),
-        item_type: ItemType::Key,
-        properties: HashMap::new(),
-        stats: ItemStats::default(),
-    });
-
-    // Create characters
-    let mut characters = HashMap::new();
-    characters.insert("mysterious_stranger".to_string(), Character {
-        id: "mysterious_stranger".to_string(),
-        name: "Mysterious Stranger".to_string(),
-        description: "A hooded figure stands silently in the clearing.".to_string(),
-        dialogue_id: Some("stranger_greeting".to_string()),
-        properties: HashMap::new(),
-    });
-
-    // Create dialogues
-    let mut dialogues = HashMap::new();
-    dialogues.insert("stranger_greeting".to_string(), Dialogue {
-        id: "stranger_greeting".to_string(),
-        text: "Greetings, traveler. What brings you to these woods?".to_string(),
-        responses: vec![
-            DialogueResponse {
-                text: "I'm looking for adventure.".to_string(),
-                next_dialogue: None,
-                action: Some("set_flag adventuring true".to_string()),
-            },
-            DialogueResponse {
-                text: "Just passing through.".to_string(),
-                next_dialogue: None,
-                action: None,
-            },
-        ],
-    });
-
-    Adventure {
-        metadata: AdventureMetadata {
-            title: "Simple Forest Adventure".to_string(),
-            author: "Game Developer".to_string(),
-            version: "1.0".to_string(),
-            description: "A simple adventure in the forest.".to_string(),
-        },
-        rooms,
-        items,
-        characters,
-        quests: HashMap::new(),
-        dialogues,
-    }
-}
-```
-
-This API reference provides the foundation for building rich, interactive text-based adventures with SagaCraft. The modular system architecture allows for easy extension and customization of game mechanics.

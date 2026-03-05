@@ -226,9 +226,7 @@ sagacraft_ide_gui/      # GUI editor
 
 ```
 docs/                   # Documentation
-tests/                  # Integration tests
-scripts/               # Build and utility scripts
-Cargo.toml            # Workspace configuration
+Cargo.toml              # Workspace configuration
 ```
 
 ## Testing
@@ -276,7 +274,7 @@ use sagacraft_rs::{AdventureGame, BasicWorldSystem};
 
 #[test]
 fn test_complete_adventure_flow() {
-    let mut game = AdventureGame::new(Some("test_adventure.json".to_string()));
+    let mut game = AdventureGame::new("test_adventure.json".to_string());
     assert!(game.load_adventure().is_ok());
 
     game.add_system(Box::new(BasicWorldSystem::default()));
@@ -441,31 +439,39 @@ impl ThreadSafeGameState {
 }
 ```
 
-### Plugin System Architecture
+### Extending the Engine
+
+The primary extension point is the `System` trait. To add custom game logic:
 
 ```rust
-// Plugin trait
-pub trait Plugin: Send + Sync {
-    fn name(&self) -> &str;
-    fn version(&self) -> &str;
-    fn initialize(&mut self, game: &mut AdventureGame) -> Result<(), PluginError>;
-    fn get_systems(&self) -> Vec<Box<dyn System>>;
-    fn handle_command(&self, command: &str, game: &mut AdventureGame) -> Option<Vec<String>>;
-}
+use sagacraft_rs::{System, AdventureGame, GameEvent};
 
-// Plugin loading
-pub struct PluginManager {
-    plugins: HashMap<String, Box<dyn Plugin>>,
-}
+pub struct MySystem;
 
-impl PluginManager {
-    pub fn load_plugin(&mut self, path: &Path) -> Result<(), PluginError> {
-        // Dynamic library loading logic
-        // ...
-        Ok(())
+impl System for MySystem {
+    fn on_command(&mut self, command: &str, args: &[&str], game: &mut AdventureGame) -> Option<String> {
+        match command {
+            "my_command" => Some("Custom response!".to_string()),
+            _ => None,
+        }
+    }
+
+    fn on_events(&mut self, events: &[GameEvent], _game: &mut AdventureGame) -> Option<String> {
+        // React to game events (optional)
+        None
     }
 }
 ```
+
+Register custom systems on the engine before loading:
+
+```rust
+let mut engine = Engine::new("adventure.json");
+engine.game.add_system(Box::new(MySystem));
+engine.start()?;
+```
+
+See the [API Reference](API_Reference.md) for the full `System` trait and `GameEvent` documentation.
 
 ### Serialization Strategies
 
