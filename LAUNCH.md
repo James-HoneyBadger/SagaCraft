@@ -1,44 +1,39 @@
-# Quick Launch Scripts
+# Quick Launch
 
-SagaCraft includes two convenient launcher scripts for rapid access:
+SagaCraft includes two convenience scripts in the project root:
 
-Manuals:
-- `docs/User_Manual.md`
-- `docs/Game_Designer_Manual.md`
-- `docs/Technical_Reference.md`
+## IDE — Adventure Creator
 
-## IDE - Adventure Creator
 ```bash
 ./Saga.sh
 ```
 
-Opens the SagaCraft Adventure IDE for creating, editing, and testing adventures.
+Opens the SagaCraft TUI Adventure IDE for creating, editing, and testing adventures.
 
-## Player - Adventure Player
+## Player — Adventure Player
+
 ```bash
 ./Play.sh
 ```
 
-Launches the lightweight SagaCraft Player to load and play adventures.
+Launches the CLI player with `demo_adventure.json`.
 
-Optional adventure file parameter:
-```bash
-./Play.sh adventures/my_adventure.json
-```
-
-## Direct module commands (no scripts)
+Pass a custom adventure file:
 
 ```bash
-PYTHONPATH=src python -m sagacraft.ui.ide
-PYTHONPATH=src python -m sagacraft.ui.player
+./Play.sh my_adventure.json
 ```
 
----
+## Direct Commands (no scripts)
 
-Both scripts automatically handle:
-- Virtual environment activation
-- Python path configuration
-- Working directory setup
-- Argument forwarding
+```bash
+cargo run --bin sagacraft_player -- shattered_realms_demo.json
+cargo run --bin sagacraft_ide_tui
+cargo run --bin sagacraft_ide_gui
+```
 
-No complex command-line parameters needed!
+## Documentation
+
+- [User Manual](docs/User_Manual.md)
+- [Game Designer Manual](docs/Game_Designer_Manual.md)
+- [Technical Reference](docs/Technical_Reference.md)

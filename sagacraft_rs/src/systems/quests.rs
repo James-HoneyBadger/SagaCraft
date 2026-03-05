@@ -10,8 +10,6 @@ pub enum QuestStatus {
     Active,
     Completed,
     Failed,
-    Abandoned,
-    Blocked,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -28,12 +26,10 @@ pub enum ObjectiveType {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum QuestDifficulty {
-    Trivial,
     Easy,
     Moderate,
     Challenging,
     Hard,
-    Legendary,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -44,8 +40,6 @@ pub struct QuestObjective {
     pub target: String,
     pub required_count: i32,
     pub current_count: i32,
-    pub is_optional: bool,
-    pub completion_reward: i32,
 }
 
 impl QuestObjective {
@@ -57,8 +51,6 @@ impl QuestObjective {
             target,
             required_count,
             current_count: 0,
-            is_optional: false,
-            completion_reward: 0,
         }
     }
 
@@ -108,8 +100,7 @@ impl QuestStage {
     }
 
     pub fn is_complete(&self) -> bool {
-        let mut required = self.objectives.iter().filter(|o| !o.is_optional);
-        required.all(|o| o.is_complete())
+        self.objectives.iter().all(|o| o.is_complete())
     }
 
     pub fn get_progress_percentage(&self) -> i32 {
@@ -120,31 +111,15 @@ impl QuestStage {
             total_progress / self.objectives.len() as i32
         }
     }
-
-    pub fn get_optional_completed(&self) -> i32 {
-        self.objectives.iter().filter(|o| o.is_optional && o.is_complete()).count() as i32
-    }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct QuestReward {
     pub experience_points: i32,
     pub gold: i32,
     pub items: Vec<String>,
     pub reputation_changes: HashMap<String, i32>,
     pub special_rewards: HashMap<String, serde_json::Value>,
-}
-
-impl Default for QuestReward {
-    fn default() -> Self {
-        Self {
-            experience_points: 0,
-            gold: 0,
-            items: Vec::new(),
-            reputation_changes: HashMap::new(),
-            special_rewards: HashMap::new(),
-        }
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -157,15 +132,10 @@ pub struct Quest {
     pub difficulty: QuestDifficulty,
     pub stages: Vec<QuestStage>,
     pub rewards: QuestReward,
-    pub prerequisites: Vec<String>,
-    pub blocking_quests: Vec<String>,
-    pub time_limit_hours: Option<i32>,
     pub status: QuestStatus,
     pub acceptance_time: Option<String>,
     pub completion_time: Option<String>,
     pub current_stage_index: usize,
-    pub is_radiant: bool,
-    pub chain_id: Option<String>,
 }
 
 impl Quest {
@@ -179,15 +149,10 @@ impl Quest {
             difficulty: QuestDifficulty::Moderate,
             stages: Vec::new(),
             rewards: QuestReward::default(),
-            prerequisites: Vec::new(),
-            blocking_quests: Vec::new(),
-            time_limit_hours: None,
             status: QuestStatus::Available,
             acceptance_time: None,
             completion_time: None,
             current_stage_index: 0,
-            is_radiant: false,
-            chain_id: None,
         }
     }
 
@@ -195,52 +160,15 @@ impl Quest {
         self.stages.get(self.current_stage_index)
     }
 
-    pub fn advance_stage(&mut self) -> bool {
-        if self.current_stage_index < self.stages.len() - 1 {
-            self.current_stage_index += 1;
-            true
-        } else {
-            false
-        }
-    }
-
     pub fn is_complete(&self) -> bool {
         !self.stages.is_empty()
             && self.current_stage_index >= self.stages.len() - 1
-            && self.get_current_stage().map_or(false, |s: &QuestStage| s.is_complete())
+            && self.get_current_stage().is_some_and(|s: &QuestStage| s.is_complete())
     }
 
     pub fn mark_complete(&mut self) {
         self.status = QuestStatus::Completed;
         self.completion_time = Some(chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string());
-    }
-
-    pub fn mark_failed(&mut self) {
-        self.status = QuestStatus::Failed;
-        self.completion_time = Some(chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string());
-    }
-
-    pub fn can_accept(&self, completed_quests: &HashSet<String>) -> bool {
-        self.prerequisites.iter().all(|prereq| completed_quests.contains(prereq))
-    }
-
-    pub fn get_level_adjusted_rewards(&self, player_level: i32) -> QuestReward {
-        let level_diff = player_level - self.quest_giver_level;
-        let xp_multiplier = if level_diff < 0 {
-            1.0 + (level_diff.abs() as f32) * 0.1
-        } else if level_diff > 5 {
-            0.5
-        } else {
-            1.0
-        };
-
-        QuestReward {
-            experience_points: ((self.rewards.experience_points as f32) * xp_multiplier) as i32,
-            gold: self.rewards.gold,
-            items: self.rewards.items.clone(),
-            reputation_changes: self.rewards.reputation_changes.clone(),
-            special_rewards: self.rewards.special_rewards.clone(),
-        }
     }
 }
 
@@ -297,22 +225,6 @@ impl QuestTracker {
         }
     }
 
-    pub fn fail_quest(&mut self, quest_id: &str) -> bool {
-        if let Some(quest) = self.active_quests.get_mut(quest_id) {
-            quest.mark_failed();
-            self.failed_quests.insert(quest_id.to_string());
-            self.active_quests.remove(quest_id);
-            self.record_history(quest_id.to_string(), QuestStatus::Failed);
-            true
-        } else {
-            false
-        }
-    }
-
-    pub fn get_quest(&self, quest_id: &str) -> Option<&Quest> {
-        self.active_quests.get(quest_id)
-    }
-
     pub fn get_active_count(&self) -> usize {
         self.active_quests.len()
     }
@@ -330,6 +242,7 @@ impl QuestTracker {
 pub struct QuestSystem {
     pub tracker: QuestTracker,
     pub available_quests: HashMap<String, Quest>,
+    loaded: bool,
 }
 
 impl QuestSystem {
@@ -337,6 +250,7 @@ impl QuestSystem {
         Self {
             tracker: QuestTracker::new(),
             available_quests: HashMap::new(),
+            loaded: false,
         }
     }
 }
@@ -349,9 +263,10 @@ impl Default for QuestSystem {
 
 impl QuestSystem {
     pub fn load_quests_from_game(&mut self, game: &AdventureGame) {
-        if !self.available_quests.is_empty() {
-            return; // Already loaded
+        if self.loaded {
+            return; // Already loaded — guard prevents reset when available_quests empties later
         }
+        self.loaded = true;
 
         for quest_data in &game.quests {
             if let Ok(quest) = self.parse_quest_from_json(quest_data) {
@@ -364,6 +279,20 @@ impl QuestSystem {
         let id = data.get("id").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
         let title = data.get("title").and_then(|v| v.as_str()).unwrap_or("").to_string();
         let description = data.get("description").and_then(|v| v.as_str()).unwrap_or("").to_string();
+        let giver_npc = data.get("giver_npc").and_then(|v| v.as_str()).unwrap_or("").to_string();
+
+        // Parse rewards: supports both {"rewards": {"gold": N, "xp": N}} and flat fields
+        let (reward_gold, reward_xp) = if let Some(rewards) = data.get("rewards") {
+            let gold = rewards.get("gold").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
+            let xp = rewards.get("xp")
+                .or_else(|| rewards.get("experience_points"))
+                .and_then(|v| v.as_i64()).unwrap_or(0) as i32;
+            (gold, xp)
+        } else {
+            let gold = data.get("rewards_gold").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
+            let xp = data.get("rewards_xp").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
+            (gold, xp)
+        };
 
         let mut stages = Vec::new();
         let mut objectives = Vec::new();
@@ -371,55 +300,61 @@ impl QuestSystem {
         // Parse objectives
         if let Some(obj_data) = data.get("objectives").and_then(|v| v.as_array()) {
             for obj in obj_data {
+                // Skip plain-string objectives (e.g. from GUI IDE)
                 let obj_type = match obj.get("type").and_then(|v| v.as_str()).unwrap_or("") {
                     "kill_monster" => ObjectiveType::Kill,
-                    "collect_item" => ObjectiveType::Collect,
-                    "reach_room" => ObjectiveType::Explore,
-                    "talk_to_npc" => ObjectiveType::Talk,
-                    _ => ObjectiveType::Discover,
+                    "collect_item"  => ObjectiveType::Collect,
+                    "reach_room"    => ObjectiveType::Explore,
+                    "talk_to_npc"   => ObjectiveType::Talk,
+                    _               => ObjectiveType::Discover,
                 };
 
-                let target = obj.get("target_id").and_then(|v| v.as_i64()).unwrap_or(0).to_string();
+                // target_id can be a string name or an integer id
+                let target = obj.get("target_id")
+                    .and_then(|v| v.as_str().map(str::to_string)
+                        .or_else(|| v.as_i64().map(|n| n.to_string())))
+                    .unwrap_or_default();
+
                 let desc = obj.get("description").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                let required = obj.get("count").and_then(|v| v.as_i64()).unwrap_or(1) as i32;
 
                 objectives.push(QuestObjective::new(
                     format!("obj_{}", objectives.len()),
                     obj_type,
                     desc,
                     target,
-                    1, // required_count
+                    required,
                 ));
             }
         }
 
-        // Create a single stage quest for now
+        // Wrap objectives in a single stage
         stages.push(QuestStage {
             stage_id: "main".to_string(),
             stage_number: 1,
-            title: "Main Quest".to_string(),
+            title: "Main Objectives".to_string(),
             description: description.clone(),
             objectives,
-            stage_reward_xp: 0, // TODO: parse rewards
+            stage_reward_xp: reward_xp,
         });
 
         Ok(Quest {
             quest_id: id.to_string(),
             title,
             description,
-            giver_npc: "".to_string(), // TODO: parse from JSON
+            giver_npc,
             quest_giver_level: 1,
             difficulty: QuestDifficulty::Moderate,
             stages,
-            rewards: QuestReward::default(), // TODO: parse rewards
-            prerequisites: vec![],
-            blocking_quests: vec![],
-            time_limit_hours: None,
+            rewards: QuestReward {
+                experience_points: reward_xp,
+                gold: reward_gold,
+                ..QuestReward::default()
+            },
             status: QuestStatus::Available,
             acceptance_time: None,
             completion_time: None,
             current_stage_index: 0,
-            is_radiant: false,
-            chain_id: None,
         })
     }
 
@@ -432,18 +367,12 @@ impl QuestSystem {
     }
 
     pub fn accept_quest(&mut self, quest_id: &str) -> Result<String, String> {
-        if let Some(quest) = self.available_quests.get(quest_id) {
-            if quest.can_accept(&self.tracker.completed_quests) {
-                let quest_clone = quest.clone();
-                let title = quest.title.clone();
-                if self.tracker.accept_quest(quest_clone) {
-                    self.available_quests.remove(quest_id); // Remove from available
-                    Ok(format!("Accepted quest: {}", title))
-                } else {
-                    Err("Failed to accept quest".to_string())
-                }
+        if let Some(quest) = self.available_quests.remove(quest_id) {
+            let title = quest.title.clone();
+            if self.tracker.accept_quest(quest) {
+                Ok(format!("Accepted quest: {}", title))
             } else {
-                Err("Prerequisites not met".to_string())
+                Err("Quest already active or completed".to_string())
             }
         } else {
             Err("Quest not found".to_string())
@@ -465,9 +394,7 @@ impl QuestSystem {
         }
         result.push_str("\nAvailable Quests:\n");
         for quest in self.available_quests.values() {
-            if quest.can_accept(&self.tracker.completed_quests) {
-                result.push_str(&format!("- {}: {}\n", quest.title, quest.description));
-            }
+            result.push_str(&format!("- {}: {}\n", quest.title, quest.description));
         }
         result
     }
@@ -478,7 +405,7 @@ impl System for QuestSystem {
         self.load_quests_from_game(game);
 
         match command {
-            "quests" => Some(self.show_quests()),
+            "quests" | "journal" => Some(self.show_quests()),
             "accept" => {
                 if args.is_empty() {
                     Some("Usage: accept <quest_id>. Use 'quests' to see available quests.".to_string())
@@ -489,7 +416,7 @@ impl System for QuestSystem {
                     }
                 }
             }
-            "complete" => {
+            "complete" | "finish" => {
                 if args.is_empty() {
                     Some("Usage: complete <quest_id>. Use 'quests' to see active quests.".to_string())
                 } else {
@@ -510,65 +437,85 @@ impl System for QuestSystem {
                     }
                 }
             }
-            // Observer pass: react to game events emitted by other systems.
-            "__events__" => {
-                let mut notifications: Vec<String> = Vec::new();
+            _ => None,
+        }
+    }
 
-                for event in &game.events {
-                    match event {
-                        GameEvent::MonsterKilled { monster_name, .. } => {
-                            for quest in self.tracker.active_quests.values_mut() {
-                                if let Some(stage) = quest.stages.get_mut(quest.current_stage_index) {
-                                    for obj in &mut stage.objectives {
-                                        if obj.obj_type == crate::systems::quests::ObjectiveType::Kill
-                                            && monster_name.to_lowercase().contains(&obj.target.to_lowercase())
-                                            && !obj.is_complete()
-                                        {
-                                            let gained = obj.progress(1);
-                                            if gained > 0 {
-                                                notifications.push(format!(
-                                                    "[{}] {} ({}/{})",
-                                                    quest.title, obj.description,
-                                                    obj.current_count, obj.required_count
-                                                ));
-                                            }
-                                        }
+    fn on_events(&mut self, events: &[GameEvent], _game: &mut AdventureGame) -> Option<String> {
+        let mut notifications: Vec<String> = Vec::new();
+
+        for event in events {
+            match event {
+                GameEvent::MonsterKilled { monster_name, .. } => {
+                    for quest in self.tracker.active_quests.values_mut() {
+                        if let Some(stage) = quest.stages.get_mut(quest.current_stage_index) {
+                            for obj in &mut stage.objectives {
+                                if obj.obj_type == ObjectiveType::Kill
+                                    && !obj.target.is_empty()
+                                    && monster_name.to_lowercase().contains(&obj.target.to_lowercase())
+                                    && !obj.is_complete()
+                                {
+                                    let gained = obj.progress(1);
+                                    if gained > 0 {
+                                        notifications.push(format!(
+                                            "[Quest: {}] {} ({}/{})",
+                                            quest.title, obj.description,
+                                            obj.current_count, obj.required_count
+                                        ));
                                     }
                                 }
                             }
                         }
-                        GameEvent::ItemCollected { item_name, .. } => {
-                            for quest in self.tracker.active_quests.values_mut() {
-                                if let Some(stage) = quest.stages.get_mut(quest.current_stage_index) {
-                                    for obj in &mut stage.objectives {
-                                        if obj.obj_type == crate::systems::quests::ObjectiveType::Collect
-                                            && item_name.to_lowercase().contains(&obj.target.to_lowercase())
-                                            && !obj.is_complete()
-                                        {
-                                            let gained = obj.progress(1);
-                                            if gained > 0 {
-                                                notifications.push(format!(
-                                                    "[{}] {} ({}/{})",
-                                                    quest.title, obj.description,
-                                                    obj.current_count, obj.required_count
-                                                ));
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        _ => {}
                     }
                 }
-
-                if notifications.is_empty() {
-                    None
-                } else {
-                    Some(format!("Quest update:\n{}", notifications.join("\n")))
+                GameEvent::ItemCollected { item_name, .. } => {
+                    for quest in self.tracker.active_quests.values_mut() {
+                        if let Some(stage) = quest.stages.get_mut(quest.current_stage_index) {
+                            for obj in &mut stage.objectives {
+                                if obj.obj_type == ObjectiveType::Collect
+                                    && !obj.target.is_empty()
+                                    && item_name.to_lowercase().contains(&obj.target.to_lowercase())
+                                    && !obj.is_complete()
+                                {
+                                    let gained = obj.progress(1);
+                                    if gained > 0 {
+                                        notifications.push(format!(
+                                            "[Quest: {}] {} ({}/{})",
+                                            quest.title, obj.description,
+                                            obj.current_count, obj.required_count
+                                        ));
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
+                GameEvent::RoomEntered { room_id } => {
+                    for quest in self.tracker.active_quests.values_mut() {
+                        if let Some(stage) = quest.stages.get_mut(quest.current_stage_index) {
+                            for obj in &mut stage.objectives {
+                                if obj.obj_type == ObjectiveType::Explore
+                                    && obj.target == room_id.to_string()
+                                    && !obj.is_complete()
+                                {
+                                    obj.progress(1);
+                                    notifications.push(format!(
+                                        "[Quest: {}] {}",
+                                        quest.title, obj.description
+                                    ));
+                                }
+                            }
+                        }
+                    }
+                }
+                _ => {}
             }
-            _ => None,
+        }
+
+        if notifications.is_empty() {
+            None
+        } else {
+            Some(format!("Quest update:\n{}", notifications.join("\n")))
         }
     }
 }

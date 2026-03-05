@@ -2,6 +2,11 @@ use crate::systems::System;
 use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
+/// Case-insensitive substring match for item/monster names.
+pub(crate) fn name_matches(name: &str, query: &str) -> bool {
+    name.to_lowercase().contains(&query.to_lowercase())
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ItemType {
@@ -96,10 +101,11 @@ pub struct Monster {
     pub armor_worn: i32,
     pub gold: i32,
     pub is_dead: bool,
-    pub current_health: Option<i32>,
+    pub current_health: i32,
 }
 
 impl Monster {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         id: i32,
         name: String,
@@ -110,7 +116,6 @@ impl Monster {
         friendliness: MonsterStatus,
         courage: i32,
     ) -> Self {
-        let current_health = Some(hardiness);
         Self {
             id,
             name,
@@ -124,7 +129,7 @@ impl Monster {
             armor_worn: 0,
             gold: 0,
             is_dead: false,
-            current_health,
+            current_health: hardiness,
         }
     }
 }
@@ -164,7 +169,7 @@ pub struct Player {
     pub armor_expertise: i32,
     pub gold: i32,
     pub current_room: i32,
-    pub current_health: Option<i32>,
+    pub current_health: i32,
     pub inventory: Vec<i32>, // item IDs
     pub equipped_weapon: Option<i32>,
     pub equipped_armor: Option<i32>,
@@ -187,7 +192,7 @@ impl Player {
             armor_expertise: 0,
             gold: 200,
             current_room: 1,
-            current_health: Some(12),
+            current_health: 12,
             inventory: Vec::new(),
             equipped_weapon: None,
             equipped_armor: None,
@@ -218,12 +223,10 @@ pub struct AdventureGame {
     pub items: HashMap<i32, Item>,
     pub monsters: HashMap<i32, Monster>,
     pub player: Player,
-    pub companions: Vec<String>, // Party members
     pub turn_count: i32,
     pub game_over: bool,
     pub adventure_title: String,
     pub adventure_intro: String,
-    pub effects: Vec<serde_json::Value>, // Special events
     pub systems: Vec<Box<dyn System>>,
     pub quests: Vec<serde_json::Value>,  // Quest definitions
     pub events: Vec<GameEvent>,           // Inter-system event bus
@@ -237,12 +240,10 @@ impl AdventureGame {
             items: HashMap::new(),
             monsters: HashMap::new(),
             player: Player::new(),
-            companions: Vec::new(),
             turn_count: 0,
             game_over: false,
             adventure_title: String::new(),
             adventure_intro: String::new(),
-            effects: Vec::new(),
             systems: Vec::new(),
             quests: Vec::new(),
             events: Vec::new(),
@@ -329,11 +330,6 @@ impl AdventureGame {
                 monster.gold = mon_data.get("gold").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
                 self.monsters.insert(monster.id, monster);
             }
-        }
-
-        // Load effects
-        if let Some(effects) = data.get("effects").and_then(|v| v.as_array()) {
-            self.effects = effects.clone();
         }
 
         // Load quests
@@ -426,15 +422,14 @@ impl AdventureGame {
     }
 
     pub fn move_player(&mut self, direction: &str) -> Option<String> {
-        if let Some(room) = self.get_current_room() {
-            if let Some(new_room_id) = room.get_exit(direction) {
-                if self.rooms.contains_key(&new_room_id) {
-                    self.player.current_room = new_room_id;
-                    self.turn_count += 1;
-                    self.events.push(GameEvent::RoomEntered { room_id: new_room_id });
-                    return Some(self.look());
-                }
-            }
+        if let Some(room) = self.get_current_room()
+            && let Some(new_room_id) = room.get_exit(direction)
+            && self.rooms.contains_key(&new_room_id)
+        {
+            self.player.current_room = new_room_id;
+            self.turn_count += 1;
+            self.events.push(GameEvent::RoomEntered { room_id: new_room_id });
+            return Some(self.look());
         }
         None
     }
@@ -449,7 +444,7 @@ impl AdventureGame {
 
         let matched = self.get_items_in_room(self.player.current_room)
             .into_iter()
-            .find(|i| i.name.to_lowercase().contains(&item_name.to_lowercase()) && i.is_takeable)
+            .find(|i| name_matches(&i.name, item_name) && i.is_takeable)
             .map(|i| (i.id, i.name.clone(), i.weight));
 
         match matched {
@@ -466,25 +461,29 @@ impl AdventureGame {
                     item_ref.location = 0;
                 }
                 self.events.push(GameEvent::ItemCollected { item_name: name.clone(), item_id: id });
+                self.turn_count += 1;
                 Ok(format!("Taken: {}.", name))
             }
         }
     }
 
-    pub fn drop_item(&mut self, item_name: &str) -> bool {
-        let matched_id = self.player.inventory.iter().copied()
-            .find(|&id| self.items.get(&id)
-                .map_or(false, |i| i.name.to_lowercase().contains(&item_name.to_lowercase())));
-        if let Some(item_id) = matched_id {
+    /// Drop an item from inventory onto the floor. Returns the item name on success, or `None`.
+    pub fn drop_item(&mut self, item_name: &str) -> Option<String> {
+        let matched = self.player.inventory.iter().copied()
+            .find_map(|id| self.items.get(&id)
+                .filter(|i| name_matches(&i.name, item_name))
+                .map(|i| (id, i.name.clone())));
+        if let Some((item_id, name)) = matched {
             self.player.inventory.retain(|&id| id != item_id);
             if self.player.equipped_weapon == Some(item_id) { self.player.equipped_weapon = None; }
             if self.player.equipped_armor == Some(item_id) { self.player.equipped_armor = None; }
             if let Some(item_ref) = self.items.get_mut(&item_id) {
                 item_ref.location = self.player.current_room;
             }
-            true
+            self.turn_count += 1;
+            Some(name)
         } else {
-            false
+            None
         }
     }
 
@@ -492,7 +491,7 @@ impl AdventureGame {
     pub fn equip_item(&mut self, item_name: &str) -> Result<String, String> {
         let matched = self.player.inventory.iter().copied().find_map(|id| {
             self.items.get(&id)
-                .filter(|i| i.name.to_lowercase().contains(&item_name.to_lowercase())
+                .filter(|i| name_matches(&i.name, item_name)
                     && (i.is_weapon || i.is_wearable || i.is_armor))
                 .map(|i| (i.id, i.name.clone(), i.is_weapon))
         });
@@ -535,7 +534,7 @@ impl AdventureGame {
     pub fn use_item(&mut self, item_name: &str) -> Result<String, String> {
         let matched = self.player.inventory.iter().copied().find_map(|id| {
             self.items.get(&id)
-                .filter(|i| i.name.to_lowercase().contains(&item_name.to_lowercase()))
+                .filter(|i| name_matches(&i.name, item_name))
                 .map(|i| (i.id, i.name.clone(), i.item_type.clone(), i.description.clone(), i.value))
         });
         match matched {
@@ -544,13 +543,13 @@ impl AdventureGame {
                 let msg = match item_type {
                     ItemType::Edible | ItemType::Drinkable => {
                         let heal = value.clamp(1, 20);
-                        let before = self.player.current_health.unwrap_or(0);
-                        let after = (before + heal).min(self.player.hardiness);
-                        self.player.current_health = Some(after);
+                        let after = (self.player.current_health + heal).min(self.player.hardiness);
+                        self.player.current_health = after;
                         self.player.inventory.retain(|&i| i != id);
-                        // Remove consumed item from the world entirely (avoid HashMap growth)
+                        // Remove consumed item from the world entirely
                         self.items.remove(&id);
                         self.events.push(GameEvent::ItemUsed { item_name: name.clone() });
+                        self.turn_count += 1;
                         format!("You consume the {}. Health: {}/{}.", name, after, self.player.hardiness)
                     }
                     ItemType::Readable => {
@@ -569,9 +568,9 @@ impl AdventureGame {
     pub fn examine_item(&self, item_name: &str) -> Option<String> {
         let in_inventory = self.player.inventory.iter().copied()
             .find_map(|id| self.items.get(&id)
-                .filter(|i| i.name.to_lowercase().contains(&item_name.to_lowercase())));
+                .filter(|i| name_matches(&i.name, item_name)));
         let in_room = self.get_items_in_room(self.player.current_room).into_iter()
-            .find(|i| i.name.to_lowercase().contains(&item_name.to_lowercase()));
+            .find(|i| name_matches(&i.name, item_name));
         let item = in_inventory.or(in_room)?;
 
         let mut msg = format!("{}\n{}", item.name, item.description);
@@ -616,14 +615,15 @@ impl AdventureGame {
             }
         }
 
-        // Observer pass: every system may react to pending game events (returns None to stay silent).
+        // Observer pass: systems react to pending game events via on_events().
         if !self.events.is_empty() {
+            let events = std::mem::take(&mut self.events);
             for system in &mut systems {
-                if let Some(side) = system.on_command("__events__", &[], self) {
+                if let Some(side) = system.on_events(&events, self) {
                     results.push(side);
                 }
             }
-            self.events.clear();
+            // events is dropped here; self.events is already empty from the take()
         }
 
         self.systems = systems;
@@ -638,54 +638,5 @@ impl AdventureGame {
 impl Default for AdventureGame {
     fn default() -> Self {
         Self::new(String::new())
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct GameState {
-    pub world: HashMap<String, Room>,
-    pub player: Player,
-    pub variables: HashMap<String, String>,
-    pub is_over: bool,
-}
-
-impl GameState {
-    pub fn new(player_name: impl Into<String>) -> Self {
-        let mut player = Player::new();
-        player.name = player_name.into();
-        player.current_room = 1;
-
-        let village = Room::new(1, "Quiet Village".to_string(), "A small village with a single cobblestone path and a warm lantern glow.".to_string());
-        let forest = Room::new(2, "Whispering Forest".to_string(), "Tall pines sway as if sharing secrets. The village lies south.".to_string());
-
-        let mut world = HashMap::new();
-        world.insert(village.id.to_string(), village);
-        world.insert(forest.id.to_string(), forest);
-
-        Self {
-            world,
-            player,
-            variables: HashMap::new(),
-            is_over: false,
-        }
-    }
-
-    pub fn from_adventure(
-        player_name: impl Into<String>,
-        adventure: crate::adventure::Adventure,
-    ) -> Result<Self, crate::adventure::AdventureError> {
-        adventure.into_game_state(player_name)
-    }
-
-    pub fn current_room(&self) -> &Room {
-        self.world
-            .get(&self.player.current_room.to_string())
-            .expect("player location must exist")
-    }
-
-    pub fn current_room_mut(&mut self) -> &mut Room {
-        self.world
-            .get_mut(&self.player.current_room.to_string())
-            .expect("player location must exist")
     }
 }

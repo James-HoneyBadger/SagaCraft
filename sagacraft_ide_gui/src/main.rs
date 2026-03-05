@@ -1,5 +1,5 @@
 use eframe::egui;
-use sagacraft_rs::{AdventureGame, BasicWorldSystem, CombatSystem, InventorySystem, ItemType, MonsterStatus};
+use sagacraft_rs::{AdventureGame, BasicWorldSystem, CombatSystem, InventorySystem, ItemType, MonsterStatus, QuestSystem};
 use std::path::PathBuf;
 use std::collections::HashMap;
 use std::fs;
@@ -108,7 +108,6 @@ struct MonsterData {
     description: String,
     hardiness: i32,
     agility: i32,
-    charisma: i32,
     weapon_id: Option<i32>,
     armor_worn: i32,
     gold: i32,
@@ -144,24 +143,23 @@ struct SagaCraftIDE {
     game: Option<AdventureGame>,
     game_output: Vec<String>,
     game_input: String,
+    // Exit confirmation
+    show_exit_confirm: bool,
+    // Add-exit dialog state
+    new_exit_direction: String,
+    new_exit_target: i32,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 enum Tab {
+    #[default]
     Play,
     Info,
     Rooms,
     Items,
     Monsters,
     Quests,
-    Modding,
     Preview,
-}
-
-impl Default for Tab {
-    fn default() -> Self {
-        Tab::Play
-    }
 }
 
 impl Default for AdventureData {
@@ -206,7 +204,6 @@ impl Default for AdventureData {
                 description: "A small green goblin with a club.".to_string(),
                 hardiness: 8,
                 agility: 12,
-                charisma: 6,
                 weapon_id: Some(1),
                 armor_worn: 0,
                 gold: 5,
@@ -247,6 +244,29 @@ impl eframe::App for SagaCraftIDE {
         egui::CentralPanel::default().show(ctx, |ui| {
             self.show_main_ui(ui);
         });
+
+        // Exit confirmation dialog
+        if self.show_exit_confirm {
+            egui::Window::new("Unsaved Changes")
+                .collapsible(false)
+                .resizable(false)
+                .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+                .show(ctx, |ui| {
+                    ui.label("You have unsaved changes. Are you sure you want to exit?");
+                    ui.horizontal(|ui| {
+                        if ui.button("Save & Exit").clicked() {
+                            self.save_adventure();
+                            std::process::exit(0);
+                        }
+                        if ui.button("Exit Without Saving").clicked() {
+                            std::process::exit(0);
+                        }
+                        if ui.button("Cancel").clicked() {
+                            self.show_exit_confirm = false;
+                        }
+                    });
+                });
+        }
     }
 }
 
@@ -272,7 +292,11 @@ impl SagaCraftIDE {
                 }
                 ui.separator();
                 if ui.button("Exit").clicked() {
-                    std::process::exit(0);
+                    if self.modified {
+                        self.show_exit_confirm = true;
+                    } else {
+                        std::process::exit(0);
+                    }
                 }
             });
 
@@ -327,10 +351,7 @@ impl SagaCraftIDE {
             if ui.add(egui::Button::new("📜 Quests").selected(self.active_tab == Tab::Quests)).clicked() {
                 self.active_tab = Tab::Quests;
             }
-            if ui.add(egui::Button::new("🔧 Modding").selected(self.active_tab == Tab::Modding)).clicked() {
-                self.active_tab = Tab::Modding;
-            }
-            if ui.add(egui::Button::new("👁 Preview").selected(self.active_tab == Tab::Preview)).clicked() {
+            if ui.add(egui::Button::new(" Preview").selected(self.active_tab == Tab::Preview)).clicked() {
                 self.active_tab = Tab::Preview;
             }
         });
@@ -344,7 +365,6 @@ impl SagaCraftIDE {
             Tab::Items => self.show_items_tab(ui),
             Tab::Monsters => self.show_monsters_tab(ui),
             Tab::Quests => self.show_quests_tab(ui),
-            Tab::Modding => self.show_modding_tab(ui),
             Tab::Preview => self.show_preview_tab(ui),
         }
     }
@@ -387,22 +407,24 @@ impl SagaCraftIDE {
     fn show_info_tab(&mut self, ui: &mut egui::Ui) {
         ui.heading("ℹ Adventure Information");
 
+        let mut changed = false;
         egui::Grid::new("info_grid")
             .num_columns(2)
             .spacing([10.0, 10.0])
             .show(ui, |ui| {
                 ui.label("Title:");
-                ui.text_edit_singleline(&mut self.adventure.title);
+                changed |= ui.text_edit_singleline(&mut self.adventure.title).changed();
                 ui.end_row();
 
                 ui.label("Introduction:");
-                ui.text_edit_multiline(&mut self.adventure.intro);
+                changed |= ui.text_edit_multiline(&mut self.adventure.intro).changed();
                 ui.end_row();
 
                 ui.label("Start Room ID:");
-                ui.add(egui::DragValue::new(&mut self.adventure.start_room));
+                changed |= ui.add(egui::DragValue::new(&mut self.adventure.start_room)).changed();
                 ui.end_row();
             });
+        if changed { self.modified = true; }
 
         ui.separator();
         ui.label(format!("Rooms: {}", self.adventure.rooms.len()));
@@ -441,31 +463,30 @@ impl SagaCraftIDE {
             columns[1].heading("Room Editor");
             if let Some(room_idx) = self.selected_room {
                 if let Some(room) = self.adventure.rooms.get_mut(room_idx) {
+                    let mut changed = false;
                     egui::Grid::new("room_grid")
                         .num_columns(2)
                         .spacing([10.0, 10.0])
                         .show(&mut columns[1], |ui| {
                             ui.label("ID:");
-                            ui.add(egui::DragValue::new(&mut room.id));
+                            changed |= ui.add(egui::DragValue::new(&mut room.id)).changed();
                             ui.end_row();
 
                             ui.label("Name:");
-                            ui.text_edit_singleline(&mut room.name);
+                            changed |= ui.text_edit_singleline(&mut room.name).changed();
                             ui.end_row();
 
                             ui.label("Description:");
-                            ui.text_edit_multiline(&mut room.description);
+                            changed |= ui.text_edit_multiline(&mut room.description).changed();
                             ui.end_row();
 
                             ui.label("Dark:");
-                            ui.checkbox(&mut room.is_dark, "");
+                            changed |= ui.checkbox(&mut room.is_dark, "").changed();
                             ui.end_row();
                         });
 
                     columns[1].separator();
                     columns[1].label("Exits:");
-                    // Collect keys first so we can mutably borrow individual values
-                    // and still call exits.remove() after the loop.
                     let exit_dirs: Vec<String> = room.exits.keys().cloned().collect();
                     let mut remove_dir: Option<String> = None;
                     for direction in &exit_dirs {
@@ -473,7 +494,7 @@ impl SagaCraftIDE {
                             columns[1].horizontal(|ui| {
                                 ui.label(direction.as_str());
                                 ui.label("\u{2192}");
-                                ui.add(egui::DragValue::new(room_id));
+                                if ui.add(egui::DragValue::new(room_id)).changed() { changed = true; }
                                 if ui.button("\u{274c}").clicked() {
                                     remove_dir = Some(direction.clone());
                                 }
@@ -482,11 +503,23 @@ impl SagaCraftIDE {
                     }
                     if let Some(dir) = remove_dir {
                         room.exits.remove(&dir);
-                        self.modified = true;
+                        changed = true;
                     }
-                    if columns[1].button("➕ Add Exit").clicked() {
-                        room.exits.insert("north".to_string(), 1);
-                    }
+                    columns[1].horizontal(|ui| {
+                        egui::ComboBox::from_id_salt("add_exit_dir")
+                            .selected_text(if self.new_exit_direction.is_empty() { "direction" } else { &self.new_exit_direction })
+                            .show_ui(ui, |ui| {
+                                for d in &["north", "south", "east", "west", "up", "down"] {
+                                    ui.selectable_value(&mut self.new_exit_direction, d.to_string(), *d);
+                                }
+                            });
+                        ui.add(egui::DragValue::new(&mut self.new_exit_target).prefix("room "));
+                        if ui.button("➕ Add Exit").clicked() && !self.new_exit_direction.is_empty() {
+                            room.exits.insert(self.new_exit_direction.clone(), self.new_exit_target);
+                            changed = true;
+                        }
+                    });
+                    if changed { self.modified = true; }
                 }
             } else {
                 columns[1].label("Select a room to edit");
@@ -524,20 +557,21 @@ impl SagaCraftIDE {
             columns[1].heading("Item Editor");
             if let Some(item_idx) = self.selected_item {
                 if let Some(item) = self.adventure.items.get_mut(item_idx) {
+                    let mut changed = false;
                     egui::Grid::new("item_grid")
                         .num_columns(2)
                         .spacing([10.0, 10.0])
                         .show(&mut columns[1], |ui| {
                             ui.label("ID:");
-                            ui.add(egui::DragValue::new(&mut item.id));
+                            changed |= ui.add(egui::DragValue::new(&mut item.id)).changed();
                             ui.end_row();
 
                             ui.label("Name:");
-                            ui.text_edit_singleline(&mut item.name);
+                            changed |= ui.text_edit_singleline(&mut item.name).changed();
                             ui.end_row();
 
                             ui.label("Description:");
-                            ui.text_edit_multiline(&mut item.description);
+                            changed |= ui.text_edit_multiline(&mut item.description).changed();
                             ui.end_row();
 
                             ui.label("Type:");
@@ -549,59 +583,60 @@ impl SagaCraftIDE {
                                         ItemType::Treasure, ItemType::Readable, ItemType::Edible,
                                         ItemType::Drinkable, ItemType::Container,
                                     ] {
-                                        ui.selectable_value(&mut item.item_type, variant.clone(), format!("{variant:?}"));
+                                        changed |= ui.selectable_value(&mut item.item_type, variant.clone(), format!("{variant:?}")).changed();
                                     }
                                 });
                             ui.end_row();
 
                             ui.label("Value:");
-                            ui.add(egui::DragValue::new(&mut item.value));
+                            changed |= ui.add(egui::DragValue::new(&mut item.value)).changed();
                             ui.end_row();
 
                             ui.label("Weight:");
-                            ui.add(egui::DragValue::new(&mut item.weight));
+                            changed |= ui.add(egui::DragValue::new(&mut item.weight)).changed();
                             ui.end_row();
 
                             ui.label("Location (room ID):");
-                            ui.add(egui::DragValue::new(&mut item.location));
+                            changed |= ui.add(egui::DragValue::new(&mut item.location)).changed();
                             ui.end_row();
 
                             ui.label("Takeable:");
-                            ui.checkbox(&mut item.is_takeable, "");
+                            changed |= ui.checkbox(&mut item.is_takeable, "").changed();
                             ui.end_row();
 
                             ui.label("Is Weapon:");
-                            ui.checkbox(&mut item.is_weapon, "");
+                            changed |= ui.checkbox(&mut item.is_weapon, "").changed();
                             ui.end_row();
 
                             if item.is_weapon {
                                 ui.label("Weapon Type (1-5):");
-                                ui.add(egui::DragValue::new(&mut item.weapon_type).range(1..=5));
+                                changed |= ui.add(egui::DragValue::new(&mut item.weapon_type).range(1..=5)).changed();
                                 ui.end_row();
 
                                 ui.label("Damage Dice:");
-                                ui.add(egui::DragValue::new(&mut item.weapon_dice).range(1..=10));
+                                changed |= ui.add(egui::DragValue::new(&mut item.weapon_dice).range(1..=10)).changed();
                                 ui.end_row();
 
                                 ui.label("Damage Sides:");
-                                ui.add(egui::DragValue::new(&mut item.weapon_sides).range(2..=20));
+                                changed |= ui.add(egui::DragValue::new(&mut item.weapon_sides).range(2..=20)).changed();
                                 ui.end_row();
                             }
 
                             ui.label("Is Armor:");
-                            ui.checkbox(&mut item.is_armor, "");
+                            changed |= ui.checkbox(&mut item.is_armor, "").changed();
                             ui.end_row();
 
                             if item.is_armor {
                                 ui.label("Armor Value:");
-                                ui.add(egui::DragValue::new(&mut item.armor_value).range(0..=20));
+                                changed |= ui.add(egui::DragValue::new(&mut item.armor_value).range(0..=20)).changed();
                                 ui.end_row();
 
                                 ui.label("Wearable:");
-                                ui.checkbox(&mut item.is_wearable, "");
+                                changed |= ui.checkbox(&mut item.is_wearable, "").changed();
                                 ui.end_row();
                             }
                         });
+                    if changed { self.modified = true; }
                 }
             } else {
                 columns[1].label("Select an item to edit");
@@ -639,52 +674,50 @@ impl SagaCraftIDE {
             columns[1].heading("Monster Editor");
             if let Some(monster_idx) = self.selected_monster {
                 if let Some(monster) = self.adventure.monsters.get_mut(monster_idx) {
+                    let mut changed = false;
                     egui::Grid::new("monster_grid")
                         .num_columns(2)
                         .spacing([10.0, 10.0])
                         .show(&mut columns[1], |ui| {
                             ui.label("ID:");
-                            ui.add(egui::DragValue::new(&mut monster.id));
+                            changed |= ui.add(egui::DragValue::new(&mut monster.id)).changed();
                             ui.end_row();
 
                             ui.label("Name:");
-                            ui.text_edit_singleline(&mut monster.name);
+                            changed |= ui.text_edit_singleline(&mut monster.name).changed();
                             ui.end_row();
 
                             ui.label("Description:");
-                            ui.text_edit_multiline(&mut monster.description);
+                            changed |= ui.text_edit_multiline(&mut monster.description).changed();
                             ui.end_row();
 
                             ui.label("Hardiness:");
-                            ui.add(egui::DragValue::new(&mut monster.hardiness));
+                            changed |= ui.add(egui::DragValue::new(&mut monster.hardiness)).changed();
                             ui.end_row();
 
                             ui.label("Agility:");
-                            ui.add(egui::DragValue::new(&mut monster.agility));
-                            ui.end_row();
-
-                            ui.label("Charisma:");
-                            ui.add(egui::DragValue::new(&mut monster.charisma));
+                            changed |= ui.add(egui::DragValue::new(&mut monster.agility)).changed();
                             ui.end_row();
 
                             ui.label("Gold:");
-                            ui.add(egui::DragValue::new(&mut monster.gold));
+                            changed |= ui.add(egui::DragValue::new(&mut monster.gold)).changed();
                             ui.end_row();
 
                             ui.label("Room ID:");
-                            ui.add(egui::DragValue::new(&mut monster.room_id));
+                            changed |= ui.add(egui::DragValue::new(&mut monster.room_id)).changed();
                             ui.end_row();
 
                             ui.label("Friendliness:");
                             egui::ComboBox::from_id_salt("monster_status")
                                 .selected_text(format!("{:?}", monster.status))
                                 .show_ui(ui, |ui: &mut egui::Ui| {
-                                    ui.selectable_value(&mut monster.status, MonsterStatus::Neutral, "Neutral");
-                                    ui.selectable_value(&mut monster.status, MonsterStatus::Friendly, "Friendly");
-                                    ui.selectable_value(&mut monster.status, MonsterStatus::Hostile, "Hostile");
+                                    changed |= ui.selectable_value(&mut monster.status, MonsterStatus::Neutral, "Neutral").changed();
+                                    changed |= ui.selectable_value(&mut monster.status, MonsterStatus::Friendly, "Friendly").changed();
+                                    changed |= ui.selectable_value(&mut monster.status, MonsterStatus::Hostile, "Hostile").changed();
                                 });
                             ui.end_row();
                         });
+                    if changed { self.modified = true; }
                 }
             } else {
                 columns[1].label("Select a monster to edit");
@@ -722,85 +755,60 @@ impl SagaCraftIDE {
             columns[1].heading("Quest Editor");
             if let Some(quest_idx) = self.selected_quest {
                 if let Some(quest) = self.adventure.quests.get_mut(quest_idx) {
+                    let mut changed = false;
                     egui::Grid::new("quest_grid")
                         .num_columns(2)
                         .spacing([10.0, 10.0])
                         .show(&mut columns[1], |ui| {
                             ui.label("ID:");
-                            ui.add(egui::DragValue::new(&mut quest.id));
+                            changed |= ui.add(egui::DragValue::new(&mut quest.id)).changed();
                             ui.end_row();
 
                             ui.label("Title:");
-                            ui.text_edit_singleline(&mut quest.title);
+                            changed |= ui.text_edit_singleline(&mut quest.title).changed();
                             ui.end_row();
 
                             ui.label("Description:");
-                            ui.text_edit_multiline(&mut quest.description);
+                            changed |= ui.text_edit_multiline(&mut quest.description).changed();
                             ui.end_row();
 
                             ui.label("Objectives:");
-                            for objective in &quest.objectives {
-                                ui.label(format!("• {}", objective));
-                            }
+                            ui.vertical(|ui| {
+                                let mut remove_idx: Option<usize> = None;
+                                for (idx, objective) in quest.objectives.iter_mut().enumerate() {
+                                    ui.horizontal(|ui| {
+                                        if ui.text_edit_singleline(objective).changed() {
+                                            changed = true;
+                                        }
+                                        if ui.button("❌").clicked() {
+                                            remove_idx = Some(idx);
+                                        }
+                                    });
+                                }
+                                if let Some(idx) = remove_idx {
+                                    quest.objectives.remove(idx);
+                                    changed = true;
+                                }
+                                if ui.button("➕ Add Objective").clicked() {
+                                    quest.objectives.push("New objective".to_string());
+                                    changed = true;
+                                }
+                            });
                             ui.end_row();
 
                             ui.label("Gold Reward:");
-                            ui.add(egui::DragValue::new(&mut quest.rewards_gold));
+                            changed |= ui.add(egui::DragValue::new(&mut quest.rewards_gold)).changed();
                             ui.end_row();
 
                             ui.label("XP Reward:");
-                            ui.add(egui::DragValue::new(&mut quest.rewards_xp));
+                            changed |= ui.add(egui::DragValue::new(&mut quest.rewards_xp)).changed();
                             ui.end_row();
                         });
+                    if changed { self.modified = true; }
                 }
             } else {
                 columns[1].label("Select a quest to edit");
             }
-        });
-    }
-
-    fn show_modding_tab(&mut self, ui: &mut egui::Ui) {
-        ui.heading("🔧 Modding System");
-
-        ui.horizontal(|ui| {
-            if ui.button("🔄 Refresh Mods").clicked() {
-                self.refresh_mods();
-            }
-            if ui.button("📁 Open Mods Folder").clicked() {
-                self.open_mods_folder();
-            }
-        });
-
-        ui.separator();
-
-        ui.columns(2, |columns| {
-            // Mod list
-            columns[0].heading("Available Mods");
-            egui::ScrollArea::vertical().show(&mut columns[0], |ui| {
-                // Show actual mods from the mods directory
-                let mods = self.discover_mods();
-
-                for (mod_name, mut enabled, description) in mods {
-                    ui.horizontal(|ui| {
-                        ui.checkbox(&mut enabled, ""); // TODO: Make this actually toggle mods
-                        ui.label(format!("{} ({})", mod_name, if enabled { "Enabled" } else { "Disabled" }));
-                    });
-                    ui.label(description);
-                    ui.separator();
-                }
-            });
-
-            // Mod details
-            columns[1].heading("Mod Details");
-            columns[1].label("Select a mod to view details");
-            columns[1].separator();
-            columns[1].label("Mod Console:");
-            egui::ScrollArea::vertical().show(&mut columns[1], |ui| {
-                ui.label("Mod system initialized...");
-                ui.label("warm_welcome.py: Provides friendly welcome messages");
-                ui.label("treasure_cache.py: Adds treasure caches to rooms");
-                ui.label("No recent mod activity.");
-            });
         });
     }
 
@@ -1039,7 +1047,6 @@ impl SagaCraftIDE {
             description: "A new monster".to_string(),
             hardiness: 10,
             agility: 10,
-            charisma: 10,
             weapon_id: None,
             armor_worn: 0,
             gold: 0,
@@ -1102,9 +1109,10 @@ impl SagaCraftIDE {
         }
 
         let mut adventure_game = AdventureGame::new(tmp_path.to_string_lossy().to_string());
-        adventure_game.add_system(Box::new(BasicWorldSystem::default()));
-        adventure_game.add_system(Box::new(InventorySystem::default()));
-        adventure_game.add_system(Box::new(CombatSystem::default()));
+        adventure_game.add_system(Box::new(BasicWorldSystem));
+        adventure_game.add_system(Box::new(InventorySystem));
+        adventure_game.add_system(Box::new(CombatSystem));
+        adventure_game.add_system(Box::new(QuestSystem::new()));
 
         match adventure_game.load_adventure() {
             Ok(intro) => {
@@ -1139,31 +1147,22 @@ impl SagaCraftIDE {
         self.game_input.clear();
         self.game_output.push(format!("> {}", command));
 
+        match command.trim().to_lowercase().as_str() {
+            "quit" | "q" | "exit" => {
+                self.game_output.push("Game stopped.".to_string());
+                self.game = None;
+                self.status = "Game stopped".to_string();
+                return;
+            }
+            _ => {}
+        }
+
         if let Some(game) = &mut self.game {
             let lines = game.process_command(&command);
             self.game_output.extend(lines);
         } else {
             self.game_output.push("No game running. Press \u{25B6} Start Game first.".to_string());
         }
-    }
-
-    fn refresh_mods(&mut self) {
-        // TODO: Scan mods directory for Python files
-        self.status = "Mods refreshed".to_string();
-    }
-
-    fn open_mods_folder(&mut self) {
-        // TODO: Open mods folder in file explorer
-        self.status = "Mods folder opened".to_string();
-    }
-
-    fn discover_mods(&self) -> Vec<(String, bool, String)> {
-        // TODO: Actually read from mods directory
-        // For now, return hardcoded mods based on the project structure
-        vec![
-            ("warm_welcome.py".to_string(), true, "Provides a friendly welcome message".to_string()),
-            ("treasure_cache.py".to_string(), false, "Adds treasure caches to rooms".to_string()),
-        ]
     }
 
     fn refresh_json_preview(&mut self) {

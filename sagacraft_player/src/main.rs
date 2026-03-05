@@ -1,30 +1,34 @@
 use std::io::{self, Write};
 
-use sagacraft_rs::{AdventureGame, BasicWorldSystem, CombatSystem, InventorySystem, QuestSystem};
+use sagacraft_rs::Engine;
+
+const DEFAULT_ADVENTURE: &str = "shattered_realms_demo.json";
 
 fn main() {
     let adventure_path = parse_args(std::env::args().skip(1));
 
-    let mut game = AdventureGame::new(adventure_path);
+    let mut engine = match Engine::load(&adventure_path) {
+        Ok(e) => e,
+        Err(err) => {
+            eprintln!("Failed to load adventure '{}': {}", adventure_path, err);
+            std::process::exit(1);
+        }
+    };
 
-    if let Err(e) = game.load_adventure().map(|intro| print!("{}", intro)) {
-        eprintln!("Failed to load adventure: {}", e);
-        std::process::exit(1);
+    println!("SagaCraft — CLI Player");
+    println!("Type 'help' for commands. Type 'quit' to exit.\n");
+
+    // Print intro/banner text from adventure file, then room description
+    let intro = engine.intro();
+    if !intro.is_empty() {
+        println!("{}\n", intro);
     }
-
-    // Add systems
-    game.add_system(Box::new(BasicWorldSystem::default()));
-    game.add_system(Box::new(InventorySystem::default()));
-    game.add_system(Box::new(CombatSystem::default()));
-    game.add_system(Box::new(QuestSystem::new()));
-
-    println!("SagaCraft (Rust) — CLI Player");
-    println!("Type 'help' for commands. Type 'quit' to exit.");
-    println!("{}", game.look());
+    println!("{}", engine.look());
 
     let stdin = io::stdin();
     loop {
-        if game.game_over {
+        if engine.is_over() {
+            println!("\n--- Game Over ---");
             break;
         }
 
@@ -37,14 +41,15 @@ fn main() {
             continue;
         }
 
-        let input = input.trim().to_lowercase();
+        let input = input.trim();
+        if input.is_empty() {
+            continue;
+        }
 
-        match input.as_str() {
+        match input.to_lowercase().as_str() {
             "quit" | "q" | "exit" => break,
-            "help" | "h" => print_help(),
             _ => {
-                let output = game.process_command(&input);
-                for line in output {
+                for line in engine.send(input) {
                     println!("{}", line);
                 }
             }
@@ -53,76 +58,45 @@ fn main() {
 }
 
 fn parse_args(mut args: impl Iterator<Item = String>) -> String {
-    let mut adventure_path = "demo_adventure.json".to_string();
+    let mut adventure_path: Option<String> = None;
 
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--help" | "-h" => {
-                print_help_and_exit();
+                print_usage_and_exit();
             }
             "--adventure" | "-a" => {
                 if let Some(path) = args.next() {
-                    adventure_path = path;
+                    adventure_path = Some(path);
                 } else {
-                    print_help_and_exit();
+                    eprintln!("--adventure requires a path argument.");
+                    print_usage_and_exit();
                 }
             }
-            _ => {
-                // ignore unknown args for now
+            other if !other.starts_with('-') => {
+                // Support positional argument: sagacraft_player my_adventure.json
+                adventure_path = Some(other.to_string());
+            }
+            unknown => {
+                eprintln!("Unknown flag: {}", unknown);
+                print_usage_and_exit();
             }
         }
     }
 
-    adventure_path
+    adventure_path.unwrap_or_else(|| DEFAULT_ADVENTURE.to_string())
 }
 
-fn print_help_and_exit() -> ! {
-    println!("SagaCraft (Rust) — CLI Player");
+fn print_usage_and_exit() -> ! {
+    println!("SagaCraft — CLI Player");
     println!("Usage:");
-    println!("  sagacraft_player [--adventure <path>]");
+    println!("  sagacraft_player [<adventure.json>]");
+    println!("  sagacraft_player --adventure <path>");
     println!();
     println!("Options:");
-    println!("  -a, --adventure <path>    Adventure JSON file to load");
+    println!("  -a, --adventure <path>    Adventure JSON file to load (default: {})", DEFAULT_ADVENTURE);
     println!("  -h, --help                Show this help");
-    println!();
-    println!("Commands:");
-    println!("  look, l                   Look around");
-    println!("  inventory, i, inv         Show inventory (with weight)");
-    println!("  n/s/e/w/u/d               Move in a direction");
-    println!("  take <item>, get <item>   Take an item");
-    println!("  drop <item>               Drop an item");
-    println!("  equip/wield/wear <item>   Equip a weapon or armor");
-    println!("  unequip/remove <slot>     Unequip weapon or armor");
-    println!("  use <item>               Use/consume an item");
-    println!("  examine/x <item>          Examine an item");
-    println!("  attack <monster>          Attack a monster");
-    println!("  say <text>               Say something");
-    println!("  status, stats             Show player status");
-    println!("  quests                    Show quests");
-    println!("  accept <quest_id>         Accept a quest");
-    println!("  complete <quest_id>       Complete a quest");
-    println!("  help, h                   Show this help");
-    println!("  quit, q, exit             Quit");
     std::process::exit(0)
 }
 
-fn print_help() {
-    println!("Commands:");
-    println!("  look, l                   Look around");
-    println!("  inventory, i, inv         Show inventory (with weight)");
-    println!("  n/s/e/w/u/d               Move in a direction");
-    println!("  take <item>, get <item>   Take an item");
-    println!("  drop <item>               Drop an item");
-    println!("  equip/wield/wear <item>   Equip a weapon or armor");
-    println!("  unequip/remove <slot>     Unequip weapon or armor");
-    println!("  use <item>               Use/consume an item");
-    println!("  examine/x <item>          Examine an item");
-    println!("  attack <monster>          Attack a monster");
-    println!("  say <text>               Say something");
-    println!("  status, stats             Show player status");
-    println!("  quests                    Show quests");
-    println!("  accept <quest_id>         Accept a quest");
-    println!("  complete <quest_id>       Complete a quest");
-    println!("  help, h                   Show this help");
-    println!("  quit, q, exit             Quit");
-}
+

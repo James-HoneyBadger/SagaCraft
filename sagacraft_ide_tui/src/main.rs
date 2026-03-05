@@ -471,12 +471,11 @@ fn run(tui: &mut Tui, app: &mut App) -> anyhow::Result<()> {
             break;
         }
 
-        if event::poll(Duration::from_millis(100))? {
-            if let Event::Key(key) = event::read()? {
-                if handle_key(app, key) {
-                    break;
-                }
-            }
+        if event::poll(Duration::from_millis(100))?
+            && let Event::Key(key) = event::read()?
+            && handle_key(app, key)
+        {
+            break;
         }
     }
 

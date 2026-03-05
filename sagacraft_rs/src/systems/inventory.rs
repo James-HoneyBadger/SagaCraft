@@ -40,10 +40,11 @@ impl System for InventorySystem {
                 let item_name = args.join(" ");
                 if item_name.is_empty() {
                     Some("Drop what?".to_string())
-                } else if game.drop_item(&item_name) {
-                    Some("Dropped.".to_string())
                 } else {
-                    Some("You don't have that.".to_string())
+                    match game.drop_item(&item_name) {
+                        Some(name) => Some(format!("Dropped: {}.", name)),
+                        None => Some("You don't have that.".to_string()),
+                    }
                 }
             }
             "equip" | "wield" | "wear" => {
@@ -55,8 +56,10 @@ impl System for InventorySystem {
                 }
             }
             "unequip" | "remove" => {
-                let slot = args.first().copied().unwrap_or("weapon");
-                Some(game.unequip_slot(slot).unwrap_or_else(|e| e))
+                match args.first().copied() {
+                    None => Some("Unequip what? Specify 'weapon' or 'armor'.".to_string()),
+                    Some(slot) => Some(game.unequip_slot(slot).unwrap_or_else(|e| e)),
+                }
             }
             "use" => {
                 let item_name = args.join(" ");

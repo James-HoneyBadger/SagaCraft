@@ -2,6 +2,7 @@
   "id": "shattered_realms",
   "title": "The Shattered Realms: Chronicles of the Eternal Flame",
   "description": "An epic fantasy adventure spanning shattered kingdoms, where ancient magic collides with modern ambition.",
+  "intro": "An epic fantasy adventure spanning shattered kingdoms, where ancient magic collides with modern ambition.\n\nDark forces have shattered the old kingdoms. You alone stand between the Eternal Flame cult and total domination.\nMaster swordplay, gather allies, and brave the ruins of a broken world.\nType 'help' for a list of commands.\n",
   "start_room": 1,
   "rooms": [
     {
@@ -304,37 +305,89 @@
       "id": 1,
       "name": "Flame Acolyte",
       "description": "A devoted follower of the Eternal Flame, their body marked with ritual scars and their eyes glowing with fanatic zeal.",
-      "health": 25,
-      "attack": 8,
-      "defense": 3,
-      "experience": 50
+      "room_id": 5,
+      "hardiness": 25,
+      "agility": 12,
+      "friendliness": "hostile",
+      "courage": 80,
+      "gold": 10
     },
     {
       "id": 2,
       "name": "Dire Wolf",
       "description": "A massive wolf with glowing red eyes, corrupted by the Cataclysm's dark energies.",
-      "health": 35,
-      "attack": 12,
-      "defense": 5,
-      "experience": 75
+      "room_id": 3,
+      "hardiness": 35,
+      "agility": 18,
+      "friendliness": "hostile",
+      "courage": 90,
+      "gold": 0
     },
     {
       "id": 3,
       "name": "Bandit",
       "description": "A desperate outlaw turned to crime by the chaos of the Shattered Realms.",
-      "health": 20,
-      "attack": 6,
-      "defense": 2,
-      "experience": 25
+      "room_id": 6,
+      "hardiness": 20,
+      "agility": 10,
+      "friendliness": "hostile",
+      "courage": 60,
+      "gold": 15
     },
     {
       "id": 4,
       "name": "Flame Lord",
       "description": "What was once King Eldric is now a being of pure flame and madness. His form shifts between human and elemental fire, radiating destructive power.",
-      "health": 150,
-      "attack": 25,
-      "defense": 15,
-      "experience": 1000
+      "room_id": 15,
+      "hardiness": 150,
+      "agility": 20,
+      "friendliness": "hostile",
+      "courage": 100,
+      "gold": 200
+    }
+  ],
+  "quests": [
+    {
+      "id": 1,
+      "title": "The First Threat",
+      "description": "A Flame Acolyte guards the road to Eldoria. Eliminate the threat.",
+      "giver_npc": "Village Elder",
+      "objectives": [
+        {
+          "type": "kill_monster",
+          "target_id": "Flame Acolyte",
+          "description": "Defeat the Flame Acolyte on the road north"
+        }
+      ],
+      "rewards": { "gold": 50, "xp": 75 }
+    },
+    {
+      "id": 2,
+      "title": "The Forest Peril",
+      "description": "A corrupted Dire Wolf terrorises travellers near the ancient forest. End its misery.",
+      "giver_npc": "Forester",
+      "objectives": [
+        {
+          "type": "kill_monster",
+          "target_id": "Dire Wolf",
+          "description": "Slay the Dire Wolf in the Ancient Forest"
+        }
+      ],
+      "rewards": { "gold": 40, "xp": 100 }
+    },
+    {
+      "id": 3,
+      "title": "Reclaim the Realms",
+      "description": "Journey to the Flame Lord's chamber and destroy the source of the Eternal Flame cult's power.",
+      "giver_npc": "Oracle",
+      "objectives": [
+        {
+          "type": "kill_monster",
+          "target_id": "Flame Lord",
+          "description": "Defeat the Flame Lord in his chamber"
+        }
+      ],
+      "rewards": { "gold": 500, "xp": 1000 }
     }
   ]
 }
