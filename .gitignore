@@ -1,33 +1,5 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-
-# Virtual environments
-venv/
-ENV/
-env/
-.venv/
-
-# Type checking
-.mypy_cache/
+# Rust
+target/
 
 # IDE
 .vscode/
@@ -36,23 +8,9 @@ env/
 *.swo
 *~
 
-# Testing
-.pytest_cache/
-.coverage
-htmlcov/
-
-# Game files
-saves/
-*.save
-adventures/_*.json
-
 # OS
 .DS_Store
 Thumbs.db
-
-# Rust
-target/
-rust/target/
 
 # Release binaries and archives
 release/sagacraft_player
@@ -61,5 +19,5 @@ release/sagacraft_ide_gui
 *.tar.gz
 *.zip
 
-# Runtime state (auto-generated, not for source control)
-config/recent_adventures.json
+# Runtime artifacts
+nohup.out
